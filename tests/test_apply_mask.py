@@ -47,7 +47,8 @@ def test_row_with_zero_allowed_falls_back_to_uniform_on_mask():
                   [0.3, 0.3, 0.4]])
     mask = np.array([[True, True, False],
                      [True, True, True]])
-    result = _apply_mask(A, mask)
+    with pytest.warns(UserWarning, match="falling back to uniform"):
+        result = _apply_mask(A, mask)
     assert result[0, 0] == pytest.approx(0.5)
     assert result[0, 1] == pytest.approx(0.5)
     assert result[0, 2] == 0.0
@@ -59,4 +60,11 @@ def test_row_with_completely_empty_mask_raises():
     A = np.array([[0.5, 0.3, 0.2]])
     mask = np.array([[False, False, False]])
     with pytest.raises(ValueError, match="empty mask row"):
+        _apply_mask(A, mask)
+
+
+def test_shape_mismatch_raises():
+    A = np.ones((2, 3))
+    mask = np.ones((2, 2), dtype=bool)
+    with pytest.raises(ValueError, match="shape mismatch"):
         _apply_mask(A, mask)

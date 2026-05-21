@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 
@@ -13,12 +15,13 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
       * ``out.sum(axis=1) ≈ 1`` on every row (atol 1e-12).
       * If a row's masked product is entirely zero (e.g. all probability mass
         was on now-forbidden edges), fall back to uniform over allowed edges
-        in that row.
+        in that row and emit a UserWarning.
 
     Raises
     ------
     ValueError
-        If a row of ``mask`` has zero True entries (no allowed edges).
+        If a row of ``mask`` has zero True entries (no allowed edges), or if
+        ``transmat`` and ``mask`` have mismatched shapes.
     """
     if transmat.shape != mask.shape:
         raise ValueError(
@@ -32,6 +35,15 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
     masked = transmat * mask
     row_sums = masked.sum(axis=1, keepdims=True)
+
+    zero_rows = (row_sums.squeeze(axis=1) == 0)
+    if zero_rows.any():
+        bad = np.where(zero_rows)[0]
+        warnings.warn(
+            f"transmat row(s) {bad.tolist()} entirely zero after masking — "
+            "falling back to uniform over allowed edges",
+            stacklevel=2,
+        )
 
     # Fallback: rows where masked is entirely zero (e.g. probability moved to
     # forbidden edges only). Distribute uniformly over allowed edges.
