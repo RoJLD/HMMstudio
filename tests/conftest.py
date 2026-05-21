@@ -76,3 +76,22 @@ def synthetic_multinomial_3state():
         X[t, 0] = int(rng.choice(5, p=emissionprob[state]))
         state = int(rng.choice(3, p=A[state]))
     return {"X": X, "A": A, "emissionprob": emissionprob}
+
+
+@pytest.fixture
+def synthetic_poisson_3state():
+    """K=3 Poisson HMM, D=2, N=600, fixed seed."""
+    A = np.array([[0.80, 0.15, 0.05],
+                  [0.10, 0.80, 0.10],
+                  [0.05, 0.15, 0.80]])
+    lambdas = np.array([[1.0, 2.0],
+                        [5.0, 8.0],
+                        [15.0, 20.0]])
+    rng = np.random.default_rng(31)
+    state = 0
+    n = 600
+    X = np.zeros((n, 2), dtype=int)
+    for t in range(n):
+        X[t] = rng.poisson(lambdas[state])
+        state = int(rng.choice(3, p=A[state]))
+    return {"X": X, "A": A, "lambdas": lambdas}
