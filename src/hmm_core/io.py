@@ -7,6 +7,10 @@ import pickle
 import warnings
 from dataclasses import asdict
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hmm_core.fit import FittedModel
 
 import hmmlearn
 import numpy as np
@@ -84,7 +88,7 @@ def load_topology(path: str | Path) -> Topology:
     return topo
 
 
-def _topology_to_dict(topology) -> dict:
+def _topology_to_dict(topology: Topology) -> dict:
     """Convert Topology to a JSON-serializable dict (allowed_transitions as lists)."""
     d = asdict(topology)
     if d["allowed_transitions"] is not None:
@@ -144,7 +148,7 @@ def save_model(fitted, output_dir: str | Path) -> None:
     (out / "fit_log.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
-def load_model(path: str | Path):
+def load_model(path: str | Path) -> "FittedModel":
     """Unpickle a FittedModel. Warn if hmmlearn version mismatches the saved one."""
     p = Path(path)
     with p.open("rb") as f:
