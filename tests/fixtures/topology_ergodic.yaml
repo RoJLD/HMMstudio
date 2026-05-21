@@ -1,0 +1,19 @@
+name: ergodic_2
+n_states: 2
+state_names: [calm, vol]
+
+emission:
+  type: gaussian
+  covariance_type: diag
+  n_features: 1
+
+startprob: uniform
+
+init:
+  strategy: random
+  seed: 0
+
+fit:
+  algorithm: baum_welch
+  n_iter: 100
+  tol: 1.0e-5

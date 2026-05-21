@@ -1,0 +1,26 @@
+name: test_left_right_3
+n_states: 3
+state_names: [a, b, c]
+
+emission:
+  type: gaussian
+  covariance_type: full
+  n_features: 2
+
+allowed_transitions:
+  - [a, a]
+  - [a, b]
+  - [b, b]
+  - [b, c]
+  - [c, c]
+
+startprob: first_state
+
+init:
+  strategy: uniform
+  seed: 42
+
+fit:
+  algorithm: baum_welch
+  n_iter: 50
+  tol: 1.0e-4
