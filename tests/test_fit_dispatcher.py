@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from hmm_core.fit import FittedModel, fit
 from hmm_core.fit.gaussian import ConstrainedGaussianHMM

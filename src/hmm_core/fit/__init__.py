@@ -88,7 +88,10 @@ def _hmmlearn_kwargs(topology: Topology, seed: int) -> dict:
 
 
 def fit(
-    topology: Topology, X: np.ndarray, *, seed: int | None = None,
+    topology: Topology,
+    X: np.ndarray,
+    *,
+    seed: int | None = None,
     lengths: np.ndarray | None = None,
 ) -> FittedModel:
     """Fit the HMM described by ``topology`` on observations ``X``.

@@ -32,9 +32,7 @@ def _read_observations(csv_path: Path, topology) -> np.ndarray:
             )
         X = df.to_numpy(dtype=int)
         if X.max() >= e.n_symbols or X.min() < 0:
-            raise typer.BadParameter(
-                f"symbol IDs must be in [0, n_symbols={e.n_symbols})"
-            )
+            raise typer.BadParameter(f"symbol IDs must be in [0, n_symbols={e.n_symbols})")
         return X
     raise typer.BadParameter(f"unknown emission type: {e.type!r}")
 

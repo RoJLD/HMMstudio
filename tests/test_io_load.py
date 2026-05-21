@@ -20,7 +20,11 @@ def test_load_valid_left_right():
     assert topo.emission.type == "gaussian"
     assert topo.emission.n_features == 2
     assert topo.allowed_transitions == [
-        ("a", "a"), ("a", "b"), ("b", "b"), ("b", "c"), ("c", "c"),
+        ("a", "a"),
+        ("a", "b"),
+        ("b", "b"),
+        ("b", "c"),
+        ("c", "c"),
     ]
     assert topo.startprob == "first_state"
     assert topo.init.strategy == "uniform"

@@ -9,9 +9,7 @@ from hmm_core.fit.gaussian import ConstrainedGaussianHMM
 
 def test_mask_zeros_preserved_after_fit(synthetic_gaussian_left_right):
     X = synthetic_gaussian_left_right["X"]
-    mask = np.array([[True, True, False],
-                     [False, True, True],
-                     [False, False, True]])
+    mask = np.array([[True, True, False], [False, True, True], [False, False, True]])
     model = ConstrainedGaussianHMM(
         n_components=3,
         covariance_type="full",
@@ -20,9 +18,7 @@ def test_mask_zeros_preserved_after_fit(synthetic_gaussian_left_right):
         transmat_mask=mask,
     )
     # Pre-set transmat respecting the mask so init does not violate it.
-    initial_A = np.array([[0.7, 0.3, 0.0],
-                          [0.0, 0.6, 0.4],
-                          [0.0, 0.0, 1.0]])
+    initial_A = np.array([[0.7, 0.3, 0.0], [0.0, 0.6, 0.4], [0.0, 0.0, 1.0]])
     model.startprob_ = np.array([1.0, 0.0, 0.0])
     model.transmat_ = initial_A
     # init_params: omit 's' and 't' since we pre-set them.
@@ -35,9 +31,7 @@ def test_mask_zeros_preserved_after_fit(synthetic_gaussian_left_right):
 
 def test_rows_sum_to_one_after_fit(synthetic_gaussian_left_right):
     X = synthetic_gaussian_left_right["X"]
-    mask = np.array([[True, True, False],
-                     [False, True, True],
-                     [False, False, True]])
+    mask = np.array([[True, True, False], [False, True, True], [False, False, True]])
     model = ConstrainedGaussianHMM(
         n_components=3,
         covariance_type="full",
@@ -46,9 +40,7 @@ def test_rows_sum_to_one_after_fit(synthetic_gaussian_left_right):
         transmat_mask=mask,
     )
     model.startprob_ = np.array([1.0, 0.0, 0.0])
-    model.transmat_ = np.array([[0.7, 0.3, 0.0],
-                                [0.0, 0.6, 0.4],
-                                [0.0, 0.0, 1.0]])
+    model.transmat_ = np.array([[0.7, 0.3, 0.0], [0.0, 0.6, 0.4], [0.0, 0.0, 1.0]])
     model.init_params = "mc"
     model.fit(X)
     np.testing.assert_allclose(model.transmat_.sum(axis=1), 1.0, atol=1e-10)

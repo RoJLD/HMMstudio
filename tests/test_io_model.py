@@ -47,8 +47,14 @@ def test_summary_json_schema(tmp_path, synthetic_gaussian_left_right):
     assert "topology" in summary
     assert "fit" in summary
     assert "runtime" in summary
-    for key in ("log_likelihood", "bic", "aic", "n_iter_actual", "converged",
-                "mask_violation_norm"):
+    for key in (
+        "log_likelihood",
+        "bic",
+        "aic",
+        "n_iter_actual",
+        "converged",
+        "mask_violation_norm",
+    ):
         assert key in summary["fit"]
     for key in ("seed", "hmmlearn_version", "hmm_core_version", "duration_seconds"):
         assert key in summary["runtime"]

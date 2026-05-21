@@ -39,7 +39,10 @@ def test_mask_none_matches_vanilla(synthetic_poisson_3state):
     vanilla = PoissonHMM(n_components=3, n_iter=20, random_state=42)
     vanilla.fit(X)
     constrained = ConstrainedPoissonHMM(
-        n_components=3, n_iter=20, random_state=42, transmat_mask=None,
+        n_components=3,
+        n_iter=20,
+        random_state=42,
+        transmat_mask=None,
     )
     constrained.fit(X)
     np.testing.assert_allclose(constrained.transmat_, vanilla.transmat_, atol=1e-10)

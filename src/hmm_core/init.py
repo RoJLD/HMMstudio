@@ -13,7 +13,10 @@ from hmm_core.topology import Topology
 
 
 def transmat(
-    topology: Topology, *, seed: int, X: np.ndarray | None = None,
+    topology: Topology,
+    *,
+    seed: int,
+    X: np.ndarray | None = None,
     lengths: np.ndarray | None = None,
 ) -> np.ndarray:
     """Build an initial K x K transition matrix that respects the topology mask."""
@@ -84,7 +87,10 @@ def startprob(topology: Topology, *, seed: int) -> np.ndarray:
 
 
 def emission_params(
-    topology: Topology, X: np.ndarray | None, *, seed: int,
+    topology: Topology,
+    X: np.ndarray | None,
+    *,
+    seed: int,
 ) -> dict[str, np.ndarray]:
     """Return dict of pre-set emission parameters.
 
@@ -113,7 +119,10 @@ def emission_params(
 
 
 def _kmeans_emission_params(
-    topology: Topology, X: np.ndarray, *, seed: int,
+    topology: Topology,
+    X: np.ndarray,
+    *,
+    seed: int,
 ) -> dict[str, np.ndarray]:
     from sklearn.cluster import KMeans
 
@@ -175,7 +184,10 @@ def _kmeans_emission_params(
 
 
 def _empirical_covars(
-    X: np.ndarray, labels: np.ndarray, K: int, covariance_type: str,
+    X: np.ndarray,
+    labels: np.ndarray,
+    K: int,
+    covariance_type: str,
 ) -> np.ndarray:
     D = X.shape[1]
     if covariance_type == "full":

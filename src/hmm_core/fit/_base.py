@@ -24,9 +24,7 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
         ``transmat`` and ``mask`` have mismatched shapes.
     """
     if transmat.shape != mask.shape:
-        raise ValueError(
-            f"shape mismatch: transmat {transmat.shape}, mask {mask.shape}"
-        )
+        raise ValueError(f"shape mismatch: transmat {transmat.shape}, mask {mask.shape}")
 
     allowed_per_row = mask.sum(axis=1)
     if (allowed_per_row == 0).any():
@@ -36,7 +34,7 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
     masked = transmat * mask
     row_sums = masked.sum(axis=1, keepdims=True)
 
-    zero_rows = (row_sums.squeeze(axis=1) == 0)
+    zero_rows = row_sums.squeeze(axis=1) == 0
     if zero_rows.any():
         bad = np.where(zero_rows)[0]
         warnings.warn(

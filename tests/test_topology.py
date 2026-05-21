@@ -56,9 +56,7 @@ def test_explicit_allowed_transitions_mask():
     )
     topo.validate()
     mask = topo.transition_mask()
-    expected = np.array([[True, True, False],
-                         [False, True, True],
-                         [False, False, True]])
+    expected = np.array([[True, True, False], [False, True, True], [False, False, True]])
     np.testing.assert_array_equal(mask, expected)
 
 

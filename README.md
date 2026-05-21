@@ -1,5 +1,8 @@
 # hmm-studio
 
+> CI is configured but not yet active — this repo has no remote. After
+> pushing to GitHub, add `[![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/ci.yml)` below the title.
+
 HMM topology editor, constrained fit engine, and visualizer.
 
 This repo currently ships **`hmm-core`** — a domain-agnostic Python engine

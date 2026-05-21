@@ -36,10 +36,15 @@ def test_mask_none_matches_vanilla(synthetic_gmm_3state):
     from hmmlearn.hmm import GMMHMM
 
     X = synthetic_gmm_3state["X"]
-    vanilla = GMMHMM(n_components=3, n_mix=2, covariance_type="diag",
-                     n_iter=10, random_state=42)
+    vanilla = GMMHMM(n_components=3, n_mix=2, covariance_type="diag", n_iter=10, random_state=42)
     vanilla.fit(X)
-    constrained = ConstrainedGMMHMM(n_components=3, n_mix=2, covariance_type="diag",
-                                     n_iter=10, random_state=42, transmat_mask=None)
+    constrained = ConstrainedGMMHMM(
+        n_components=3,
+        n_mix=2,
+        covariance_type="diag",
+        n_iter=10,
+        random_state=42,
+        transmat_mask=None,
+    )
     constrained.fit(X)
     np.testing.assert_allclose(constrained.transmat_, vanilla.transmat_, atol=1e-10)

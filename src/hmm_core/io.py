@@ -45,9 +45,7 @@ def load_topology(path: str | Path) -> Topology:
         raise FileNotFoundError(f"topology file not found: {p}")
     raw = yaml.safe_load(p.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise TopologyError(
-            f"topology file at {p} is empty or not a YAML mapping"
-        )
+        raise TopologyError(f"topology file at {p} is empty or not a YAML mapping")
 
     try:
         e = raw["emission"]
@@ -142,9 +140,7 @@ def save_model(fitted, output_dir: str | Path) -> None:
 
     monitor = getattr(fitted.model, "monitor_", None)
     history = getattr(monitor, "history", []) if monitor is not None else []
-    lines = ["iter\tlog_likelihood"] + [
-        f"{i}\t{ll:.6f}" for i, ll in enumerate(history)
-    ]
+    lines = ["iter\tlog_likelihood"] + [f"{i}\t{ll:.6f}" for i, ll in enumerate(history)]
     (out / "fit_log.txt").write_text("\n".join(lines), encoding="utf-8")
 
 

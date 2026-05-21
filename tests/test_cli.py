@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 from typer.testing import CliRunner
@@ -46,13 +45,19 @@ fit: {algorithm: baum_welch, n_iter: 10, tol: 1.0e-4}
 def test_run_writes_outputs(runner, tmp_path, synthetic_gaussian_left_right):
     csv_path = tmp_path / "data.csv"
     pd.DataFrame(synthetic_gaussian_left_right["X"], columns=["f0", "f1"]).to_csv(
-        csv_path, index=False,
+        csv_path,
+        index=False,
     )
     out_dir = tmp_path / "out"
     result = runner.invoke(
         app,
-        ["run", str(FIXTURES / "topology_valid_gaussian.yaml"), str(csv_path),
-         "--output", str(out_dir)],
+        [
+            "run",
+            str(FIXTURES / "topology_valid_gaussian.yaml"),
+            str(csv_path),
+            "--output",
+            str(out_dir),
+        ],
     )
     assert result.exit_code == 0, result.stdout
     assert (out_dir / "model.pkl").exists()
@@ -62,13 +67,19 @@ def test_run_writes_outputs(runner, tmp_path, synthetic_gaussian_left_right):
 def test_show_prints_summary(runner, tmp_path, synthetic_gaussian_left_right):
     csv_path = tmp_path / "data.csv"
     pd.DataFrame(synthetic_gaussian_left_right["X"], columns=["f0", "f1"]).to_csv(
-        csv_path, index=False,
+        csv_path,
+        index=False,
     )
     out_dir = tmp_path / "out"
     runner.invoke(
         app,
-        ["run", str(FIXTURES / "topology_valid_gaussian.yaml"), str(csv_path),
-         "--output", str(out_dir)],
+        [
+            "run",
+            str(FIXTURES / "topology_valid_gaussian.yaml"),
+            str(csv_path),
+            "--output",
+            str(out_dir),
+        ],
     )
     result = runner.invoke(app, ["show", str(out_dir / "model.pkl")])
     assert result.exit_code == 0
@@ -79,13 +90,19 @@ def test_show_prints_summary(runner, tmp_path, synthetic_gaussian_left_right):
 def test_decode_writes_parquet(runner, tmp_path, synthetic_gaussian_left_right):
     csv_path = tmp_path / "data.csv"
     pd.DataFrame(synthetic_gaussian_left_right["X"], columns=["f0", "f1"]).to_csv(
-        csv_path, index=False,
+        csv_path,
+        index=False,
     )
     out_dir = tmp_path / "out"
     runner.invoke(
         app,
-        ["run", str(FIXTURES / "topology_valid_gaussian.yaml"), str(csv_path),
-         "--output", str(out_dir)],
+        [
+            "run",
+            str(FIXTURES / "topology_valid_gaussian.yaml"),
+            str(csv_path),
+            "--output",
+            str(out_dir),
+        ],
     )
     decoded_path = tmp_path / "decoded.parquet"
     result = runner.invoke(

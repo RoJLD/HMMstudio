@@ -53,7 +53,7 @@ def test_random_transmat_respects_mask_and_is_deterministic():
 def test_startprob_uniform():
     topo = _make_topo("uniform", startprob="uniform")
     pi = init.startprob(topo, seed=42)
-    np.testing.assert_allclose(pi, np.array([1/3, 1/3, 1/3]))
+    np.testing.assert_allclose(pi, np.array([1 / 3, 1 / 3, 1 / 3]))
 
 
 def test_startprob_first_state():
@@ -85,6 +85,7 @@ def test_kmeans_emission_means_match_centroids(synthetic_gaussian_left_right):
     assert params["means_"].shape == (3, 2)
     # Verify against direct k-means.
     from sklearn.cluster import KMeans
+
     km = KMeans(n_clusters=3, random_state=42, n_init=10).fit(X)
     # Order may differ; check that each centroid is matched to one mean.
     for c in km.cluster_centers_:
@@ -117,7 +118,9 @@ def test_data_frequencies_emission_matches_kmeans(synthetic_gaussian_left_right)
     np.testing.assert_allclose(params_df["means_"], params_km["means_"])
 
 
-def test_kmeans_emission_multinomial_emits_warning_and_returns_emissionprob(synthetic_multinomial_3state):
+def test_kmeans_emission_multinomial_emits_warning_and_returns_emissionprob(
+    synthetic_multinomial_3state,
+):
     """Coverage gap: kmeans on multinomial is degenerate, emits warning."""
     import warnings
     from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
