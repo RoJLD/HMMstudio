@@ -9,6 +9,7 @@ import numpy as np
 
 from hmm_core import init as init_mod
 from hmm_core.fit.gaussian import ConstrainedGaussianHMM
+from hmm_core.fit.gmm import ConstrainedGMMHMM
 from hmm_core.topology import Topology
 
 
@@ -27,7 +28,8 @@ class FittedModel:
 
 _CLASS_BY_EMISSION = {
     "gaussian": ConstrainedGaussianHMM,
-    # gmm, multinomial, poisson registered in T10-T12.
+    "gmm": ConstrainedGMMHMM,
+    # multinomial, poisson registered in T11-T12.
 }
 
 
@@ -48,8 +50,15 @@ def _n_params(K: int, emission_spec) -> int:
         return transitions + K * D + cov
     if e.type == "gmm":
         D, M = e.n_features, e.n_mix
-        cov_per = D if e.covariance_type == "diag" else D * (D + 1) // 2
-        return transitions + K * M * (D + cov_per) + K * (M - 1)
+        if e.covariance_type == "full":
+            cov_total = K * M * D * (D + 1) // 2
+        elif e.covariance_type == "diag":
+            cov_total = K * M * D
+        elif e.covariance_type == "tied":
+            cov_total = D * (D + 1) // 2  # one matrix shared across all components
+        else:  # spherical
+            cov_total = K * M
+        return transitions + K * M * D + cov_total + K * (M - 1)
     if e.type == "multinomial":
         return transitions + K * (e.n_symbols - 1)
     if e.type == "poisson":
