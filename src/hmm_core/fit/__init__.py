@@ -57,14 +57,14 @@ def _n_params(K: int, emission_spec) -> int:
     raise ValueError(f"unsupported emission type for n_params: {e.type!r}")
 
 
-def _hmmlearn_kwargs(topology: Topology) -> dict:
+def _hmmlearn_kwargs(topology: Topology, seed: int) -> dict:
     """Map EmissionSpec -> constructor kwargs for hmmlearn class."""
     e = topology.emission
     common = {
         "n_components": topology.n_states,
         "n_iter": topology.fit.n_iter,
         "tol": topology.fit.tol,
-        "random_state": topology.init.seed,
+        "random_state": seed,
     }
     if e.type in ("gaussian", "gmm"):
         common["covariance_type"] = e.covariance_type
@@ -104,7 +104,7 @@ def fit(topology: Topology, X: np.ndarray, *, seed: int | None = None) -> Fitted
     emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
 
     cls = _CLASS_BY_EMISSION[topology.emission.type]
-    kwargs = _hmmlearn_kwargs(topology)
+    kwargs = _hmmlearn_kwargs(topology, seed=actual_seed)
     model = cls(transmat_mask=mask, **kwargs)
     # Pre-set parameters that init.* provides; skip the corresponding letters
     # in init_params so hmmlearn does not overwrite them.

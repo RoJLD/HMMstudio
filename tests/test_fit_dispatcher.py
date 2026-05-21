@@ -61,3 +61,17 @@ def test_fit_seed_override():
     assert not np.allclose(r1.model.means_, r2.model.means_)
     assert r1.seed == 1
     assert r2.seed == 999
+
+
+def test_fit_seed_override_propagates_to_hmmlearn_random_state():
+    """seed= overrides topology.init.seed for the underlying hmmlearn model's random_state.
+
+    Even when the kmeans path masks all init_params, the hmmlearn model's
+    random_state attribute should reflect the override, not the topology seed.
+    """
+    topo = _gaussian_left_right_topo()
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(500, 2))
+    result = fit(topo, X, seed=777)
+    assert result.model.random_state == 777
+    assert topo.init.seed == 42  # topology unchanged
