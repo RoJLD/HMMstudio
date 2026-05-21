@@ -90,3 +90,28 @@ def test_kmeans_emission_means_match_centroids(synthetic_gaussian_left_right):
     for c in km.cluster_centers_:
         dists = np.linalg.norm(params["means_"] - c, axis=1)
         assert dists.min() < 1e-8
+
+
+def test_data_frequencies_requires_X():
+    topo = _make_topo("data_frequencies")
+    with pytest.raises(ValueError, match="data_frequencies"):
+        init.transmat(topo, seed=42, X=None)
+
+
+def test_data_frequencies_respects_mask(synthetic_gaussian_left_right):
+    topo = _make_topo("data_frequencies")
+    X = synthetic_gaussian_left_right["X"]
+    A = init.transmat(topo, seed=42, X=X)
+    mask = topo.transition_mask()
+    assert (A * (~mask)).sum() == 0
+    np.testing.assert_allclose(A.sum(axis=1), 1.0, atol=1e-12)
+
+
+def test_data_frequencies_emission_matches_kmeans(synthetic_gaussian_left_right):
+    """data_frequencies reuses kmeans for emission params (same as 'kmeans')."""
+    topo_df = _make_topo("data_frequencies")
+    topo_km = _make_topo("kmeans")
+    X = synthetic_gaussian_left_right["X"]
+    params_df = init.emission_params(topo_df, X=X, seed=42)
+    params_km = init.emission_params(topo_km, X=X, seed=42)
+    np.testing.assert_allclose(params_df["means_"], params_km["means_"])

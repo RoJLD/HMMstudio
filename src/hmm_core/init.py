@@ -40,8 +40,19 @@ def transmat(topology: Topology, *, seed: int, X: np.ndarray | None = None) -> n
             allowed_per_row = mask.sum(axis=1)
             A = mask.astype(float) / allowed_per_row[:, None]
             return _apply_mask(A, mask)
-        # data_frequencies handled in T13.
-        raise NotImplementedError("data_frequencies init not yet implemented")
+        # data_frequencies: pre-cluster X by kmeans, count transitions of
+        # consecutive cluster labels, mask + normalize.
+        from sklearn.cluster import KMeans
+
+        km = KMeans(n_clusters=K, random_state=seed, n_init=10).fit(X)
+        labels = km.labels_
+        counts = np.zeros((K, K))
+        for t in range(len(labels) - 1):
+            counts[labels[t], labels[t + 1]] += 1
+        # Symmetry breaker: add 1 to every allowed edge so rows can't be empty
+        # after masking on a short / sparse cluster trajectory.
+        counts = counts + mask.astype(float)
+        return _apply_mask(counts, mask)
 
     raise ValueError(f"unknown init strategy: {strategy!r}")
 
@@ -81,7 +92,10 @@ def emission_params(
         return _kmeans_emission_params(topology, X, seed=seed)
 
     if strategy == "data_frequencies":
-        raise NotImplementedError("data_frequencies emission init not yet implemented")
+        if X is None:
+            raise ValueError("data_frequencies emission init requires X")
+        # data_frequencies reuses the kmeans-based emission init.
+        return _kmeans_emission_params(topology, X, seed=seed)
 
     raise ValueError(f"unknown init strategy: {strategy!r}")
 
