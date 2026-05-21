@@ -10,6 +10,7 @@ import numpy as np
 from hmm_core import init as init_mod
 from hmm_core.fit.gaussian import ConstrainedGaussianHMM
 from hmm_core.fit.gmm import ConstrainedGMMHMM
+from hmm_core.fit.multinomial import ConstrainedMultinomialHMM
 from hmm_core.topology import Topology
 
 
@@ -29,7 +30,8 @@ class FittedModel:
 _CLASS_BY_EMISSION = {
     "gaussian": ConstrainedGaussianHMM,
     "gmm": ConstrainedGMMHMM,
-    # multinomial, poisson registered in T11-T12.
+    "multinomial": ConstrainedMultinomialHMM,
+    # poisson registered in T12.
 }
 
 

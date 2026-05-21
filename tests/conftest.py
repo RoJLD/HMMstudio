@@ -55,3 +55,24 @@ def synthetic_gmm_3state():
         X[t] = rng.multivariate_normal(means[state, m_idx], 0.4 * np.eye(2))
         state = int(rng.choice(3, p=A[state]))
     return {"X": X, "A": A}
+
+
+@pytest.fixture
+def synthetic_multinomial_3state():
+    """K=3 Multinomial HMM, vocab=5, N=600, fixed seed."""
+    A = np.array([[0.75, 0.20, 0.05],
+                  [0.10, 0.80, 0.10],
+                  [0.05, 0.20, 0.75]])
+    emissionprob = np.array([
+        [0.5, 0.3, 0.1, 0.05, 0.05],
+        [0.05, 0.05, 0.7, 0.15, 0.05],
+        [0.05, 0.05, 0.1, 0.3, 0.5],
+    ])
+    rng = np.random.default_rng(13)
+    state = 0
+    n = 600
+    X = np.zeros((n, 1), dtype=int)
+    for t in range(n):
+        X[t, 0] = int(rng.choice(5, p=emissionprob[state]))
+        state = int(rng.choice(3, p=A[state]))
+    return {"X": X, "A": A, "emissionprob": emissionprob}
