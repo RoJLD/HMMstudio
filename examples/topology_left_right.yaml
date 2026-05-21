@@ -1,0 +1,30 @@
+name: demo_left_right_4
+n_states: 4
+state_names: [calm, trend_up, vol, crash]
+
+emission:
+  type: gaussian
+  covariance_type: full
+  n_features: 2
+
+allowed_transitions:
+  - [calm, calm]
+  - [calm, trend_up]
+  - [trend_up, trend_up]
+  - [trend_up, vol]
+  - [vol, vol]
+  - [vol, crash]
+  - [vol, calm]
+  - [crash, crash]
+  - [crash, calm]
+
+startprob: first_state
+
+init:
+  strategy: kmeans
+  seed: 42
+
+fit:
+  algorithm: baum_welch
+  n_iter: 200
+  tol: 1.0e-4
