@@ -12,7 +12,10 @@ from hmm_core.fit._base import _apply_mask
 from hmm_core.topology import Topology
 
 
-def transmat(topology: Topology, *, seed: int, X: np.ndarray | None = None) -> np.ndarray:
+def transmat(
+    topology: Topology, *, seed: int, X: np.ndarray | None = None,
+    lengths: np.ndarray | None = None,
+) -> np.ndarray:
     """Build an initial K x K transition matrix that respects the topology mask."""
     strategy = topology.init.strategy
     mask = topology.transition_mask()
@@ -47,8 +50,17 @@ def transmat(topology: Topology, *, seed: int, X: np.ndarray | None = None) -> n
         km = KMeans(n_clusters=K, random_state=seed, n_init=10).fit(X)
         labels = km.labels_
         counts = np.zeros((K, K))
-        for t in range(len(labels) - 1):
-            counts[labels[t], labels[t + 1]] += 1
+        if lengths is None:
+            for t in range(len(labels) - 1):
+                counts[labels[t], labels[t + 1]] += 1
+        else:
+            offset = 0
+            for L in lengths:
+                # Count transitions within this sequence only, skipping the
+                # boundary into the next sequence.
+                for t in range(offset, offset + L - 1):
+                    counts[labels[t], labels[t + 1]] += 1
+                offset += L
         # Symmetry breaker: add 1 to every allowed edge so rows can't be empty
         # after masking on a short / sparse cluster trajectory.
         counts = counts + mask.astype(float)

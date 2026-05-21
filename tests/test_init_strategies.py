@@ -115,3 +115,107 @@ def test_data_frequencies_emission_matches_kmeans(synthetic_gaussian_left_right)
     params_df = init.emission_params(topo_df, X=X, seed=42)
     params_km = init.emission_params(topo_km, X=X, seed=42)
     np.testing.assert_allclose(params_df["means_"], params_km["means_"])
+
+
+def test_kmeans_emission_multinomial_emits_warning_and_returns_emissionprob(synthetic_multinomial_3state):
+    """Coverage gap: kmeans on multinomial is degenerate, emits warning."""
+    import warnings
+    from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+
+    topo = Topology(
+        name="mn_km",
+        n_states=3,
+        state_names=["a", "b", "c"],
+        emission=EmissionSpec(type="multinomial", n_symbols=5),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=42),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-4),
+    )
+    X = synthetic_multinomial_3state["X"]
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        params = init.emission_params(topo, X=X, seed=42)
+    assert any("degenerate" in str(w.message).lower() for w in caught)
+    assert "emissionprob_" in params
+    assert params["emissionprob_"].shape == (3, 5)
+    np.testing.assert_allclose(params["emissionprob_"].sum(axis=1), 1.0, atol=1e-10)
+
+
+def test_kmeans_emission_poisson_returns_lambdas(synthetic_poisson_3state):
+    """Coverage gap: Poisson kmeans init returns lambdas_."""
+    from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+
+    topo = Topology(
+        name="pois_km",
+        n_states=3,
+        state_names=["a", "b", "c"],
+        emission=EmissionSpec(type="poisson", n_features=2),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=42),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-4),
+    )
+    X = synthetic_poisson_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert "lambdas_" in params
+    assert params["lambdas_"].shape == (3, 2)
+    assert (params["lambdas_"] > 0).all()
+
+
+@pytest.mark.parametrize("covariance_type", ["diag", "spherical", "tied"])
+def test_kmeans_emission_gaussian_covariance_shapes(synthetic_gaussian_left_right, covariance_type):
+    """Coverage gap: _empirical_covars branches for diag/spherical/tied."""
+    from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+
+    topo = Topology(
+        name="g_cov",
+        n_states=3,
+        state_names=["a", "b", "c"],
+        emission=EmissionSpec(type="gaussian", n_features=2, covariance_type=covariance_type),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=42),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-4),
+    )
+    X = synthetic_gaussian_left_right["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert "covars_" in params
+    expected_shapes = {
+        "diag": (3, 2),
+        "spherical": (3,),
+        "tied": (2, 2),
+        "full": (3, 2, 2),
+    }
+    assert params["covars_"].shape == expected_shapes[covariance_type]
+
+
+def test_data_frequencies_with_lengths_skips_boundary_transitions(synthetic_gaussian_left_right):
+    """Multi-sequence support: lengths parameter prevents counting transitions across sequence boundaries."""
+    from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+
+    topo = Topology(
+        name="df_multi",
+        n_states=3,
+        state_names=["a", "b", "c"],
+        emission=EmissionSpec(type="gaussian", n_features=2, covariance_type="full"),
+        allowed_transitions=[("a", "a"), ("a", "b"), ("b", "b"), ("b", "c"), ("c", "c")],
+        startprob="first_state",
+        init=InitSpec(strategy="data_frequencies", seed=42),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-4),
+    )
+    X = synthetic_gaussian_left_right["X"]
+    # Split X into 2 sequences of 500 each.
+    lengths = np.array([500, 500])
+
+    # Without lengths: counts include a spurious transition at t=499->500.
+    A_no_lengths = init.transmat(topo, seed=42, X=X)
+    # With lengths: that boundary transition is excluded.
+    A_with_lengths = init.transmat(topo, seed=42, X=X, lengths=lengths)
+    # Both must respect the mask.
+    mask = topo.transition_mask()
+    assert (A_no_lengths * (~mask)).sum() == 0
+    assert (A_with_lengths * (~mask)).sum() == 0
+    # Row sums to 1.
+    np.testing.assert_allclose(A_no_lengths.sum(axis=1), 1.0, atol=1e-12)
+    np.testing.assert_allclose(A_with_lengths.sum(axis=1), 1.0, atol=1e-12)

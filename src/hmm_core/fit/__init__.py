@@ -58,7 +58,7 @@ def _n_params(K: int, emission_spec) -> int:
         elif e.covariance_type == "diag":
             cov_total = K * M * D
         elif e.covariance_type == "tied":
-            cov_total = D * (D + 1) // 2  # one matrix shared across all components
+            cov_total = K * D * (D + 1) // 2  # one matrix per state, shared across mixtures
         else:  # spherical
             cov_total = K * M
         return transitions + K * M * D + cov_total + K * (M - 1)
@@ -87,7 +87,10 @@ def _hmmlearn_kwargs(topology: Topology, seed: int) -> dict:
     return common
 
 
-def fit(topology: Topology, X: np.ndarray, *, seed: int | None = None) -> FittedModel:
+def fit(
+    topology: Topology, X: np.ndarray, *, seed: int | None = None,
+    lengths: np.ndarray | None = None,
+) -> FittedModel:
     """Fit the HMM described by ``topology`` on observations ``X``.
 
     Parameters
@@ -100,6 +103,11 @@ def fit(topology: Topology, X: np.ndarray, *, seed: int | None = None) -> Fitted
           - multinomial          : (T, 1) integer values in [0, n_symbols)
     seed : int, optional
         Overrides ``topology.init.seed`` if provided.
+    lengths : ndarray, optional
+        Lengths of individual sequences in X (hmmlearn convention).  When
+        provided, boundary transitions between sequences are excluded from the
+        data_frequencies transition count and lengths is forwarded to
+        ``model.fit``.
     """
     topology.validate()
     actual_seed = seed if seed is not None else topology.init.seed
@@ -111,7 +119,7 @@ def fit(topology: Topology, X: np.ndarray, *, seed: int | None = None) -> Fitted
         )
 
     mask = topology.transition_mask()
-    initial_A = init_mod.transmat(topology, seed=actual_seed, X=X)
+    initial_A = init_mod.transmat(topology, seed=actual_seed, X=X, lengths=lengths)
     initial_pi = init_mod.startprob(topology, seed=actual_seed)
     emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
 
@@ -142,7 +150,10 @@ def fit(topology: Topology, X: np.ndarray, *, seed: int | None = None) -> Fitted
     model.init_params = "".join(c for c in default_init if c not in skip_letters)
 
     t0 = time.perf_counter()
-    model.fit(X)
+    if lengths is not None:
+        model.fit(X, lengths=lengths)
+    else:
+        model.fit(X)
     duration = time.perf_counter() - t0
 
     log_lik = float(model.score(X))
