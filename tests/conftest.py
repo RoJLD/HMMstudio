@@ -91,3 +91,42 @@ def synthetic_poisson_3state():
         X[t] = rng.poisson(lambdas[state])
         state = int(rng.choice(3, p=A[state]))
     return {"X": X, "A": A, "lambdas": lambdas}
+
+
+@pytest.fixture
+def synthetic_nhmm_data():
+    """K=3 Gaussian HMM with covariate-driven transitions for NHMM tests.
+
+    Returns X (T, 2) observations and Z (T, 1) covariate. The true transition
+    probability depends on Z: when Z > 0, prefer state 1; when Z < 0, prefer
+    state 0. State 2 is rare (only reachable from state 1).
+    """
+    rng = np.random.default_rng(101)
+    n = 1000
+    Z = rng.normal(size=(n, 1))
+    means = np.array([[-2.0, -2.0], [0.0, 0.0], [3.0, 3.0]])
+    cov = 0.3 * np.eye(2)
+    state = 0
+    X = np.zeros((n, 2))
+    for t in range(n):
+        X[t] = rng.multivariate_normal(means[state], cov)
+        # Transition probability depends on Z[t]
+        z = Z[t, 0]
+        if state == 0:
+            # Z > 0 favors going to state 1
+            p_stay = 0.9 if z < 0 else 0.5
+            state = 0 if rng.random() < p_stay else 1
+        elif state == 1:
+            # Higher Z, more likely to transition to state 2
+            p_to_2 = 0.05 + 0.15 * (z > 0)
+            r = rng.random()
+            if r < p_to_2:
+                state = 2
+            elif r < p_to_2 + 0.85:
+                state = 1
+            else:
+                state = 0
+        else:  # state 2
+            # Mostly stay
+            state = 2 if rng.random() < 0.9 else 1
+    return {"X": X, "Z": Z}
