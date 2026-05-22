@@ -6,12 +6,15 @@ import { ExportButton } from "../../hooks/ExportButton";
 interface NhmmAtPanelProps {
   jobId: string;
   info: NhmmInfoResponse;
+  controlledT?: number | null;  // NEW: external cursor override
 }
 
-export function NhmmAtPanel({ jobId, info }: NhmmAtPanelProps) {
+export function NhmmAtPanel({ jobId, info, controlledT }: NhmmAtPanelProps) {
   const T = info.T ?? 0;
   const K = info.n_states ?? 0;
-  const [t, setT] = useState(0);
+  const [internalT, setInternalT] = useState(0);
+  // Use controlled value when provided and non-null, otherwise use internal
+  const t = controlledT !== null && controlledT !== undefined ? controlledT : internalT;
   const [a, setA] = useState<AAtResponse | null>(null);
 
   const { svgRef, exportSvg } = useSvgExport("nhmm_A_at");
@@ -30,20 +33,29 @@ export function NhmmAtPanel({ jobId, info }: NhmmAtPanelProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-xs text-slate-600 font-mono">
-          t = {t} / {T - 1}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={Math.max(0, T - 1)}
-          value={t}
-          onChange={(e) => setT(parseInt(e.target.value, 10))}
-          className="flex-1"
-        />
-        <ExportButton onClick={() => exportSvg(`nhmm_A_at_t${t}`)} />
-      </div>
+      {controlledT === null || controlledT === undefined ? (
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs text-slate-600 font-mono">
+            t = {t} / {T - 1}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, T - 1)}
+            value={t}
+            onChange={(e) => setInternalT(parseInt(e.target.value, 10))}
+            className="flex-1"
+          />
+          <ExportButton onClick={() => exportSvg(`nhmm_A_at_t${t}`)} />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs text-slate-600 font-mono">
+            t = {t} / {T - 1} (controlled by player)
+          </span>
+          <ExportButton onClick={() => exportSvg(`nhmm_A_at_t${t}`)} />
+        </div>
+      )}
       {a && <Heatmap ref={svgRef} data={a} K={K} />}
       <p className="text-xs text-slate-500 mt-2">
         Covariates: {(info.covariate_names ?? []).join(", ")}

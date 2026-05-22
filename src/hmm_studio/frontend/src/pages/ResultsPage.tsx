@@ -18,6 +18,7 @@ import { ViterbiTimeline } from "../components/results/ViterbiTimeline";
 import { EmissionsPanel } from "../components/results/EmissionsPanel";
 import { ProgressCurve } from "../components/results/ProgressCurve";
 import { NhmmAtPanel } from "../components/results/NhmmAtPanel";
+import { TimelinePlayer } from "../components/results/TimelinePlayer";
 
 // The WS message includes a `progress` array not on FitJobResult
 interface WsMessage extends FitJobResult {
@@ -32,6 +33,7 @@ export default function ResultsPage() {
   const [decoded, setDecoded] = useState<DecodedResponse | null>(null);
   const [emissions, setEmissions] = useState<EmissionsResponse | null>(null);
   const [nhmmInfo, setNhmmInfo] = useState<NhmmInfoResponse | null>(null);
+  const [currentT, setCurrentT] = useState<number | null>(null);
 
   // Open WebSocket for live progress; also poll status via REST fallback.
   useEffect(() => {
@@ -143,6 +145,13 @@ export default function ResultsPage() {
       {/* Done: full results */}
       {status.status === "done" && (
         <>
+          {decoded && decoded.n_total > 0 && (
+            <TimelinePlayer
+              total={decoded.n_total}
+              value={currentT}
+              onChange={setCurrentT}
+            />
+          )}
           {transmat && (
             <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">
@@ -156,7 +165,7 @@ export default function ResultsPage() {
               <h3 className="text-sm font-semibold text-slate-700 mb-3">
                 Viterbi path
               </h3>
-              <ViterbiTimeline data={decoded} />
+              <ViterbiTimeline data={decoded} currentT={currentT} />
             </div>
           )}
           {emissions && (
@@ -172,7 +181,7 @@ export default function ResultsPage() {
               <h3 className="text-sm font-semibold text-slate-700 mb-3">
                 Time-varying transitions A(t) (NHMM)
               </h3>
-              <NhmmAtPanel jobId={jobId!} info={nhmmInfo} />
+              <NhmmAtPanel jobId={jobId!} info={nhmmInfo} controlledT={currentT} />
             </div>
           )}
         </>
