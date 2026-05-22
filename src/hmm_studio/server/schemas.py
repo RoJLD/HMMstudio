@@ -104,3 +104,41 @@ class AnnotationOut(BaseModel):
 class AnnotationsResponse(BaseModel):
     dataset_id: str
     annotations: list[AnnotationOut]
+
+
+class WarehouseEntryOut(BaseModel):
+    rel_path: str
+    size_bytes: int
+    modified_at: str  # ISO 8601
+    format: str
+    has_sidecar: bool
+
+
+class WarehouseListResponse(BaseModel):
+    warehouse_path: str
+    entries: list[WarehouseEntryOut]
+
+
+class WarehousePreviewResponse(BaseModel):
+    rel_path: str
+    n_rows_total: int
+    n_cols: int
+    columns: list[str]
+    dtypes: dict[str, str]
+    head: list[dict[str, Any]]
+
+
+class WarehouseSidecarMeta(BaseModel):
+    """Free-form sidecar YAML, lightly validated.
+
+    Most fields are free-form to avoid forcing users into a specific schema
+    too early. The server stores whatever shape they provide.
+    """
+
+    schema_version: int = 1
+    name: str | None = None
+    description: str | None = None
+    notes: str | None = None
+    provenance: dict[str, Any] | None = None
+    columns: list[dict[str, Any]] | None = None
+    extra: dict[str, Any] | None = None

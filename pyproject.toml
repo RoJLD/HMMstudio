@@ -49,6 +49,7 @@ web = [
     "sqlmodel>=0.0.16",
     "python-multipart>=0.0.9",
     "httpx>=0.27",
+    "openpyxl>=3.1",   # required for pd.read_excel on .xlsx files (warehouse formats)
 ]
 dev = [
     "pytest>=8.0",

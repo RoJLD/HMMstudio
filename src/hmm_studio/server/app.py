@@ -27,6 +27,17 @@ from hmm_studio.server.schemas import (
     ScanResult,
     TopologyValidateRequest,
     TopologyValidateResponse,
+    WarehouseEntryOut,
+    WarehouseListResponse,
+    WarehousePreviewResponse,
+    WarehouseSidecarMeta,
+)
+from hmm_studio.server.warehouse import (
+    get_scan_cache,
+    load_sidecar,
+    read_dataset,
+    safe_resolve,
+    write_sidecar,
 )
 
 
@@ -49,6 +60,9 @@ def create_app() -> FastAPI:
     uploads_dir.mkdir(parents=True, exist_ok=True)
     engine = create_db_engine(db_path)
     runner = JobRunner(engine=engine, results_dir=results_dir)
+
+    warehouse_path_str = os.environ.get("HMM_STUDIO_WAREHOUSE_PATH", "")
+    warehouse_path: Path | None = Path(warehouse_path_str).resolve() if warehouse_path_str else None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -574,6 +588,109 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=404, detail="annotation not found")
             session.delete(ann)
         return {"deleted": annotation_id}
+
+    # -----------------------------------------------------------------------
+    # Warehouse endpoints
+    # -----------------------------------------------------------------------
+
+    @app.get("/api/warehouse", response_model=WarehouseListResponse)
+    def list_warehouse():
+        if warehouse_path is None or not warehouse_path.exists():
+            return WarehouseListResponse(warehouse_path="", entries=[])
+        cache = get_scan_cache()
+        entries = cache.get_or_scan(warehouse_path)
+        return WarehouseListResponse(
+            warehouse_path=str(warehouse_path),
+            entries=[WarehouseEntryOut(**e.to_dict()) for e in entries],
+        )
+
+    @app.post("/api/warehouse/refresh", response_model=WarehouseListResponse)
+    def refresh_warehouse():
+        cache = get_scan_cache()
+        cache.invalidate()
+        return list_warehouse()
+
+    @app.get("/api/warehouse/{rel_path:path}/preview", response_model=WarehousePreviewResponse)
+    def get_warehouse_preview(rel_path: str, n: int = 10):
+        if warehouse_path is None:
+            raise HTTPException(status_code=400, detail="warehouse_path not configured")
+        try:
+            full = safe_resolve(warehouse_path, rel_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if not full.exists() or not full.is_file():
+            raise HTTPException(status_code=404, detail="dataset not found")
+        try:
+            df = read_dataset(full)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"failed to read dataset: {exc}")
+        head = df.head(n)
+        return WarehousePreviewResponse(
+            rel_path=rel_path,
+            n_rows_total=len(df),
+            n_cols=len(df.columns),
+            columns=list(df.columns),
+            dtypes={c: str(df[c].dtype) for c in df.columns},
+            head=head.where(head.notna(), None).to_dict(orient="records"),
+        )
+
+    @app.get("/api/warehouse/{rel_path:path}/meta")
+    def get_warehouse_meta(rel_path: str):
+        if warehouse_path is None:
+            raise HTTPException(status_code=400, detail="warehouse_path not configured")
+        try:
+            full = safe_resolve(warehouse_path, rel_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if not full.exists() or not full.is_file():
+            raise HTTPException(status_code=404, detail="dataset not found")
+        sidecar = load_sidecar(full)
+        return {"rel_path": rel_path, "sidecar": sidecar}
+
+    @app.put("/api/warehouse/{rel_path:path}/meta")
+    def put_warehouse_meta(rel_path: str, meta: WarehouseSidecarMeta):
+        if warehouse_path is None:
+            raise HTTPException(status_code=400, detail="warehouse_path not configured")
+        try:
+            full = safe_resolve(warehouse_path, rel_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if not full.exists() or not full.is_file():
+            raise HTTPException(status_code=404, detail="dataset not found")
+        write_sidecar(full, meta.model_dump(exclude_none=True))
+        return {"rel_path": rel_path, "sidecar_written": True}
+
+    @app.post("/api/warehouse/upload")
+    def upload_to_warehouse(file: UploadFile = File(...), subdir: str = ""):
+        """Upload a new dataset into the warehouse.
+
+        - ``subdir`` is an optional relative sub-directory; created if missing.
+        - The file name is preserved.
+        - Refuses if no warehouse configured or path-traversal in subdir.
+        """
+        if warehouse_path is None:
+            raise HTTPException(status_code=400, detail="warehouse_path not configured")
+        try:
+            target_dir = safe_resolve(warehouse_path, subdir) if subdir else warehouse_path
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        target_dir.mkdir(parents=True, exist_ok=True)
+        filename = file.filename or "uploaded"
+        target = target_dir / filename
+        # Re-resolve to ensure the final path is still inside warehouse
+        try:
+            safe_resolve(warehouse_path, str(target.relative_to(warehouse_path)))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        contents = file.file.read()
+        if len(contents) > 200 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="file too large (max 200 MB)")
+        target.write_bytes(contents)
+        get_scan_cache().invalidate()
+        return {
+            "rel_path": str(target.relative_to(warehouse_path)).replace("\\", "/"),
+            "size_bytes": len(contents),
+        }
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React
