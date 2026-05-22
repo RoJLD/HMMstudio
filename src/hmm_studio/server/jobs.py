@@ -48,6 +48,59 @@ def _load_topology_from_yaml_str(yaml_str: str) -> Topology:
         Path(tmp_path).unlink(missing_ok=True)
 
 
+def _topology_with_overridden_k(topology: Topology, new_k: int) -> Topology:
+    """Return a copy of `topology` with n_states=new_k.
+
+    State names become s0..s{new_k-1}; allowed_transitions are rebuilt as
+    fully ergodic on the new state set (K-scan compares model capacity, not
+    topology shape). Per-state emissions and transmat prior are dropped since
+    they are K-dependent.
+    """
+    from dataclasses import replace
+
+    new_state_names = [f"s{i}" for i in range(new_k)]
+    return replace(
+        topology,
+        n_states=new_k,
+        state_names=new_state_names,
+        allowed_transitions=None,  # ergodic for K-scan
+        emissions=None,  # drop per-state emissions (K-dependent)
+        transmat_prior_matrix=None,  # drop prior (K-dependent)
+    )
+
+
+def _update_scan_parent_status(engine, parent_id: str) -> None:
+    """Recompute parent status from children. Idempotent."""
+    from sqlmodel import select
+
+    with get_session(engine) as session:
+        children = list(
+            session.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
+        )
+        if not children:
+            return
+        # Snapshot statuses inside the session to avoid DetachedInstanceError
+        statuses = [c.status for c in children]
+        if any(s == FitJobStatus.RUNNING for s in statuses) or any(
+            s == FitJobStatus.QUEUED for s in statuses
+        ):
+            return  # still in progress
+        parent = session.get(FitJob, parent_id)
+        if parent is None:
+            return
+        if any(s == FitJobStatus.FAILED for s in statuses) and not all(
+            s == FitJobStatus.FAILED for s in statuses
+        ):
+            parent.status = FitJobStatus.DONE  # partial success
+        elif all(s == FitJobStatus.FAILED for s in statuses):
+            parent.status = FitJobStatus.FAILED
+        else:
+            parent.status = FitJobStatus.DONE
+        parent.ended_at = datetime.utcnow()
+        session.add(parent)
+        session.commit()
+
+
 class JobRunner:
     """Wraps a ThreadPoolExecutor with SQLite persistence."""
 
@@ -85,6 +138,68 @@ class JobRunner:
             self._futures[job_id] = future
         return job_id
 
+    def submit_scan(
+        self,
+        topology_yaml: str,
+        dataset_id: str,
+        k_min: int,
+        k_max: int,
+        seed: int | None = None,
+        covariate_names: list[str] | None = None,
+    ) -> str:
+        """Create a parent job + K child jobs, one per K in [k_min, k_max].
+
+        The parent is just a logical grouping; its status is derived from children.
+        Each child runs the standard fit pipeline with its topology's n_states
+        overridden to K.
+        """
+        if k_min < 1 or k_max < k_min:
+            raise ValueError(f"invalid k range: k_min={k_min}, k_max={k_max}")
+
+        # Create parent
+        with get_session(self._engine) as session:
+            parent = FitJob(
+                topology=topology_yaml,
+                dataset_id=dataset_id,
+                seed=seed,
+                status=FitJobStatus.QUEUED,
+                covariate_names=json.dumps(covariate_names) if covariate_names else "",
+            )
+            session.add(parent)
+            session.commit()
+            session.refresh(parent)
+            parent_id = parent.id
+
+        # Create children + schedule them
+        for k in range(k_min, k_max + 1):
+            with get_session(self._engine) as session:
+                child = FitJob(
+                    topology=topology_yaml,
+                    dataset_id=dataset_id,
+                    seed=seed,
+                    status=FitJobStatus.QUEUED,
+                    covariate_names=json.dumps(covariate_names) if covariate_names else "",
+                    parent_id=parent_id,
+                    k_override=k,
+                )
+                session.add(child)
+                session.commit()
+                session.refresh(child)
+                child_id = child.id
+            future = self._executor.submit(self._run, child_id)
+            with self._lock:
+                self._futures[child_id] = future
+
+        # Mark parent as running once children scheduled
+        with get_session(self._engine) as session:
+            parent = session.get(FitJob, parent_id)
+            parent.status = FitJobStatus.RUNNING
+            parent.started_at = datetime.utcnow()
+            session.add(parent)
+            session.commit()
+
+        return parent_id
+
     def get_status(self, job_id: str) -> dict:
         """Return the latest persisted status of a job as a dict."""
         with get_session(self._engine) as session:
@@ -111,6 +226,7 @@ class JobRunner:
 
     def _run(self, job_id: str) -> None:
         """Execute the fit for `job_id`; updates the DB row throughout."""
+        job_parent_id: str | None = None  # captured early so catch-all can update parent
         try:
             # Step 1: load job + dataset
             with get_session(self._engine) as session:
@@ -118,21 +234,29 @@ class JobRunner:
                 if job is None:
                     return
                 dataset = session.get(Dataset, job.dataset_id)
+                # snapshot all needed fields before session closes
+                topology_yaml = job.topology
+                seed = job.seed
+                covariate_names_json = job.covariate_names
+                k_override = job.k_override  # NEW: K-scan override
+                job_parent_id = job.parent_id  # NEW: scan parent tracking (overrides outer None)
                 if dataset is None:
                     job.status = FitJobStatus.FAILED
                     job.error = f"dataset {job.dataset_id} not found"
                     job.ended_at = datetime.utcnow()
                     session.add(job)
                     session.commit()
+                    if job_parent_id is not None:
+                        _update_scan_parent_status(self._engine, job_parent_id)
                     return
-                topology_yaml = job.topology
-                seed = job.seed
                 dataset_path = dataset.path
-                covariate_names_json = job.covariate_names
 
-            # Step 2: validate topology
+            # Step 2: validate topology, possibly with overridden K
             try:
                 topology = _load_topology_from_yaml_str(topology_yaml)
+                if k_override is not None and k_override != topology.n_states:
+                    topology = _topology_with_overridden_k(topology, k_override)
+                    topology.validate()
             except Exception as exc:
                 with get_session(self._engine) as session:
                     job = session.get(FitJob, job_id)
@@ -141,6 +265,8 @@ class JobRunner:
                     job.ended_at = datetime.utcnow()
                     session.add(job)
                     session.commit()
+                if job_parent_id is not None:
+                    _update_scan_parent_status(self._engine, job_parent_id)
                 return
 
             # Step 3: load data, split X / Z if NHMM
@@ -207,6 +333,8 @@ class JobRunner:
                     job.ended_at = datetime.utcnow()
                     session.add(job)
                     session.commit()
+                if job_parent_id is not None:
+                    _update_scan_parent_status(self._engine, job_parent_id)
                 return
 
             # Step 6: extract progress history
@@ -234,6 +362,10 @@ class JobRunner:
                 session.add(job)
                 session.commit()
 
+            # Step 9: if this is a child of a scan, possibly update parent
+            if job_parent_id is not None:
+                _update_scan_parent_status(self._engine, job_parent_id)
+
         except Exception as exc:
             # Catch-all: persist failure
             with get_session(self._engine) as session:
@@ -244,6 +376,8 @@ class JobRunner:
                     job.ended_at = datetime.utcnow()
                     session.add(job)
                     session.commit()
+            if job_parent_id is not None:
+                _update_scan_parent_status(self._engine, job_parent_id)
 
 
 def _read_summary(result_path: str | None) -> dict | None:

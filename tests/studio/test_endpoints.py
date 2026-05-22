@@ -422,3 +422,100 @@ fit: {algorithm: baum_welch, n_iter: 10, tol: 1.0e-3}
     r = client.get(f"/api/fit/{job_id}/nhmm_info")
     assert r.status_code == 200
     assert r.json()["is_nhmm"] is False
+
+
+def test_kscan_runs_multiple_children_and_picks_best(client):
+    """A K-scan launches K_max-K_min+1 children, all run, best is picked."""
+    import io
+    import time
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    X = np.vstack([
+        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+    ])
+    df = pd.DataFrame(X, columns=["f0", "f1"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: scan_test
+n_states: 2
+state_names: [a, b]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}
+"""
+    r = client.post(
+        "/api/fit/scan/start",
+        json={
+            "topology_yaml": topology,
+            "dataset_id": dataset_id,
+            "k_min": 2,
+            "k_max": 4,
+            "seed": 42,
+        },
+    )
+    assert r.status_code == 200, r.text
+    parent_id = r.json()["parent_id"]
+
+    # Poll until all children done
+    scan = {}
+    for _ in range(120):
+        r = client.get(f"/api/fit/scan/{parent_id}")
+        scan = r.json()
+        if scan["overall_status"] in ("done", "failed"):
+            break
+        time.sleep(0.25)
+
+    assert scan["overall_status"] == "done", scan
+    assert len(scan["children"]) == 3
+    assert {c["k"] for c in scan["children"]} == {2, 3, 4}
+    # All children should be done
+    done_children = [c for c in scan["children"] if c["status"] == "done"]
+    assert len(done_children) == 3
+    assert scan["best_k_by_bic"] in (2, 3, 4)
+
+
+def test_kscan_invalid_range_returns_400(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(np.zeros((10, 1)), columns=["f0"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: bad_scan
+n_states: 2
+state_names: [a, b]
+emission: {type: gaussian, covariance_type: full, n_features: 1}
+startprob: uniform
+init: {strategy: uniform, seed: 0}
+fit: {algorithm: baum_welch, n_iter: 5, tol: 1.0e-3}
+"""
+    r = client.post(
+        "/api/fit/scan/start",
+        json={
+            "topology_yaml": topology,
+            "dataset_id": dataset_id,
+            "k_min": 5,
+            "k_max": 2,  # invalid: max < min
+        },
+    )
+    assert r.status_code == 400

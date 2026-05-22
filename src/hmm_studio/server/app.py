@@ -15,11 +15,14 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSock
 
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
-from hmm_studio.server.models import Dataset, FitJob
+from hmm_studio.server.models import Dataset, FitJob, FitJobStatus
 from hmm_studio.server.schemas import (
     DatasetPreview,
     FitJobCreate,
     FitJobResult,
+    FitJobScanCreate,
+    ScanChildStatus,
+    ScanResult,
     TopologyValidateRequest,
     TopologyValidateResponse,
 )
@@ -369,6 +372,93 @@ def create_app() -> FastAPI:
             "covariate_names": list(nhmm.covariate_names),
             "state_names": list(nhmm.base.topology.state_names),
         }
+
+    @app.post("/api/fit/scan/start", response_model=dict)
+    def start_scan(req: FitJobScanCreate):
+        with get_session(engine) as session:
+            ds = session.get(Dataset, req.dataset_id)
+            if ds is None:
+                raise HTTPException(status_code=404, detail="dataset not found")
+        try:
+            parent_id = runner.submit_scan(
+                topology_yaml=req.topology_yaml,
+                dataset_id=req.dataset_id,
+                k_min=req.k_min,
+                k_max=req.k_max,
+                seed=req.seed,
+                covariate_names=req.covariate_names,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"parent_id": parent_id}
+
+    @app.get("/api/fit/scan/{parent_id}", response_model=ScanResult)
+    def get_scan(parent_id: str):
+        from sqlmodel import select
+
+        with get_session(engine) as session:
+            parent = session.get(FitJob, parent_id)
+            if parent is None or parent.parent_id is not None:
+                raise HTTPException(status_code=404, detail="scan parent not found")
+            parent_status = parent.status
+            # Snapshot child fields inside the session to avoid DetachedInstanceError
+            raw_children = [
+                {"id": c.id, "k_override": c.k_override}
+                for c in session.exec(
+                    select(FitJob).where(FitJob.parent_id == parent_id)
+                ).all()
+            ]
+
+        raw_children.sort(key=lambda x: x["k_override"] or 0)
+
+        child_statuses = []
+        for c in raw_children:
+            ch = runner.get_status(c["id"])
+            child_statuses.append(
+                ScanChildStatus(
+                    job_id=c["id"],
+                    k=c["k_override"] or 0,
+                    status=ch["status"],
+                    log_likelihood=ch.get("log_likelihood"),
+                    bic=ch.get("bic"),
+                    aic=ch.get("aic"),
+                    converged=ch.get("converged"),
+                    n_iter_actual=ch.get("n_iter_actual"),
+                    error=ch.get("error"),
+                )
+            )
+
+        # Best K by BIC / AIC (lower is better) among done children
+        done = [c for c in child_statuses if c.status == "done" and c.bic is not None]
+        best_bic = min(done, key=lambda c: c.bic).k if done else None
+        done_a = [c for c in child_statuses if c.status == "done" and c.aic is not None]
+        best_aic = min(done_a, key=lambda c: c.aic).k if done_a else None
+
+        # Derive overall status from children (may be more up-to-date than parent row)
+        if parent_status == FitJobStatus.RUNNING:
+            statuses = [c.status for c in child_statuses]
+            if not statuses or any(s in ("queued", "running") for s in statuses):
+                overall = "running"
+            elif all(s == "failed" for s in statuses):
+                overall = "failed"
+            else:
+                overall = "done"
+        else:
+            overall = (
+                parent_status.value
+                if hasattr(parent_status, "value")
+                else str(parent_status)
+            )
+
+        return ScanResult(
+            parent_id=parent_id,
+            k_min=min(c.k for c in child_statuses) if child_statuses else 0,
+            k_max=max(c.k for c in child_statuses) if child_statuses else 0,
+            overall_status=overall,
+            children=child_statuses,
+            best_k_by_bic=best_bic,
+            best_k_by_aic=best_aic,
+        )
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React

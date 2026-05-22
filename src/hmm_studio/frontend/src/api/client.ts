@@ -164,3 +164,44 @@ export async function getNhmmInfo(jobId: string): Promise<NhmmInfoResponse> {
 export async function getAAt(jobId: string, t: number): Promise<AAtResponse> {
   return jsonFetch<AAtResponse>(`/api/fit/${jobId}/A_at?t=${t}`);
 }
+
+export interface ScanChildStatus {
+  job_id: string;
+  k: number;
+  status: string;
+  log_likelihood: number | null;
+  bic: number | null;
+  aic: number | null;
+  converged: boolean | null;
+  n_iter_actual: number | null;
+  error: string | null;
+}
+
+export interface ScanResult {
+  parent_id: string;
+  k_min: number;
+  k_max: number;
+  overall_status: string;
+  children: ScanChildStatus[];
+  best_k_by_bic: number | null;
+  best_k_by_aic: number | null;
+}
+
+export async function startScan(params: {
+  topology_yaml: string;
+  dataset_id: string;
+  k_min: number;
+  k_max: number;
+  seed?: number;
+  covariate_names?: string[];
+}): Promise<{ parent_id: string }> {
+  return jsonFetch<{ parent_id: string }>("/api/fit/scan/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+}
+
+export async function getScan(parentId: string): Promise<ScanResult> {
+  return jsonFetch<ScanResult>(`/api/fit/scan/${parentId}`);
+}

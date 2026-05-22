@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTopologyStore } from "../store/topologyStore";
 import { useDatasetStore } from "../store/datasetStore";
 import { topologyToYAML } from "../lib/yaml";
-import { startFit } from "../api/client";
+import { startFit, startScan } from "../api/client";
 
 export default function FitPage() {
   const dataset = useDatasetStore((s) => s.current);
@@ -14,6 +14,9 @@ export default function FitPage() {
   const [covariateNames, setCovariateNames] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scanMode, setScanMode] = useState(false);
+  const [kMin, setKMin] = useState(2);
+  const [kMax, setKMax] = useState(6);
 
   const canSubmit = !!dataset && states.length > 0 && !submitting;
 
@@ -23,13 +26,25 @@ export default function FitPage() {
     setSubmitting(true);
     try {
       const yamlText = topologyToYAML(useTopologyStore.getState());
-      const result = await startFit({
-        topology_yaml: yamlText,
-        dataset_id: dataset.id,
-        seed: seed === "" ? undefined : Number(seed),
-        covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
-      });
-      navigate(`/results/${result.id}`);
+      if (scanMode) {
+        const r = await startScan({
+          topology_yaml: yamlText,
+          dataset_id: dataset.id,
+          k_min: kMin,
+          k_max: kMax,
+          seed: seed === "" ? undefined : Number(seed),
+          covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
+        });
+        navigate(`/scan/${r.parent_id}`);
+      } else {
+        const result = await startFit({
+          topology_yaml: yamlText,
+          dataset_id: dataset.id,
+          seed: seed === "" ? undefined : Number(seed),
+          covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
+        });
+        navigate(`/results/${result.id}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "fit failed");
       setSubmitting(false);
@@ -70,6 +85,44 @@ export default function FitPage() {
             className="border border-slate-300 rounded px-2 py-1 text-sm flex-1"
           />
         </label>
+      </div>
+
+      <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-3">
+          <input
+            type="checkbox"
+            checked={scanMode}
+            onChange={(e) => setScanMode(e.target.checked)}
+          />
+          K-scan mode (fit one model per K in range)
+        </label>
+        {scanMode && (
+          <div className="flex items-center gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <span className="text-slate-600">k_min</span>
+              <input
+                type="number"
+                min={1}
+                value={kMin}
+                onChange={(e) => setKMin(parseInt(e.target.value, 10) || 1)}
+                className="border border-slate-300 rounded px-2 py-1 w-16"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-slate-600">k_max</span>
+              <input
+                type="number"
+                min={kMin}
+                value={kMax}
+                onChange={(e) => setKMax(parseInt(e.target.value, 10) || 1)}
+                className="border border-slate-300 rounded px-2 py-1 w-16"
+              />
+            </label>
+            <span className="text-xs text-slate-500">
+              {Math.max(0, kMax - kMin + 1)} fits will run in parallel
+            </span>
+          </div>
+        )}
       </div>
 
       {dataset && dataset.columns.length > 1 && (
@@ -116,7 +169,7 @@ export default function FitPage() {
             : "bg-slate-200 text-slate-500 cursor-not-allowed")
         }
       >
-        {submitting ? "Submitting…" : "Launch fit"}
+        {submitting ? "Submitting…" : scanMode ? "Launch K-scan" : "Launch fit"}
       </button>
 
       {error && (

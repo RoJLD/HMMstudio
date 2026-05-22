@@ -53,3 +53,38 @@ class FitJobResult(BaseModel):
     converged: bool | None = None
     result_path: str | None = None
     error: str | None = None
+
+
+class FitJobScanCreate(BaseModel):
+    """Launch a K-scan: one child fit per K in [k_min, k_max]."""
+
+    topology_yaml: str
+    dataset_id: str
+    k_min: int
+    k_max: int
+    seed: int | None = None
+    covariate_names: list[str] | None = None  # NHMM still supported per child
+
+
+class ScanChildStatus(BaseModel):
+    """One child K's status in a scan."""
+
+    job_id: str
+    k: int
+    status: str
+    log_likelihood: float | None = None
+    bic: float | None = None
+    aic: float | None = None
+    converged: bool | None = None
+    n_iter_actual: int | None = None
+    error: str | None = None
+
+
+class ScanResult(BaseModel):
+    parent_id: str
+    k_min: int
+    k_max: int
+    overall_status: str  # "queued" | "running" | "done" | "failed"
+    children: list[ScanChildStatus]
+    best_k_by_bic: int | None = None
+    best_k_by_aic: int | None = None
