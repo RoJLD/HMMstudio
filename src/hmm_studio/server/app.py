@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import uuid
@@ -9,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
@@ -163,5 +164,34 @@ def create_app() -> FastAPI:
             result_path=status.get("result_path"),
             error=status.get("error"),
         )
+
+    @app.websocket("/ws/fit/{job_id}")
+    async def ws_fit_progress(websocket: WebSocket, job_id: str):
+        """Stream progress for an in-flight fit job. Closes when terminal."""
+        await websocket.accept()
+        try:
+            while True:
+                try:
+                    status = runner.get_status(job_id)
+                except KeyError:
+                    await websocket.send_json({"error": "job not found"})
+                    await websocket.close(code=1008)
+                    return
+                await websocket.send_json(
+                    {
+                        "id": status["id"],
+                        "status": status["status"],
+                        "progress": status["progress"],
+                        "log_likelihood": status.get("log_likelihood"),
+                        "bic": status.get("bic"),
+                        "error": status.get("error"),
+                    }
+                )
+                if status["status"] in ("done", "failed", "cancelled"):
+                    await websocket.close()
+                    return
+                await asyncio.sleep(0.2)
+        except WebSocketDisconnect:
+            return
 
     return app

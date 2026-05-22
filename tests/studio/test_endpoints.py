@@ -140,3 +140,40 @@ def test_fit_invalid_topology_fails(client):
 def test_unknown_dataset_returns_404(client):
     r = client.get("/api/data/nonexistent-id/preview")
     assert r.status_code == 404
+
+
+def test_websocket_progress_streams_and_closes(client):
+    """Open a WebSocket on a fit job; receive updates until terminal."""
+    csv_bytes = _make_csv_bytes()
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("data.csv", csv_bytes, "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": VALID_TOPOLOGY, "dataset_id": dataset_id, "seed": 42},
+    )
+    job_id = r.json()["id"]
+
+    with client.websocket_connect(f"/ws/fit/{job_id}") as ws:
+        messages = []
+        for _ in range(100):  # max 100 messages then bail
+            try:
+                msg = ws.receive_json()
+            except Exception:
+                break
+            messages.append(msg)
+            if msg["status"] in ("done", "failed"):
+                break
+        assert any(m["status"] == "done" for m in messages), [m["status"] for m in messages]
+        # Final message should have progress with multiple entries (fit ran)
+        final = messages[-1]
+        assert len(final["progress"]) > 0
+
+
+def test_websocket_unknown_job(client):
+    """Connecting to an unknown job_id closes the WS cleanly with an error."""
+    with client.websocket_connect("/ws/fit/nonexistent-id") as ws:
+        msg = ws.receive_json()
+        assert "error" in msg

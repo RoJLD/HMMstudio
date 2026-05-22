@@ -150,9 +150,20 @@ class JobRunner:
                 session.add(job)
                 session.commit()
 
-            # Step 5: run fit
+            # Step 5: run fit with mid-flight progress persistence
+            def _persist_progress(history):
+                try:
+                    with get_session(self._engine) as session:
+                        job = session.get(FitJob, job_id)
+                        if job is not None:
+                            job.progress = json.dumps([float(x) for x in history])
+                            session.add(job)
+                            session.commit()
+                except Exception:
+                    pass  # never let callback raise
+
             try:
-                result = core_fit(topology, X, seed=seed)
+                result = core_fit(topology, X, seed=seed, progress_callback=_persist_progress)
             except Exception as exc:
                 with get_session(self._engine) as session:
                     job = session.get(FitJob, job_id)
