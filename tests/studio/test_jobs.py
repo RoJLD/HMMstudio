@@ -1,0 +1,131 @@
+"""Tests for the in-process fit job runner."""
+
+from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from hmm_studio.server.db import create_db_engine, get_session
+from hmm_studio.server.jobs import JobRunner
+from hmm_studio.server.models import Dataset
+
+
+VALID_TOPOLOGY_YAML = """
+name: test
+n_states: 3
+state_names: [a, b, c]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 20, tol: 1.0e-4}
+"""
+
+
+@pytest.fixture
+def setup_env(tmp_path):
+    """Create engine, dataset on disk, results dir."""
+    engine = create_db_engine(tmp_path / "studio.db")
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+
+    rng = np.random.default_rng(42)
+    X = np.vstack([
+        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+    ])
+    csv_path = tmp_path / "data.csv"
+    pd.DataFrame(X, columns=["f0", "f1"]).to_csv(csv_path, index=False)
+
+    with get_session(engine) as s:
+        ds = Dataset(
+            filename="data.csv", n_rows=300, n_cols=2,
+            dtypes=json.dumps({"f0": "float64", "f1": "float64"}),
+            path=str(csv_path),
+        )
+        s.add(ds)
+        s.commit()
+        s.refresh(ds)
+        dataset_id = ds.id
+
+    return {"engine": engine, "results_dir": results_dir, "dataset_id": dataset_id}
+
+
+def _wait_for_status(runner, job_id, terminal=("done", "failed"), timeout_s=30):
+    for _ in range(int(timeout_s / 0.1)):
+        status = runner.get_status(job_id)
+        if status["status"] in terminal:
+            return status
+        time.sleep(0.1)
+    return runner.get_status(job_id)
+
+
+def test_submit_runs_and_finishes(setup_env):
+    runner = JobRunner(engine=setup_env["engine"], results_dir=setup_env["results_dir"])
+    try:
+        job_id = runner.submit(
+            topology_yaml=VALID_TOPOLOGY_YAML,
+            dataset_id=setup_env["dataset_id"],
+            seed=42,
+        )
+        final = _wait_for_status(runner, job_id)
+        assert final["status"] == "done", final
+        assert final["log_likelihood"] is not None
+        assert final["bic"] is not None
+    finally:
+        runner.shutdown()
+
+
+def test_submit_invalid_topology_fails(setup_env):
+    runner = JobRunner(engine=setup_env["engine"], results_dir=setup_env["results_dir"])
+    try:
+        job_id = runner.submit(
+            topology_yaml="not: a valid: topology",
+            dataset_id=setup_env["dataset_id"],
+            seed=42,
+        )
+        final = _wait_for_status(runner, job_id, timeout_s=10)
+        assert final["status"] == "failed", final
+        assert final["error"] is not None
+    finally:
+        runner.shutdown()
+
+
+def test_progress_updates_after_fit(setup_env):
+    runner = JobRunner(engine=setup_env["engine"], results_dir=setup_env["results_dir"])
+    try:
+        job_id = runner.submit(
+            topology_yaml=VALID_TOPOLOGY_YAML,
+            dataset_id=setup_env["dataset_id"],
+            seed=42,
+        )
+        final = _wait_for_status(runner, job_id)
+        assert final["status"] == "done"
+        assert len(final["progress"]) > 0
+        progress = final["progress"]
+        # log-likelihood should improve overall
+        assert progress[-1] >= progress[0] - 1e-3
+    finally:
+        runner.shutdown()
+
+
+def test_result_path_contains_artifacts(setup_env):
+    runner = JobRunner(engine=setup_env["engine"], results_dir=setup_env["results_dir"])
+    try:
+        job_id = runner.submit(
+            topology_yaml=VALID_TOPOLOGY_YAML,
+            dataset_id=setup_env["dataset_id"],
+            seed=42,
+        )
+        final = _wait_for_status(runner, job_id)
+        result_dir = Path(final["result_path"])
+        assert (result_dir / "model.pkl").exists()
+        assert (result_dir / "summary.json").exists()
+        assert (result_dir / "fit_log.txt").exists()
+    finally:
+        runner.shutdown()
