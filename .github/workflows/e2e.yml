@@ -43,6 +43,10 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Start hmm-studio (background)
+        env:
+          # Point the studio at the committed warehouse fixture so the
+          # warehouse.spec.ts E2E tests (Phase B.10c) see a populated sidebar.
+          HMM_STUDIO_WAREHOUSE_PATH: ${{ github.workspace }}/e2e/fixtures/warehouse
         run: |
           hmm-studio --host 127.0.0.1 --port 8000 &
           echo $! > /tmp/hmm-studio.pid

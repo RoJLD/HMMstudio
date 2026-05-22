@@ -1,0 +1,14 @@
+schema_version: 1
+name: "BTC daily 2024"
+description: "Daily BTC log returns with realized vol"
+notes: "Vol on 20-day window"
+columns:
+  - name: timestamp
+    role: index
+    dtype: datetime
+  - name: log_return
+    role: observation
+    dtype: float64
+  - name: vol
+    role: covariate
+    dtype: float64

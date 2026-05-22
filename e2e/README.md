@@ -43,12 +43,72 @@ npm run report          # open the HTML report after a run
 - `golden-path.spec.ts` — the full user workflow: home → data upload →
   topology editor → fit → results.
 - `topology-editor.spec.ts` — undo/redo + YAML export.
+- `warehouse.spec.ts` — data-warehouse sidebar listing, file preview,
+  sidecar edit roundtrip, and "Use for fit" promotion (Phase B.10c).
 
 These deliberately do NOT cover:
 - The K-scan path (would require multiple parallel fits, slow).
 - The Academy lessons (interactive but no data-flow assertions to make).
 - WebSocket streaming (covered by Python unit tests).
 - Dark mode toggle (visual regression — needs screenshots, future work).
+
+## Data warehouse fixture
+
+`warehouse.spec.ts` exercises the Phase B.10 data-warehouse UI. The tests
+need the server to be configured with a warehouse directory pointing at the
+committed fixture tree:
+
+```
+e2e/fixtures/warehouse/
+  btc_2024.csv          (51 rows, 3 cols)
+  btc_2024.csv.hmm.yaml (sidecar)
+  eth_2024.csv          (30 rows, 2 cols)
+  archive/
+    legacy_2023.csv     (20 rows, 2 cols)
+```
+
+Start the server with `HMM_STUDIO_WAREHOUSE_PATH` pointing at it:
+
+```bash
+# bash / zsh
+HMM_STUDIO_WAREHOUSE_PATH="$(pwd)/e2e/fixtures/warehouse" hmm-studio
+```
+
+```powershell
+# PowerShell
+$env:HMM_STUDIO_WAREHOUSE_PATH = "$PWD\e2e\fixtures\warehouse"
+hmm-studio
+```
+
+CI sets the same env var automatically (see `.github/workflows/e2e.yml`).
+
+### Sidecar revert protocol
+
+The `edit_sidecar_persists` test modifies
+`e2e/fixtures/warehouse/btc_2024.csv.hmm.yaml` and uses `test.afterEach`
+to restore it via `PUT /api/warehouse/btc_2024.csv/meta`. If a test crashes
+in a way that prevents `afterEach` from running, regenerate the sidecar from
+the `ORIGINAL_BTC_SIDECAR` constant at the top of `warehouse.spec.ts` (the
+canonical reset content lives in the test file). The original contents are:
+
+```yaml
+schema_version: 1
+name: "BTC daily 2024"
+description: "Daily BTC log returns with realized vol"
+notes: "Vol on 20-day window"
+columns:
+  - name: timestamp
+    role: index
+    dtype: datetime
+  - name: log_return
+    role: observation
+    dtype: float64
+  - name: vol
+    role: covariate
+    dtype: float64
+```
+
+After regenerating, `git diff e2e/fixtures/warehouse/` should be empty.
 
 ## Accessibility audit
 

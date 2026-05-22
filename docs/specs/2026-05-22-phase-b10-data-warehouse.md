@@ -289,7 +289,7 @@ fonctionnerait. À tester explicitement.
 - [x] Composants frontend : sidebar, preview enrichi, sidecar editor (B.10b)
 - [x] Path traversal bloqué et testé (B.10a)
 - [x] Backend tests (17 total : 15 B.10a + 2 promote B.10b)
-- [ ] Frontend E2E for warehouse deferred — needs CI fixture (configured warehouse dir), tracked as B.10c
+- [x] B.10c: warehouse E2E with fixture warehouse dir (4 Playwright tests in e2e/tests/warehouse.spec.ts)
 - [ ] Section README "Data warehouse" avec capture d'écran
 - [ ] Settings UI exposée (warehouse_path éditable) — partial: read-only display + copy in sidebar footer (B.10b), full settings page deferred
 - [ ] Migration sidecar v1 → v2 documentée d'avance (anticipation)
