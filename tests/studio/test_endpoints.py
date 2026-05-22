@@ -617,3 +617,130 @@ fit: {algorithm: baum_welch, n_iter: 5, tol: 1.0e-3}
     final = r.json()
     assert final["status"] == "failed"
     assert "lengths" in (final["error"] or "").lower()
+
+
+def test_annotations_upload_and_list(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    # Upload a dataset of 100 rows
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame(rng.normal(size=(100, 2)), columns=["f0", "f1"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    dataset_id = r.json()["id"]
+
+    # Upload annotations
+    ann_csv = "t,label,color\n10,first,blue\n50,middle,red\n90,last,green\n"
+    r = client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann_csv.encode(), "text/csv")},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["dataset_id"] == dataset_id
+    assert len(body["annotations"]) == 3
+    assert body["annotations"][0]["t"] == 10
+    assert body["annotations"][0]["label"] == "first"
+
+    # List
+    r = client.get(f"/api/data/{dataset_id}/annotations")
+    assert r.status_code == 200
+    listed = r.json()
+    assert len(listed["annotations"]) == 3
+    # Should be sorted by t
+    ts = [a["t"] for a in listed["annotations"]]
+    assert ts == sorted(ts)
+
+
+def test_annotations_upload_rejects_out_of_range(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(np.zeros((10, 1)), columns=["f0"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    dataset_id = r.json()["id"]
+
+    ann_csv = "t,label\n5,ok\n999,out_of_range\n"
+    r = client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann_csv.encode(), "text/csv")},
+    )
+    assert r.status_code == 400
+    assert "t values" in r.json()["detail"]
+
+
+def test_annotations_upload_rejects_missing_columns(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(np.zeros((10, 1)), columns=["f0"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    dataset_id = r.json()["id"]
+
+    ann_csv = "foo,bar\n1,2\n"
+    r = client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann_csv.encode(), "text/csv")},
+    )
+    assert r.status_code == 400
+    assert "label" in r.json()["detail"]
+
+
+def test_annotations_replace_on_re_upload(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(np.zeros((100, 1)), columns=["f0"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    dataset_id = r.json()["id"]
+
+    ann1 = "t,label\n10,a\n20,b\n"
+    client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann1.encode(), "text/csv")},
+    )
+    ann2 = "t,label\n50,c\n"
+    client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann2.encode(), "text/csv")},
+    )
+    r = client.get(f"/api/data/{dataset_id}/annotations")
+    assert len(r.json()["annotations"]) == 1
+    assert r.json()["annotations"][0]["label"] == "c"
+
+
+def test_delete_annotation(client):
+    import io
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(np.zeros((100, 1)), columns=["f0"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    dataset_id = r.json()["id"]
+
+    ann = "t,label\n10,a\n20,b\n"
+    r = client.post(
+        f"/api/data/{dataset_id}/annotations/upload",
+        files={"file": ("ann.csv", ann.encode(), "text/csv")},
+    )
+    ann_id = r.json()["annotations"][0]["id"]
+
+    r = client.delete(f"/api/data/{dataset_id}/annotations/{ann_id}")
+    assert r.status_code == 200
+
+    r = client.get(f"/api/data/{dataset_id}/annotations")
+    assert len(r.json()["annotations"]) == 1

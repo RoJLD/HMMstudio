@@ -1,10 +1,11 @@
-import type { DecodedResponse } from "../../api/client";
+import type { AnnotationOut, DecodedResponse } from "../../api/client";
 import { useSvgExport } from "../../hooks/useSvgExport";
 import { ExportButton } from "../../hooks/ExportButton";
 
 interface Props {
   data: DecodedResponse;
-  currentT?: number | null;   // NEW: external cursor in full-T units
+  currentT?: number | null;   // external cursor in full-T units
+  annotations?: AnnotationOut[];
 }
 
 // Brand-friendly palette
@@ -13,7 +14,7 @@ const PALETTE = [
   "#8b5cf6", "#ec4899", "#84cc16", "#f97316", "#0ea5e9",
 ];
 
-export function ViterbiTimeline({ data, currentT }: Props) {
+export function ViterbiTimeline({ data, currentT, annotations }: Props) {
   const T = data.viterbi.length;
   const W = 900;
   const H = 60;
@@ -70,6 +71,27 @@ export function ViterbiTimeline({ data, currentT }: Props) {
             pointerEvents="none"
           />
         )}
+        {annotations && annotations.length > 0 && annotations.map((a) => {
+          // Map t (full-T scale) into downsampled svg coordinates
+          const tDs = Math.floor(a.t / data.step);
+          if (tDs < 0 || tDs >= T) return null;
+          const x = tDs * cellW + cellW / 2;
+          const color = a.color || "#ef4444";
+          return (
+            <g key={a.id} pointerEvents="none">
+              <line
+                x1={x}
+                y1={0}
+                x2={x}
+                y2={H}
+                stroke={color}
+                strokeWidth={1.5}
+                strokeDasharray="2 2"
+                opacity={0.85}
+              />
+            </g>
+          );
+        })}
       </svg>
       <div className="flex gap-3 flex-wrap mt-3 text-xs">
         {data.state_names.map((name, k) => (
@@ -94,6 +116,26 @@ export function ViterbiTimeline({ data, currentT }: Props) {
           </span>
         )}
       </p>
+      {annotations && annotations.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs font-semibold text-slate-500 mb-1">Annotations</p>
+          <div className="flex gap-3 flex-wrap text-xs">
+            {annotations.slice(0, 8).map((a) => (
+              <div key={a.id} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-0.5"
+                  style={{ background: a.color || "#ef4444" }}
+                />
+                <span className="text-slate-700 font-mono">t={a.t}</span>
+                <span className="text-slate-600 truncate max-w-[120px]">{a.label}</span>
+              </div>
+            ))}
+            {annotations.length > 8 && (
+              <span className="text-slate-500">+{annotations.length - 8} more</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

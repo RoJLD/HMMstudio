@@ -30,6 +30,7 @@ export interface FitJobResult {
   converged: boolean | null;
   result_path: string | null;
   error: string | null;
+  dataset_id: string | null;
 }
 
 const BASE = ""; // same-origin; Vite dev proxy routes /api → backend.
@@ -206,4 +207,47 @@ export async function startScan(params: {
 
 export async function getScan(parentId: string): Promise<ScanResult> {
   return jsonFetch<ScanResult>(`/api/fit/scan/${parentId}`);
+}
+
+export interface AnnotationOut {
+  id: string;
+  dataset_id: string;
+  t: number;
+  label: string;
+  color: string | null;
+}
+
+export interface AnnotationsResponse {
+  dataset_id: string;
+  annotations: AnnotationOut[];
+}
+
+export async function listAnnotations(datasetId: string): Promise<AnnotationsResponse> {
+  return jsonFetch<AnnotationsResponse>(`/api/data/${datasetId}/annotations`);
+}
+
+export async function uploadAnnotations(
+  datasetId: string,
+  file: File,
+): Promise<AnnotationsResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(`/api/data/${datasetId}/annotations/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!r.ok) {
+    throw new Error(`annotation upload failed: ${r.status} ${await r.text()}`);
+  }
+  return (await r.json()) as AnnotationsResponse;
+}
+
+export async function deleteAnnotation(
+  datasetId: string,
+  annotationId: string,
+): Promise<void> {
+  const r = await fetch(`/api/data/${datasetId}/annotations/${annotationId}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(`delete failed: ${r.status}`);
 }

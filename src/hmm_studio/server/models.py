@@ -51,3 +51,18 @@ class FitJob(SQLModel, table=True):
     lengths: str = ""  # JSON list[int], empty = single sequence
     parent_id: str | None = Field(default=None)  # if set, this is a child of a scan job
     k_override: int | None = None  # if set, this child overrides topology.n_states
+
+
+class Annotation(SQLModel, table=True):
+    """External event annotation attached to a Dataset.
+
+    `t` is the observation index in [0, dataset.n_rows). `label` is a short
+    free-text description. `color` is an optional CSS color hint for the UI.
+    """
+
+    id: str = Field(default_factory=_uuid_str, primary_key=True)
+    dataset_id: str = Field(foreign_key="dataset.id")
+    t: int
+    label: str
+    color: str | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)

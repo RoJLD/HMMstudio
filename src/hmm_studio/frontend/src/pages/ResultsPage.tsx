@@ -6,7 +6,9 @@ import {
   getFitDecoded,
   getFitEmissions,
   getNhmmInfo,
+  listAnnotations,
   openFitProgressSocket,
+  type AnnotationOut,
   type FitJobResult,
   type TransmatResponse,
   type DecodedResponse,
@@ -34,6 +36,7 @@ export default function ResultsPage() {
   const [emissions, setEmissions] = useState<EmissionsResponse | null>(null);
   const [nhmmInfo, setNhmmInfo] = useState<NhmmInfoResponse | null>(null);
   const [currentT, setCurrentT] = useState<number | null>(null);
+  const [annotations, setAnnotations] = useState<AnnotationOut[]>([]);
 
   // Open WebSocket for live progress; also poll status via REST fallback.
   useEffect(() => {
@@ -91,6 +94,17 @@ export default function ResultsPage() {
       setNhmmInfo(n);
     });
   }, [jobId, status?.status]);
+
+  // Fetch annotations for the fit's dataset.
+  useEffect(() => {
+    if (!status?.dataset_id) {
+      setAnnotations([]);
+      return;
+    }
+    listAnnotations(status.dataset_id)
+      .then((r) => setAnnotations(r.annotations))
+      .catch(() => setAnnotations([]));
+  }, [status?.dataset_id]);
 
   if (!status) {
     return (
@@ -165,7 +179,7 @@ export default function ResultsPage() {
               <h3 className="text-sm font-semibold text-slate-700 mb-3">
                 Viterbi path
               </h3>
-              <ViterbiTimeline data={decoded} currentT={currentT} />
+              <ViterbiTimeline data={decoded} currentT={currentT} annotations={annotations} />
             </div>
           )}
           {emissions && (

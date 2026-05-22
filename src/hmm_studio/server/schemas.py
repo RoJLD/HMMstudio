@@ -54,6 +54,7 @@ class FitJobResult(BaseModel):
     converged: bool | None = None
     result_path: str | None = None
     error: str | None = None
+    dataset_id: str | None = None   # for annotation lookups
 
 
 class FitJobScanCreate(BaseModel):
@@ -90,3 +91,16 @@ class ScanResult(BaseModel):
     children: list[ScanChildStatus]
     best_k_by_bic: int | None = None
     best_k_by_aic: int | None = None
+
+
+class AnnotationOut(BaseModel):
+    id: str
+    dataset_id: str
+    t: int
+    label: str
+    color: str | None = None
+
+
+class AnnotationsResponse(BaseModel):
+    dataset_id: str
+    annotations: list[AnnotationOut]

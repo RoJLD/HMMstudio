@@ -15,8 +15,10 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSock
 
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
-from hmm_studio.server.models import Dataset, FitJob, FitJobStatus
+from hmm_studio.server.models import Annotation, Dataset, FitJob, FitJobStatus
 from hmm_studio.server.schemas import (
+    AnnotationOut,
+    AnnotationsResponse,
     DatasetPreview,
     FitJobCreate,
     FitJobResult,
@@ -141,6 +143,9 @@ def create_app() -> FastAPI:
             lengths=req.lengths,
         )
         status = runner.get_status(job_id)
+        with get_session(engine) as session:
+            job = session.get(FitJob, status["id"])
+            dataset_id = job.dataset_id if job else None
         return FitJobResult(
             id=status["id"],
             status=status["status"],
@@ -151,6 +156,7 @@ def create_app() -> FastAPI:
             converged=status.get("converged"),
             result_path=status.get("result_path"),
             error=status.get("error"),
+            dataset_id=dataset_id,
         )
 
     @app.get("/api/fit/{job_id}", response_model=FitJobResult)
@@ -159,6 +165,9 @@ def create_app() -> FastAPI:
             status = runner.get_status(job_id)
         except KeyError:
             raise HTTPException(status_code=404, detail="job not found")
+        with get_session(engine) as session:
+            job = session.get(FitJob, job_id)
+            dataset_id = job.dataset_id if job else None
         return FitJobResult(
             id=status["id"],
             status=status["status"],
@@ -169,6 +178,7 @@ def create_app() -> FastAPI:
             converged=status.get("converged"),
             result_path=status.get("result_path"),
             error=status.get("error"),
+            dataset_id=dataset_id,
         )
 
     @app.websocket("/ws/fit/{job_id}")
@@ -461,6 +471,115 @@ def create_app() -> FastAPI:
             best_k_by_bic=best_bic,
             best_k_by_aic=best_aic,
         )
+
+    @app.post("/api/data/{dataset_id}/annotations/upload", response_model=AnnotationsResponse)
+    def upload_annotations(dataset_id: str, file: UploadFile = File(...)):
+        """Upload a CSV with columns `t,label[,color]`. Replaces existing annotations.
+
+        Each row creates one Annotation. Existing annotations for the dataset
+        are deleted first (upload is idempotent — re-uploading replaces).
+        """
+        with get_session(engine) as session:
+            ds = session.get(Dataset, dataset_id)
+            if ds is None:
+                raise HTTPException(status_code=404, detail="dataset not found")
+            n_rows = ds.n_rows
+
+        contents = file.file.read()
+        if len(contents) > 1 * 1024 * 1024:  # 1MB cap for annotations
+            raise HTTPException(status_code=413, detail="annotations file too large (max 1MB)")
+
+        import io as _io
+
+        try:
+            df = pd.read_csv(_io.BytesIO(contents))
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"failed to parse CSV: {exc}")
+
+        if "t" not in df.columns or "label" not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail="CSV must have columns 't' and 'label' (color optional)",
+            )
+
+        # Validate t is in range
+        try:
+            df["t"] = df["t"].astype(int)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=f"column 't' must be integer: {exc}")
+        if df["t"].min() < 0 or df["t"].max() >= n_rows:
+            raise HTTPException(
+                status_code=400,
+                detail=f"t values must be in [0, {n_rows}); got [{int(df['t'].min())}, {int(df['t'].max())}]",
+            )
+
+        with get_session(engine) as session:
+            from sqlmodel import select
+
+            # Delete existing
+            existing = list(
+                session.exec(select(Annotation).where(Annotation.dataset_id == dataset_id)).all()
+            )
+            for a in existing:
+                session.delete(a)
+
+            # Insert new
+            out: list[AnnotationOut] = []
+            for _, row in df.iterrows():
+                ann = Annotation(
+                    dataset_id=dataset_id,
+                    t=int(row["t"]),
+                    label=str(row["label"]),
+                    color=(str(row["color"]) if "color" in df.columns and pd.notna(row["color"]) else None),
+                )
+                session.add(ann)
+                session.commit()
+                session.refresh(ann)
+                out.append(
+                    AnnotationOut(
+                        id=ann.id,
+                        dataset_id=ann.dataset_id,
+                        t=ann.t,
+                        label=ann.label,
+                        color=ann.color,
+                    )
+                )
+
+        return AnnotationsResponse(dataset_id=dataset_id, annotations=out)
+
+    @app.get("/api/data/{dataset_id}/annotations", response_model=AnnotationsResponse)
+    def list_annotations(dataset_id: str):
+        with get_session(engine) as session:
+            ds = session.get(Dataset, dataset_id)
+            if ds is None:
+                raise HTTPException(status_code=404, detail="dataset not found")
+            from sqlmodel import select
+
+            anns = list(
+                session.exec(
+                    select(Annotation).where(Annotation.dataset_id == dataset_id)
+                ).all()
+            )
+            out = [
+                AnnotationOut(
+                    id=a.id,
+                    dataset_id=a.dataset_id,
+                    t=a.t,
+                    label=a.label,
+                    color=a.color,
+                )
+                for a in sorted(anns, key=lambda x: x.t)
+            ]
+        return AnnotationsResponse(dataset_id=dataset_id, annotations=out)
+
+    @app.delete("/api/data/{dataset_id}/annotations/{annotation_id}")
+    def delete_annotation(dataset_id: str, annotation_id: str):
+        with get_session(engine) as session:
+            ann = session.get(Annotation, annotation_id)
+            if ann is None or ann.dataset_id != dataset_id:
+                raise HTTPException(status_code=404, detail="annotation not found")
+            session.delete(ann)
+        return {"deleted": annotation_id}
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React

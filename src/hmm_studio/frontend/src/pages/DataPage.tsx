@@ -4,6 +4,7 @@ import { useDatasetStore } from "../store/datasetStore";
 import { DataDropZone } from "../components/data/DataDropZone";
 import { DatasetPreviewCard } from "../components/data/DatasetPreviewCard";
 import { DatasetHistoryList } from "../components/data/DatasetHistoryList";
+import { AnnotationsPanel } from "../components/data/AnnotationsPanel";
 
 export default function DataPage() {
   const current = useDatasetStore((s) => s.current);
@@ -51,6 +52,12 @@ export default function DataPage() {
       {current && (
         <div className="mt-6">
           <DatasetPreviewCard preview={current} />
+        </div>
+      )}
+
+      {current && (
+        <div className="mt-6">
+          <AnnotationsPanel datasetId={current.id} />
         </div>
       )}
 
