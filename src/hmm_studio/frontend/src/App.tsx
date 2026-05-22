@@ -6,6 +6,8 @@ import TopologyPage from "./pages/TopologyPage";
 import FitPage from "./pages/FitPage";
 import ResultsPage from "./pages/ResultsPage";
 import ScanPage from "./pages/ScanPage";
+import AcademyPage from "./pages/AcademyPage";
+import LessonPage from "./pages/LessonPage";
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
         <Route path="fit" element={<FitPage />} />
         <Route path="results/:jobId" element={<ResultsPage />} />
         <Route path="scan/:parentId" element={<ScanPage />} />
+        <Route path="academy" element={<AcademyPage />} />
+        <Route path="academy/:lessonId" element={<LessonPage />} />
       </Route>
     </Routes>
   );
