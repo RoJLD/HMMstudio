@@ -61,5 +61,9 @@ nav:
           - "Design spec (DRAFT)": specs/2026-05-21-hmm-studio-web-design.md
       - "Sub-project C: advanced viz (draft)":
           - "Design spec (DRAFT)": specs/2026-05-21-hmm-viz-advanced-design.md
+      - "Sub-project B.1 plan (backend skeleton)": plans/2026-05-22-b1-backend-skeleton.md
   - Decisions:
       - "ADR-0001: hmmlearn patch": decisions/0001-backend-hmmlearn-patch.md
+      - "ADR-0002: B stack decisions": decisions/0002-b-stack-decisions.md
+      - "ADR-0003: backend abstraction": decisions/0003-backend-abstraction.md
+      - "ADR-0004: supervised training": decisions/0004-supervised-training.md
