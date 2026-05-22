@@ -1,12 +1,25 @@
+import { EditorCanvas } from "../components/topology/EditorCanvas";
+import { Toolbar } from "../components/topology/Toolbar";
+import { SidePanel } from "../components/topology/SidePanel";
+
 export default function TopologyPage() {
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-2xl font-semibold text-slate-900 mb-2">
-        Topology editor
-      </h2>
-      <p className="text-slate-600">
-        React Flow-based node editor — planned for B.4. Placeholder for now.
-      </p>
+    <div className="flex h-[calc(100vh-4rem)] -mx-8 -my-8">
+      <div className="flex-1 flex flex-col p-4 min-w-0">
+        <Toolbar
+          onValidate={() => {
+            // wired in B.4.1.4
+          }}
+          onExport={() => {
+            // wired in B.4.1.4
+          }}
+          onImport={() => {
+            // wired in B.4.1.4
+          }}
+        />
+        <EditorCanvas />
+      </div>
+      <SidePanel validationError={null} validationSummary={null} />
     </div>
   );
 }
