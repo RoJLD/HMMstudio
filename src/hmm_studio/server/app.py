@@ -64,8 +64,7 @@ def create_app() -> FastAPI:
             valid=True,
             error=None,
             summary=(
-                f"valid: {topo.name} "
-                f"(n_states={topo.n_states}, emission={topo.emission.type})"
+                f"valid: {topo.name} " f"(n_states={topo.n_states}, emission={topo.emission.type})"
             ),
         )
 

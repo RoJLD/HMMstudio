@@ -135,6 +135,32 @@ fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
   editor that produces these YAML files.
 - **C — Advanced viz** (planned) — NHMM breathing transitions, replay UI.
 
+## Web UI (B.1 backend skeleton)
+
+`hmm-studio` (sub-project B) is in progress. The backend skeleton ships with:
+
+- FastAPI app with topology validation, dataset upload, and fit job orchestration
+- SQLite persistence (jobs survive restarts)
+- ThreadPoolExecutor for parallel fits
+- Swagger UI at `/docs`
+
+Install + launch:
+
+```bash
+pip install -e ".[web,dev]"
+hmm-studio serve
+# Open http://127.0.0.1:8000/docs for the Swagger UI
+```
+
+Frontend (B.3+) is not yet implemented. See [docs/roadmap.md](docs/roadmap.md)
+and [docs/specs/2026-05-21-hmm-studio-web-design.md](docs/specs/2026-05-21-hmm-studio-web-design.md).
+
 ## License
 
-MIT.
+MIT — see [LICENSE](LICENSE).
+
+## Citation
+
+If you use `hmm-studio` in academic work, please cite it via the
+[CITATION.cff](CITATION.cff) file at the repository root (GitHub provides
+a "Cite this repository" widget that reads it).

@@ -14,7 +14,6 @@ from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner
 from hmm_studio.server.models import Dataset
 
-
 VALID_TOPOLOGY_YAML = """
 name: test
 n_states: 3
@@ -34,17 +33,21 @@ def setup_env(tmp_path):
     results_dir.mkdir()
 
     rng = np.random.default_rng(42)
-    X = np.vstack([
-        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
-    ])
+    X = np.vstack(
+        [
+            rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+        ]
+    )
     csv_path = tmp_path / "data.csv"
     pd.DataFrame(X, columns=["f0", "f1"]).to_csv(csv_path, index=False)
 
     with get_session(engine) as s:
         ds = Dataset(
-            filename="data.csv", n_rows=300, n_cols=2,
+            filename="data.csv",
+            n_rows=300,
+            n_cols=2,
             dtypes=json.dumps({"f0": "float64", "f1": "float64"}),
             path=str(csv_path),
         )

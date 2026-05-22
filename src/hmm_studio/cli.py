@@ -12,9 +12,7 @@ app = typer.Typer(help="hmm-studio: web UI for hmm-core.")
 def serve(
     host: str = typer.Option("127.0.0.1", help="Bind host. Default localhost-only."),
     port: int = typer.Option(8000, help="Port to bind."),
-    reload: bool = typer.Option(
-        False, "--reload", help="Auto-reload on code changes (dev only)."
-    ),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload on code changes (dev only)."),
 ) -> None:
     """Launch the hmm-studio web server."""
     if reload:

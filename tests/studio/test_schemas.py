@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from hmm_studio.server.schemas import (
     DatasetPreview,
@@ -25,7 +24,9 @@ def test_topology_validate_response_ok():
 
 
 def test_topology_validate_response_error():
-    resp = TopologyValidateResponse(valid=False, error="missing required field: 'emission'", summary=None)
+    resp = TopologyValidateResponse(
+        valid=False, error="missing required field: 'emission'", summary=None
+    )
     assert resp.valid is False
     assert "missing" in resp.error
 

@@ -29,8 +29,7 @@ def test_dataset_roundtrip(tmp_path):
 def test_fit_job_roundtrip(tmp_path):
     engine = create_db_engine(tmp_path / "test.db")
     with get_session(engine) as session:
-        ds = Dataset(filename="x.csv", n_rows=10, n_cols=2,
-                     dtypes="{}", path="/tmp/x.csv")
+        ds = Dataset(filename="x.csv", n_rows=10, n_cols=2, dtypes="{}", path="/tmp/x.csv")
         session.add(ds)
         session.commit()
         session.refresh(ds)
@@ -52,8 +51,7 @@ def test_fit_job_roundtrip(tmp_path):
 def test_fit_job_status_transitions(tmp_path):
     engine = create_db_engine(tmp_path / "test.db")
     with get_session(engine) as session:
-        ds = Dataset(filename="x.csv", n_rows=10, n_cols=2,
-                     dtypes="{}", path="/tmp/x.csv")
+        ds = Dataset(filename="x.csv", n_rows=10, n_cols=2, dtypes="{}", path="/tmp/x.csv")
         session.add(ds)
         session.commit()
         session.refresh(ds)
@@ -87,5 +85,6 @@ def test_database_creates_tables_on_first_use(tmp_path):
     # Tables should be queryable.
     with get_session(engine) as session:
         from sqlmodel import select
+
         result = list(session.exec(select(Dataset)).all())
         assert result == []

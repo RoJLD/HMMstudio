@@ -1,4 +1,10 @@
-"""Public fit() dispatcher and FittedModel container."""
+"""Public fit() dispatcher and FittedModel container.
+
+The heavy lifting (running EM, applying the transition mask at every M-step)
+lives in ``hmm_core.backends``. This module is the orchestrator: it validates,
+runs the init strategies, picks a backend, computes BIC/AIC, and packages
+everything in a :class:`FittedModel`.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +14,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from hmm_core import init as init_mod
-from hmm_core.fit.gaussian import ConstrainedGaussianHMM
-from hmm_core.fit.gmm import ConstrainedGMMHMM
-from hmm_core.fit.multinomial import ConstrainedMultinomialHMM
-from hmm_core.fit.poisson import ConstrainedPoissonHMM
+from hmm_core.backends import HMMBackend, get_backend
 from hmm_core.topology import Topology
 
 
@@ -26,14 +29,6 @@ class FittedModel:
     converged: bool
     seed: int
     duration_seconds: float
-
-
-_CLASS_BY_EMISSION = {
-    "gaussian": ConstrainedGaussianHMM,
-    "gmm": ConstrainedGMMHMM,
-    "multinomial": ConstrainedMultinomialHMM,
-    "poisson": ConstrainedPoissonHMM,
-}
 
 
 def _n_params(K: int, emission_spec) -> int:
@@ -69,30 +64,14 @@ def _n_params(K: int, emission_spec) -> int:
     raise ValueError(f"unsupported emission type for n_params: {e.type!r}")
 
 
-def _hmmlearn_kwargs(topology: Topology, seed: int) -> dict:
-    """Map EmissionSpec -> constructor kwargs for hmmlearn class."""
-    e = topology.emission
-    common = {
-        "n_components": topology.n_states,
-        "n_iter": topology.fit.n_iter,
-        "tol": topology.fit.tol,
-        "random_state": seed,
-    }
-    if e.type in ("gaussian", "gmm"):
-        common["covariance_type"] = e.covariance_type
-    if e.type == "gmm":
-        common["n_mix"] = e.n_mix
-    if e.type == "multinomial":
-        common["n_features"] = e.n_symbols
-    return common
-
-
 def fit(
     topology: Topology,
     X: np.ndarray,
     *,
     seed: int | None = None,
     lengths: np.ndarray | None = None,
+    backend: HMMBackend | str | None = None,
+    states: np.ndarray | None = None,
 ) -> FittedModel:
     """Fit the HMM described by ``topology`` on observations ``X``.
 
@@ -111,72 +90,81 @@ def fit(
         provided, boundary transitions between sequences are excluded from the
         data_frequencies transition count and lengths is forwarded to
         ``model.fit``.
+    backend : HMMBackend or str, optional
+        Backend to use for the fit. Defaults to the registered default
+        backend (``"hmmlearn"`` today). Pass a string (``"hmmlearn"``) to look
+        up a registered backend by name, or an instance to use it directly.
+    states : ndarray, optional
+        Observed state labels (Phase A.7). When omitted (default), training is
+        unsupervised via Baum-Welch EM. When provided as a fully-labeled
+        integer array of shape ``(len(X),)`` with values in ``[0, n_states)``,
+        training is **supervised**: closed-form MLE (count-based transitions
+        and per-state emission statistics), one pass, deterministic. Partial
+        labels (NaN positions) are reserved for semi-supervised training
+        (Phase A.7.1, not yet implemented).
     """
     topology.validate()
     actual_seed = seed if seed is not None else topology.init.seed
-
-    if topology.emission.type not in _CLASS_BY_EMISSION:
-        raise ValueError(
-            f"unsupported emission: {topology.emission.type!r} "
-            f"(supported: {sorted(_CLASS_BY_EMISSION)})"
-        )
-
     mask = topology.transition_mask()
-    initial_A = init_mod.transmat(topology, seed=actual_seed, X=X, lengths=lengths)
-    initial_pi = init_mod.startprob(topology, seed=actual_seed)
-    emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
 
-    cls = _CLASS_BY_EMISSION[topology.emission.type]
-    kwargs = _hmmlearn_kwargs(topology, seed=actual_seed)
-    model = cls(transmat_mask=mask, **kwargs)
-    # Pre-set parameters that init.* provides; skip the corresponding letters
-    # in init_params so hmmlearn does not overwrite them.
-    model.startprob_ = initial_pi
-    model.transmat_ = initial_A
-    skip_letters = "st"
-    if emission_kwargs:
-        for key, val in emission_kwargs.items():
-            setattr(model, key, val)
-        # Skip 'm' (means), 'c' (covars), 'w' (weights), 'e' (emissionprob),
-        # 'l' (lambdas) according to what we pre-set.
-        if "means_" in emission_kwargs:
-            skip_letters += "m"
-        if "covars_" in emission_kwargs:
-            skip_letters += "c"
-        if "weights_" in emission_kwargs:
-            skip_letters += "w"
-        if "emissionprob_" in emission_kwargs:
-            skip_letters += "e"
-        if "lambdas_" in emission_kwargs:
-            skip_letters += "l"
-    default_init = getattr(model, "init_params", "stmc")
-    model.init_params = "".join(c for c in default_init if c not in skip_letters)
-
-    t0 = time.perf_counter()
-    if lengths is not None:
-        model.fit(X, lengths=lengths)
+    if isinstance(backend, str) or backend is None:
+        backend_impl = get_backend(backend)
     else:
-        model.fit(X)
-    duration = time.perf_counter() - t0
+        backend_impl = backend
 
-    log_lik = float(model.score(X))
+    if states is not None:
+        states_arr = np.asarray(states)
+        if states_arr.shape != (len(X),):
+            raise ValueError(f"states must have shape ({len(X)},), got {states_arr.shape}")
+        if states_arr.dtype.kind == "f" and np.isnan(states_arr).any():
+            raise NotImplementedError(
+                "semi-supervised mode (states with NaN entries) is planned "
+                "for Phase A.7.1; for now provide a fully-labeled states "
+                "array or omit it to run unsupervised Baum-Welch."
+            )
+        states_int = states_arr.astype(int)
+
+        t0 = time.perf_counter()
+        result = backend_impl.fit_supervised(
+            topology,
+            X,
+            states_int,
+            seed=actual_seed,
+            lengths=lengths,
+            mask=mask,
+        )
+        duration = time.perf_counter() - t0
+    else:
+        initial_A = init_mod.transmat(topology, seed=actual_seed, X=X, lengths=lengths)
+        initial_pi = init_mod.startprob(topology, seed=actual_seed)
+        emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
+
+        t0 = time.perf_counter()
+        result = backend_impl.fit(
+            topology,
+            X,
+            seed=actual_seed,
+            lengths=lengths,
+            initial_transmat=initial_A,
+            initial_startprob=initial_pi,
+            emission_kwargs=emission_kwargs,
+            mask=mask,
+        )
+        duration = time.perf_counter() - t0
+
     n_params = _n_params(topology.n_states, topology.emission)
     n_obs = len(X)
-    bic = float(-2.0 * log_lik + n_params * np.log(max(n_obs, 1)))
-    aic = float(-2.0 * log_lik + 2.0 * n_params)
-
-    monitor = getattr(model, "monitor_", None)
-    converged = bool(monitor.converged) if monitor is not None else False
-    n_iter_actual = int(monitor.iter) if monitor is not None else topology.fit.n_iter
+    bic = float(-2.0 * result.log_likelihood + n_params * np.log(max(n_obs, 1)))
+    aic = float(-2.0 * result.log_likelihood + 2.0 * n_params)
 
     return FittedModel(
-        model=model,
+        model=result.model,
         topology=topology,
-        log_likelihood=log_lik,
+        log_likelihood=result.log_likelihood,
         bic=bic,
         aic=aic,
-        n_iter_actual=n_iter_actual,
-        converged=converged,
+        n_iter_actual=result.n_iter_actual,
+        converged=result.converged,
         seed=actual_seed,
         duration_seconds=duration,
     )

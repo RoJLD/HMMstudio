@@ -35,11 +35,13 @@ fit: {algorithm: baum_welch, n_iter: 20, tol: 1.0e-4}
 
 def _make_csv_bytes(seed=42, n=300):
     rng = np.random.default_rng(seed)
-    X = np.vstack([
-        rng.normal(loc=-2.0, scale=0.3, size=(n // 3, 2)),
-        rng.normal(loc=0.0, scale=0.3, size=(n // 3, 2)),
-        rng.normal(loc=2.0, scale=0.3, size=(n // 3, 2)),
-    ])
+    X = np.vstack(
+        [
+            rng.normal(loc=-2.0, scale=0.3, size=(n // 3, 2)),
+            rng.normal(loc=0.0, scale=0.3, size=(n // 3, 2)),
+            rng.normal(loc=2.0, scale=0.3, size=(n // 3, 2)),
+        ]
+    )
     buf = io.StringIO()
     pd.DataFrame(X, columns=["f0", "f1"]).to_csv(buf, index=False)
     return buf.getvalue().encode("utf-8")
