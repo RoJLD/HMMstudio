@@ -1,0 +1,30 @@
+# venvs & caches
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+
+# frontend artefacts that the multi-stage build re-creates
+src/hmm_studio/frontend/node_modules/
+src/hmm_studio/frontend/dist/
+
+# server static (re-baked from frontend-builder stage)
+src/hmm_studio/server/static/assets/
+src/hmm_studio/server/static/index.html
+
+# docs site build
+site/
+
+# git, IDE, OS junk
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# results that may be sitting on disk locally
+results/

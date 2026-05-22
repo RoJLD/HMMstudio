@@ -1,0 +1,29 @@
+# Standalone hmm-studio deployment — runs on Rancher Desktop's Docker engine.
+#
+# Usage:
+#   .\start.ps1                          # one-click launcher (build + up + open UI)
+#   .\stop.ps1                           # graceful stop (containers kept, restart fast)
+#   docker compose down                  # full teardown (containers removed; volume kept)
+#   docker compose down -v               # also wipes the SQLite DB + uploads + results
+#
+# Persistence:
+#   The named volume `hmm-studio-data` survives container restarts and rebuilds.
+#   It holds the SQLite DB, uploaded CSVs, and fit result bundles.
+
+name: hmm-studio
+
+services:
+  hmm-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hmm-studio:latest
+    container_name: hmm-studio
+    ports:
+      - "8000:8000"
+    volumes:
+      - hmm-studio-data:/data/hmm-studio
+    restart: unless-stopped
+
+volumes:
+  hmm-studio-data:

@@ -179,6 +179,29 @@ B.4.3) are planned extensions documented in the roadmap.
 See [docs/roadmap.md](docs/roadmap.md)
 and [docs/specs/2026-05-21-hmm-studio-web-design.md](docs/specs/2026-05-21-hmm-studio-web-design.md).
 
+## One-click launcher (Rancher Desktop / Docker)
+
+For a packaged Docker deployment with Rancher Desktop (or Docker Desktop):
+
+```
+.\start.ps1        # or start.bat
+```
+
+This builds the image (multi-stage: Node 20 builds the React frontend, then
+Python 3.12 installs the package with the frontend baked into `server/static/`),
+runs the container with a named volume for the SQLite DB + uploads + results
+(survives image rebuilds), waits for `/health`, and opens the UI at
+`http://localhost:8000`.
+
+```
+.\stop.ps1                # graceful stop, restart fast via start.ps1
+docker compose down       # full teardown (volume kept)
+docker compose down -v    # wipe volume too (clears DB, uploads, results)
+```
+
+**Desktop shortcut**: right-click `start.bat`, "Send to" → "Desktop (create
+shortcut)". Rename to "hmm-studio" if you like.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
