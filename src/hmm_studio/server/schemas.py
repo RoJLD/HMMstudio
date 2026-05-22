@@ -31,6 +31,7 @@ class FitJobCreate(BaseModel):
     topology_yaml: str
     dataset_id: str
     seed: int | None = None
+    covariate_names: list[str] | None = None  # NHMM: column names from dataset to use as Z
 
 
 class FitJobStatusOut(BaseModel):

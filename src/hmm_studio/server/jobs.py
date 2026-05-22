@@ -59,7 +59,13 @@ class JobRunner:
         self._futures: dict[str, Future] = {}
         self._lock = threading.Lock()
 
-    def submit(self, topology_yaml: str, dataset_id: str, seed=None) -> str:
+    def submit(
+        self,
+        topology_yaml: str,
+        dataset_id: str,
+        seed=None,
+        covariate_names: list[str] | None = None,
+    ) -> str:
         """Create a FitJob row + schedule the fit. Returns job_id."""
         with get_session(self._engine) as session:
             job = FitJob(
@@ -67,6 +73,7 @@ class JobRunner:
                 dataset_id=dataset_id,
                 seed=seed,
                 status=FitJobStatus.QUEUED,
+                covariate_names=json.dumps(covariate_names) if covariate_names else "",
             )
             session.add(job)
             session.commit()
@@ -121,6 +128,7 @@ class JobRunner:
                 topology_yaml = job.topology
                 seed = job.seed
                 dataset_path = dataset.path
+                covariate_names_json = job.covariate_names
 
             # Step 2: validate topology
             try:
@@ -135,12 +143,28 @@ class JobRunner:
                     session.commit()
                 return
 
-            # Step 3: load data
+            # Step 3: load data, split X / Z if NHMM
             df = pd.read_csv(dataset_path)
-            if topology.emission.type == "multinomial":
-                X = df.to_numpy(dtype=int)
+            covariate_names = json.loads(covariate_names_json) if covariate_names_json else []
+            is_nhmm = bool(covariate_names)
+
+            if is_nhmm:
+                missing = [c for c in covariate_names if c not in df.columns]
+                if missing:
+                    raise ValueError(f"covariate columns not in CSV: {missing}")
+                Z = df[covariate_names].to_numpy(dtype=float)
+                obs_cols = [c for c in df.columns if c not in covariate_names]
+                X_df = df[obs_cols]
+                if topology.emission.type == "multinomial":
+                    X = X_df.to_numpy(dtype=int)
+                else:
+                    X = X_df.to_numpy(dtype=float)
             else:
-                X = df.to_numpy(dtype=float)
+                Z = None
+                if topology.emission.type == "multinomial":
+                    X = df.to_numpy(dtype=int)
+                else:
+                    X = df.to_numpy(dtype=float)
 
             # Step 4: mark running
             with get_session(self._engine) as session:
@@ -162,8 +186,19 @@ class JobRunner:
                 except Exception:
                     pass  # never let callback raise
 
+            from hmm_core import fit_nhmm
+
             try:
-                result = core_fit(topology, X, seed=seed, progress_callback=_persist_progress)
+                if is_nhmm:
+                    result = fit_nhmm(
+                        topology,
+                        X,
+                        Z,
+                        covariate_names=covariate_names,
+                        seed=seed,
+                    )
+                else:
+                    result = core_fit(topology, X, seed=seed, progress_callback=_persist_progress)
             except Exception as exc:
                 with get_session(self._engine) as session:
                     job = session.get(FitJob, job_id)
@@ -175,13 +210,19 @@ class JobRunner:
                 return
 
             # Step 6: extract progress history
-            monitor = getattr(result.model, "monitor_", None)
-            history = list(getattr(monitor, "history", [])) if monitor is not None else []
-
             # Step 7: save result bundle
             result_dir = self._results_dir / job_id
             result_dir.mkdir(parents=True, exist_ok=True)
-            save_model(result, result_dir)
+            if is_nhmm:
+                save_model(result.base, result_dir)
+                import pickle as _pickle
+                with (result_dir / "nhmm.pkl").open("wb") as f:
+                    _pickle.dump(result, f, protocol=_pickle.HIGHEST_PROTOCOL)
+                monitor = getattr(result.base.model, "monitor_", None)
+            else:
+                save_model(result, result_dir)
+                monitor = getattr(result.model, "monitor_", None)
+            history = list(getattr(monitor, "history", [])) if monitor is not None else []
 
             # Step 8: persist final status
             with get_session(self._engine) as session:

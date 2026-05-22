@@ -308,3 +308,117 @@ def test_get_fit_emissions_done(client):
     body = r.json()
     assert body["type"] == "gaussian"
     assert len(body["means"]) == 3
+
+
+def test_fit_nhmm_with_covariates(client):
+    """A fit with covariate_names runs NHMM and exposes A_at endpoint."""
+    import io
+    import time
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    n = 300
+    Z = rng.normal(size=n)
+    X = np.zeros((n, 2))
+    state = 0
+    for t in range(n):
+        X[t] = rng.normal(loc=state * 3, scale=0.5, size=2)
+        state = (state + (1 if Z[t] > 0 else 0)) % 3
+    df = pd.DataFrame({"f0": X[:, 0], "f1": X[:, 1], "z": Z})
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    csv_bytes = buf.getvalue().encode("utf-8")
+
+    r = client.post("/api/data/upload", files={"file": ("nhmm.csv", csv_bytes, "text/csv")})
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: nhmm_test
+n_states: 3
+state_names: [a, b, c]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-4}
+"""
+    r = client.post(
+        "/api/fit/start",
+        json={
+            "topology_yaml": topology,
+            "dataset_id": dataset_id,
+            "seed": 42,
+            "covariate_names": ["z"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    assert r.json()["status"] == "done", r.json()
+
+    # NHMM info
+    r = client.get(f"/api/fit/{job_id}/nhmm_info")
+    assert r.status_code == 200
+    info = r.json()
+    assert info["is_nhmm"] is True
+    assert info["T"] == 300
+    assert info["covariate_names"] == ["z"]
+
+    # A_at at t=0
+    r = client.get(f"/api/fit/{job_id}/A_at?t=0")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["t"] == 0
+    assert body["T"] == 300
+    assert len(body["A"]) == 3
+
+    # A_at out of range
+    r = client.get(f"/api/fit/{job_id}/A_at?t=99999")
+    assert r.status_code == 400
+
+
+def test_get_nhmm_info_for_homogeneous_fit(client):
+    """A regular (non-NHMM) fit returns is_nhmm=false."""
+    import io
+    import time
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 2))
+    df = pd.DataFrame(X, columns=["f0", "f1"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("hom.csv", buf.getvalue().encode(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: hom
+n_states: 2
+state_names: [a, b]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 0}
+fit: {algorithm: baum_welch, n_iter: 10, tol: 1.0e-3}
+"""
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": topology, "dataset_id": dataset_id},
+    )
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+
+    r = client.get(f"/api/fit/{job_id}/nhmm_info")
+    assert r.status_code == 200
+    assert r.json()["is_nhmm"] is False

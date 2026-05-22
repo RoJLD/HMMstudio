@@ -134,6 +134,7 @@ def create_app() -> FastAPI:
             topology_yaml=req.topology_yaml,
             dataset_id=req.dataset_id,
             seed=req.seed,
+            covariate_names=req.covariate_names,
         )
         status = runner.get_status(job_id)
         return FitJobResult(
@@ -306,6 +307,68 @@ def create_app() -> FastAPI:
         elif e_type == "poisson":
             payload["lambdas"] = np.asarray(model.lambdas_).tolist()
         return payload
+
+    @app.get("/api/fit/{job_id}/A_at")
+    def get_fit_a_at(job_id: str, t: int = 0):
+        """Return the K x K transition matrix at time index t (NHMM only).
+
+        Returns 404 if the job is not an NHMM fit (no nhmm.pkl present).
+        """
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(status_code=409, detail=f"status: {status['status']}")
+        result_path = status.get("result_path")
+        if not result_path:
+            raise HTTPException(status_code=500, detail="result_path missing")
+        nhmm_pkl = Path(result_path) / "nhmm.pkl"
+        if not nhmm_pkl.exists():
+            raise HTTPException(status_code=404, detail="not an NHMM fit")
+        with nhmm_pkl.open("rb") as f:
+            nhmm = pickle.load(f)
+        if t < 0 or t >= len(nhmm.A_t):
+            raise HTTPException(
+                status_code=400,
+                detail=f"t={t} out of range [0, {len(nhmm.A_t)})",
+            )
+        return {
+            "t": t,
+            "T": len(nhmm.A_t),
+            "A": nhmm.A_t[t].tolist(),
+            "state_names": list(nhmm.base.topology.state_names),
+            "covariate_names": list(nhmm.covariate_names),
+        }
+
+    @app.get("/api/fit/{job_id}/nhmm_info")
+    def get_fit_nhmm_info(job_id: str):
+        """Lightweight info: is this an NHMM fit? T length? covariate names?"""
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            return {"is_nhmm": False, "reason": f"status: {status['status']}"}
+        result_path = status.get("result_path")
+        if not result_path:
+            return {"is_nhmm": False, "reason": "result_path missing"}
+        nhmm_pkl = Path(result_path) / "nhmm.pkl"
+        if not nhmm_pkl.exists():
+            return {"is_nhmm": False}
+        with nhmm_pkl.open("rb") as f:
+            nhmm = pickle.load(f)
+        return {
+            "is_nhmm": True,
+            "T": len(nhmm.A_t),
+            "n_states": nhmm.n_states,
+            "covariate_names": list(nhmm.covariate_names),
+            "state_names": list(nhmm.base.topology.state_names),
+        }
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React

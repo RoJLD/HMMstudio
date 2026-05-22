@@ -11,6 +11,7 @@ export default function FitPage() {
   const navigate = useNavigate();
 
   const [seed, setSeed] = useState<number | "">("");
+  const [covariateNames, setCovariateNames] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +27,7 @@ export default function FitPage() {
         topology_yaml: yamlText,
         dataset_id: dataset.id,
         seed: seed === "" ? undefined : Number(seed),
+        covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
       });
       navigate(`/results/${result.id}`);
     } catch (e) {
@@ -69,6 +71,39 @@ export default function FitPage() {
           />
         </label>
       </div>
+
+      {dataset && dataset.columns.length > 1 && (
+        <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">
+            Covariates (optional — enables NHMM)
+          </h3>
+          <p className="text-xs text-slate-500 mb-2">
+            Mark columns that should drive time-varying transitions. Unmarked
+            columns are observation features.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {dataset.columns.map((c) => (
+              <label
+                key={c}
+                className="flex items-center gap-1.5 text-xs px-2 py-1 border border-slate-200 rounded cursor-pointer hover:bg-slate-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={covariateNames.includes(c)}
+                  onChange={(e) => {
+                    setCovariateNames(
+                      e.target.checked
+                        ? [...covariateNames, c]
+                        : covariateNames.filter((x) => x !== c),
+                    );
+                  }}
+                />
+                <span className="font-mono">{c}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         type="button"

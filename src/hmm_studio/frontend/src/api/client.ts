@@ -74,6 +74,7 @@ export async function startFit(params: {
   topology_yaml: string;
   dataset_id: string;
   seed?: number;
+  covariate_names?: string[];
 }): Promise<FitJobResult> {
   return jsonFetch<FitJobResult>("/api/fit/start", {
     method: "POST",
@@ -137,4 +138,29 @@ export async function getFitDecoded(jobId: string): Promise<DecodedResponse> {
 
 export async function getFitEmissions(jobId: string): Promise<EmissionsResponse> {
   return jsonFetch<EmissionsResponse>(`/api/fit/${jobId}/emissions`);
+}
+
+export interface NhmmInfoResponse {
+  is_nhmm: boolean;
+  T?: number;
+  n_states?: number;
+  covariate_names?: string[];
+  state_names?: string[];
+  reason?: string;
+}
+
+export interface AAtResponse {
+  t: number;
+  T: number;
+  A: number[][];
+  state_names: string[];
+  covariate_names: string[];
+}
+
+export async function getNhmmInfo(jobId: string): Promise<NhmmInfoResponse> {
+  return jsonFetch<NhmmInfoResponse>(`/api/fit/${jobId}/nhmm_info`);
+}
+
+export async function getAAt(jobId: string, t: number): Promise<AAtResponse> {
+  return jsonFetch<AAtResponse>(`/api/fit/${jobId}/A_at?t=${t}`);
 }

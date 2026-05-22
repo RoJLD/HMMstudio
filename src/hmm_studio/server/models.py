@@ -47,3 +47,4 @@ class FitJob(SQLModel, table=True):
     started_at: datetime | None = None
     ended_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    covariate_names: str = ""  # JSON list[str] of column names used as NHMM covariates

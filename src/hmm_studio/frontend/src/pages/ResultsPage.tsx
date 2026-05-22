@@ -5,16 +5,19 @@ import {
   getFitTransmat,
   getFitDecoded,
   getFitEmissions,
+  getNhmmInfo,
   openFitProgressSocket,
   type FitJobResult,
   type TransmatResponse,
   type DecodedResponse,
   type EmissionsResponse,
+  type NhmmInfoResponse,
 } from "../api/client";
 import { TransmatHeatmap } from "../components/results/TransmatHeatmap";
 import { ViterbiTimeline } from "../components/results/ViterbiTimeline";
 import { EmissionsPanel } from "../components/results/EmissionsPanel";
 import { ProgressCurve } from "../components/results/ProgressCurve";
+import { NhmmAtPanel } from "../components/results/NhmmAtPanel";
 
 // The WS message includes a `progress` array not on FitJobResult
 interface WsMessage extends FitJobResult {
@@ -28,6 +31,7 @@ export default function ResultsPage() {
   const [transmat, setTransmat] = useState<TransmatResponse | null>(null);
   const [decoded, setDecoded] = useState<DecodedResponse | null>(null);
   const [emissions, setEmissions] = useState<EmissionsResponse | null>(null);
+  const [nhmmInfo, setNhmmInfo] = useState<NhmmInfoResponse | null>(null);
 
   // Open WebSocket for live progress; also poll status via REST fallback.
   useEffect(() => {
@@ -70,17 +74,19 @@ export default function ResultsPage() {
     return () => clearInterval(handle);
   }, [jobId, status?.status]);
 
-  // When done, fetch transmat + decoded + emissions in parallel.
+  // When done, fetch transmat + decoded + emissions + nhmm_info in parallel.
   useEffect(() => {
     if (!jobId || status?.status !== "done") return;
     Promise.all([
       getFitTransmat(jobId).catch(() => null),
       getFitDecoded(jobId).catch(() => null),
       getFitEmissions(jobId).catch(() => null),
-    ]).then(([t, d, e]) => {
+      getNhmmInfo(jobId).catch(() => null),
+    ]).then(([t, d, e, n]) => {
       setTransmat(t);
       setDecoded(d);
       setEmissions(e);
+      setNhmmInfo(n);
     });
   }, [jobId, status?.status]);
 
@@ -159,6 +165,14 @@ export default function ResultsPage() {
                 Emissions
               </h3>
               <EmissionsPanel data={emissions} />
+            </div>
+          )}
+          {nhmmInfo?.is_nhmm && (
+            <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                Time-varying transitions A(t) (NHMM)
+              </h3>
+              <NhmmAtPanel jobId={jobId!} info={nhmmInfo} />
             </div>
           )}
         </>
