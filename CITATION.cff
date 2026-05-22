@@ -7,7 +7,7 @@ authors:
     family-names: Denis
 repository-code: "https://github.com/<user>/hmm_studio"
 license: MIT
-version: "0.2.0"
+version: "1.0.0"
 date-released: 2026-05-22
 keywords:
   - hidden-markov-models

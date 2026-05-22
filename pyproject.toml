@@ -1,15 +1,37 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hmm-studio"
-version = "0.1.0"
-description = "HMM topology editor, constrained fit engine, and visualizer."
+version = "1.0.0"
+description = "Constrained Baum-Welch HMM engine with a visual topology editor and web UI."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{name = "Robin Denis"}]
-license = {text = "MIT"}
+authors = [{name = "Robin Denis", email = "robin.denis1207@gmail.com"}]
+license = "MIT"
+keywords = [
+    "hmm", "hidden-markov-model", "baum-welch", "viterbi",
+    "constrained-em", "topology", "nhmm", "sequence-modeling",
+    "bayesian", "dirichlet-prior", "fastapi", "react",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
 dependencies = [
     "numpy>=1.26",
     "pandas>=2.0",
@@ -40,12 +62,23 @@ docs = [
     "mkdocs-material>=9.5",
 ]
 
+[project.urls]
+# Placeholders — update when the GitHub remote is set up
+Homepage = "https://github.com/<user>/hmm-studio"
+Repository = "https://github.com/<user>/hmm-studio"
+Issues = "https://github.com/<user>/hmm-studio/issues"
+Documentation = "https://github.com/<user>/hmm-studio/blob/main/docs/roadmap.md"
+Changelog = "https://github.com/<user>/hmm-studio/blob/main/CHANGELOG.md"
+
 [project.scripts]
 hmm-fit = "hmm_core.cli:app"
 hmm-studio = "hmm_studio.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+hmm_studio = ["server/static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

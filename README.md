@@ -1,56 +1,127 @@
 # hmm-studio
 
-> CI is configured but not yet active — this repo has no remote. After
-> pushing to GitHub, add `[![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/ci.yml)` below the title.
+<!-- After pushing to GitHub, replace the placeholder below with the real badge URLs. -->
+<!-- [![CI](https://github.com/<user>/hmm-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/hmm-studio/actions/workflows/ci.yml) -->
 
-HMM topology editor, constrained fit engine, and visualizer.
-
-This repo currently ships **`hmm-core`** — a domain-agnostic Python engine
-for fitting HMMs with structurally constrained transition matrices.
-A future `hmm-studio` web UI (node-based topology editor) will sit on top
-of `hmm-core` and is tracked under [docs/specs/](docs/specs/).
+`hmm-studio` is a Python package and web application for authoring, fitting,
+and visualizing Hidden Markov Models with **structurally constrained transition
+matrices**. It ships two integrated layers: `hmm_core`, a domain-agnostic
+constrained Baum-Welch engine, and `hmm_studio`, a FastAPI + React web UI
+that lets you draw topologies, launch fits, compare model orders (K-scan),
+and inspect results — all from a browser.
 
 ## Why this exists
 
-`hmmlearn` (and most HMM libraries) fit ergodic models: every transition
-edge is free. Real applications often need **structural priors** — Bakis
-left-right speech models, lifecycle models with forbidden back-transitions,
-branching topologies. `hmm-core` lets you declare which transitions are
-allowed and runs constrained Baum-Welch that respects those zeros at every
-M-step.
+Standard HMM libraries (hmmlearn, pomegranate) fit ergodic models: every
+transition edge is free. Real applications often need **structural priors** —
+Bakis left-right speech models, lifecycle models with forbidden
+back-transitions, branching regime topologies. `hmm-studio` lets you declare
+which transitions are allowed and runs constrained Baum-Welch that respects
+those zeros at every M-step. Dirichlet priors, per-state emission hints,
+non-homogeneous HMMs (NHMM), and supervised training are all first-class.
 
 ## Install
 
+### pip (engine + CLI only)
+
 ```bash
-git clone <repo-url>
-cd hmm_studio
-python -m venv .venv
-.venv\Scripts\activate              # Windows PowerShell: .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-pytest                              # all green
+pip install hmm-studio
+hmm-fit --help
 ```
+
+### pip (full stack: engine + web UI)
+
+```bash
+pip install "hmm-studio[web]"
+python scripts/build_frontend.py   # builds React assets once
+hmm-studio                         # opens http://127.0.0.1:8000
+```
+
+### Docker / Rancher Desktop (recommended for the UI)
+
+```powershell
+.\start.ps1      # Windows (also works: start.bat)
+```
+
+Builds the multi-stage image (Node 20 → React build; Python 3.12 → FastAPI),
+starts the container with a named volume (SQLite DB + uploads + results survive
+restarts), waits for `/health`, and opens the browser automatically.
+
+```powershell
+.\stop.ps1                # graceful stop
+docker compose down       # full teardown (volume kept)
+docker compose down -v    # wipe volume (clears DB, uploads, results)
+```
+
+**Desktop shortcut**: right-click `start.bat` → "Send to" → "Desktop (create
+shortcut)". Rename to "hmm-studio".
 
 ## 30-second tour
 
-```bash
-# 1. Generate a synthetic 4-state Gaussian sequence.
-python examples/generate_demo_data.py
+### CLI
 
-# 2. Validate the topology YAML.
+```bash
+# Validate a topology YAML.
 hmm-fit validate examples/topology_left_right.yaml
 
-# 3. Fit with constraints (left-right + forbidden back-edges).
+# Fit with constraints (left-right, forbidden back-edges).
 hmm-fit run examples/topology_left_right.yaml examples/data_gaussian.csv \
     --output results/demo
 
-# 4. Inspect.
+# Inspect — forbidden edges print as `x` instead of probabilities.
 hmm-fit show results/demo/model.pkl
-# Forbidden edges print as `x` instead of probabilities.
 
-# 5. Decode new data.
+# Decode new data.
 hmm-fit decode results/demo/model.pkl examples/data_gaussian.csv \
     --output results/demo/decoded.parquet
 ```
+
+### Web UI
+
+After `hmm-studio` (or `.\start.ps1`):
+
+1. **Data** — upload a CSV, optionally attach an annotation file
+   (`t,label[,color]`).
+2. **Topology** — drag-drop states onto the canvas, draw transitions, set
+   emission type, init strategy, and fit hyperparameters. Import/export YAML.
+3. **Fit** — launch a fit job (seed, covariate, sequence lengths). Watch the
+   live convergence curve over WebSocket.
+4. **Results** — transition matrix heatmap (forbidden edges grayed with `×`),
+   Viterbi timeline with annotation overlay, emissions panel, NHMM A(t)
+   animated heatmap with a synchronized timeline player.
+5. **Scan** — run K-scan (`K ∈ [k_min, k_max]`), compare BIC/AIC, pick best
+   model order.
+
+## Features
+
+### Engine (`hmm_core`)
+
+| Feature | Detail |
+|---|---|
+| Emission types | Gaussian, GMM, Categorical (Multinomial), Poisson |
+| Constraint enforcement | Binary mask applied after every M-step; forbidden edges remain exactly 0 |
+| Initialization | `uniform`, `random`, `kmeans`, `data_frequencies` |
+| NHMM | Two-stage EM + per-state multinomial logistic regression on covariates |
+| Supervised training | Closed-form MLE from observed state labels (no EM) |
+| Per-state emission hints | `init_mean`, `init_lambda`, `init_emissionprob` per state |
+| Dirichlet priors | Scalar `transmat_prior_alpha` or full prior matrix; MAP M-step |
+| Multi-sequence | `fit(X, lengths=[L1, L2, ...])` — cross-boundary transitions skipped |
+| Backend abstraction | `HMMBackend` Protocol (ADR-0003); plug in pomegranate/dynamax |
+| File formats | YAML topology, pickle model bundle, JSON summary, parquet decoded output |
+
+### Web UI (`hmm_studio`)
+
+- Topology editor: drag-drop, inline rename, undo/redo (50 steps), live
+  validation, YAML import/export, URL sharing (base64), localStorage
+  persistence.
+- Per-state emission panel and per-edge Dirichlet prior panel in the editor.
+- Fit launcher with seed, covariate selector, sequence-boundary input, and
+  K-scan mode toggle.
+- Results view: heatmap, Viterbi timeline, convergence curve, NHMM A(t)
+  heatmap with timeline player (play/pause/step/scrub, 4 speeds).
+- SVG export on every visualization (no server-side rendering dependency).
+- Dark mode (light / dark / system, persisted in localStorage).
+- REST API documented at `http://127.0.0.1:8000/docs` (Swagger UI).
 
 ## Topology YAML schema
 
@@ -63,7 +134,7 @@ emission:
   type: gaussian            # gaussian | gmm | multinomial | poisson
   covariance_type: full     # gaussian/gmm: full | diag | tied | spherical
   n_features: 2             # gaussian/gmm/poisson: observation dimension
-  n_mix: null               # gmm only: number of mixture components per state
+  n_mix: null               # gmm only: mixture components per state
   n_symbols: null           # multinomial only: vocabulary size
 
 # Omit allowed_transitions => ergodic (all edges allowed).
@@ -91,10 +162,11 @@ fit:
 
 ## Data format
 
-- **gaussian / gmm / poisson** : CSV with `n_features` numeric columns.
-- **multinomial** : CSV with a single integer column, values in `[0, n_symbols)`.
-
-The order of CSV columns is the order of observation features.
+| Emission type | CSV layout |
+|---|---|
+| `gaussian`, `gmm`, `poisson` | `n_features` numeric columns, one row per time step |
+| `multinomial` | Single integer column, values in `[0, n_symbols)` |
+| Annotations | `t,label[,color]` — `t` is a zero-based integer row index |
 
 ## Python API
 
@@ -105,102 +177,53 @@ import pandas as pd
 
 topo = load_topology("topology.yaml")
 X = pd.read_csv("data.csv").to_numpy()
-result = fit(topo, X)
 
+result = fit(topo, X)
 print(result.log_likelihood, result.bic, result.converged)
 print(result.model.transmat_)     # respects topology.transition_mask()
 
 save_model(result, "results/run_1")
 ```
 
-## Multinomial example
+Multi-sequence fit:
 
-```yaml
-name: dna_codons
-n_states: 3
-state_names: [intron, exon, regulatory]
-emission:
-  type: multinomial
-  n_symbols: 4              # A, C, G, T
-startprob: uniform
-init: {strategy: uniform, seed: 0}
-fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
-# Omit allowed_transitions => ergodic
+```python
+result = fit(topo, X, lengths=[500, 500, 300])
 ```
 
-## Sub-projects
+NHMM fit:
 
-- **A — `hmm-core`** (shipped here) — Python engine + CLI.
-- **B — `hmm-studio`** (planned) — FastAPI + React Flow node-based topology
-  editor that produces these YAML files.
-- **C — Advanced viz** (planned) — NHMM breathing transitions, replay UI.
-
-## Web UI (B.1 backend skeleton + B.4.1 topology editor)
-
-`hmm-studio` (sub-project B) is in progress. The backend ships with:
-
-- FastAPI app with topology validation, dataset upload, and fit job orchestration
-- SQLite persistence (jobs survive restarts)
-- ThreadPoolExecutor for parallel fits
-- Swagger UI at `/docs`
-
-Install + launch:
-
-```bash
-pip install -e ".[web,dev]"
-python scripts/build_frontend.py   # builds + copies frontend assets
-hmm-studio                          # http://127.0.0.1:8000
+```python
+from hmm_core.nhmm import fit_nhmm
+result = fit_nhmm(topo, X, covariates=Z)   # Z shape (T, n_covariates)
+print(result.A_t.shape)                    # (T, K, K)
 ```
 
-If you skip the frontend build step, only the REST API is served — the React UI returns a default FastAPI 404.
+Supervised training (observed state labels):
 
-Swagger UI is always available at `http://127.0.0.1:8000/docs` regardless of whether the frontend build has been run.
-
-### Visual topology editor (B.4.1)
-
-The visual topology editor is shipped. After `hmm-studio`, open
-`http://127.0.0.1:8000/topology` in a browser to:
-
-- Drag-drop states onto the canvas
-- Draw transitions by dragging from a node's right handle to another's left
-- Rename states by clicking on the label
-- Configure global emission/init/fit params in the side panel
-- See live validation feedback (debounced 400ms against the API)
-- Undo/redo (50 steps)
-- Import / Export topology YAML (byte-compatible with `hmm-fit`)
-
-Data upload (B.5) and results view (B.6) are next.
-
-The visual editor currently exposes the hmm-core API as it exists today
-(single global EmissionSpec, hard 0/1 allowed_transitions). Per-state
-emissions (A.8 + B.4.2) and Dirichlet priors on transitions (A.9 +
-B.4.3) are planned extensions documented in the roadmap.
-
-See [docs/roadmap.md](docs/roadmap.md)
-and [docs/specs/2026-05-21-hmm-studio-web-design.md](docs/specs/2026-05-21-hmm-studio-web-design.md).
-
-## One-click launcher (Rancher Desktop / Docker)
-
-For a packaged Docker deployment with Rancher Desktop (or Docker Desktop):
-
-```
-.\start.ps1        # or start.bat
+```python
+result = fit(topo, X, state_labels=y)      # y shape (T,), int in [0, K)
 ```
 
-This builds the image (multi-stage: Node 20 builds the React frontend, then
-Python 3.12 installs the package with the frontend baked into `server/static/`),
-runs the container with a named volume for the SQLite DB + uploads + results
-(survives image rebuilds), waits for `/health`, and opens the UI at
-`http://localhost:8000`.
+## Documentation
 
-```
-.\stop.ps1                # graceful stop, restart fast via start.ps1
-docker compose down       # full teardown (volume kept)
-docker compose down -v    # wipe volume too (clears DB, uploads, results)
-```
+- [Roadmap](docs/roadmap.md) — strategic overview and planned work.
+- [Specs](docs/specs/) — detailed specs for sub-projects A, B, C.
+- [ADRs](docs/decisions/) — 6 architecture decision records.
+- [CHANGELOG](CHANGELOG.md) — full history.
 
-**Desktop shortcut**: right-click `start.bat`, "Send to" → "Desktop (create
-shortcut)". Rename to "hmm-studio" if you like.
+Serve locally with `mkdocs serve` (requires `pip install "hmm-studio[docs]"`).
+
+## Publishing
+
+`hmm-studio` uses [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC, no API token required). Once the GitHub remote is configured:
+
+1. Register the project at https://pypi.org/manage/account/publishing/ pointing
+   to the `release.yml` workflow.
+2. Push a version tag: `git tag -a v1.0.0 -m "..." && git push origin v1.0.0`.
+3. GitHub Actions builds the wheel (including the React frontend) and publishes
+   to PyPI automatically.
 
 ## License
 
@@ -209,5 +232,5 @@ MIT — see [LICENSE](LICENSE).
 ## Citation
 
 If you use `hmm-studio` in academic work, please cite it via the
-[CITATION.cff](CITATION.cff) file at the repository root (GitHub provides
-a "Cite this repository" widget that reads it).
+[CITATION.cff](CITATION.cff) file at the repository root. GitHub provides a
+"Cite this repository" widget that reads it directly.

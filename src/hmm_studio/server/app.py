@@ -298,9 +298,7 @@ def create_app() -> FastAPI:
         except KeyError:
             raise HTTPException(status_code=404, detail="job not found")
         if status["status"] != "done":
-            raise HTTPException(
-                status_code=409, detail=f"status: {status['status']}"
-            )
+            raise HTTPException(status_code=409, detail=f"status: {status['status']}")
         result_path = status.get("result_path")
         if not result_path:
             raise HTTPException(status_code=500, detail="result_path missing")
@@ -416,9 +414,7 @@ def create_app() -> FastAPI:
             # Snapshot child fields inside the session to avoid DetachedInstanceError
             raw_children = [
                 {"id": c.id, "k_override": c.k_override}
-                for c in session.exec(
-                    select(FitJob).where(FitJob.parent_id == parent_id)
-                ).all()
+                for c in session.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
             ]
 
         raw_children.sort(key=lambda x: x["k_override"] or 0)
@@ -456,11 +452,7 @@ def create_app() -> FastAPI:
             else:
                 overall = "done"
         else:
-            overall = (
-                parent_status.value
-                if hasattr(parent_status, "value")
-                else str(parent_status)
-            )
+            overall = parent_status.value if hasattr(parent_status, "value") else str(parent_status)
 
         return ScanResult(
             parent_id=parent_id,
@@ -530,7 +522,11 @@ def create_app() -> FastAPI:
                     dataset_id=dataset_id,
                     t=int(row["t"]),
                     label=str(row["label"]),
-                    color=(str(row["color"]) if "color" in df.columns and pd.notna(row["color"]) else None),
+                    color=(
+                        str(row["color"])
+                        if "color" in df.columns and pd.notna(row["color"])
+                        else None
+                    ),
                 )
                 session.add(ann)
                 session.commit()
@@ -556,9 +552,7 @@ def create_app() -> FastAPI:
             from sqlmodel import select
 
             anns = list(
-                session.exec(
-                    select(Annotation).where(Annotation.dataset_id == dataset_id)
-                ).all()
+                session.exec(select(Annotation).where(Annotation.dataset_id == dataset_id)).all()
             )
             out = [
                 AnnotationOut(

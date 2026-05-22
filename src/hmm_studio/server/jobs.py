@@ -75,9 +75,7 @@ def _update_scan_parent_status(engine, parent_id: str) -> None:
     from sqlmodel import select
 
     with get_session(engine) as session:
-        children = list(
-            session.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
-        )
+        children = list(session.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all())
         if not children:
             return
         # Snapshot statuses inside the session to avoid DetachedInstanceError
@@ -305,9 +303,7 @@ class JobRunner:
 
             # Validate: sum(lengths) must equal len(X)
             if lengths_arr is not None and int(lengths_arr.sum()) != len(X):
-                raise ValueError(
-                    f"lengths sum {int(lengths_arr.sum())} != len(X) {len(X)}"
-                )
+                raise ValueError(f"lengths sum {int(lengths_arr.sum())} != len(X) {len(X)}")
 
             # Step 4: mark running
             with get_session(self._engine) as session:
@@ -368,6 +364,7 @@ class JobRunner:
             if is_nhmm:
                 save_model(result.base, result_dir)
                 import pickle as _pickle
+
                 with (result_dir / "nhmm.pkl").open("wb") as f:
                     _pickle.dump(result, f, protocol=_pickle.HIGHEST_PROTOCOL)
                 monitor = getattr(result.base.model, "monitor_", None)

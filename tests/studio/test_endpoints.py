@@ -432,11 +432,13 @@ def test_kscan_runs_multiple_children_and_picks_best(client):
     import pandas as pd
 
     rng = np.random.default_rng(0)
-    X = np.vstack([
-        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
-    ])
+    X = np.vstack(
+        [
+            rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+        ]
+    )
     df = pd.DataFrame(X, columns=["f0", "f1"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
@@ -529,12 +531,13 @@ def test_fit_with_lengths_succeeds(client):
     import pandas as pd
 
     rng = np.random.default_rng(0)
-    n = 300  # 3 sequences of 100
-    X = np.vstack([
-        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
-        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
-    ])
+    X = np.vstack(
+        [
+            rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+            rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+        ]
+    )
     df = pd.DataFrame(X, columns=["f0", "f1"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
@@ -629,7 +632,9 @@ def test_annotations_upload_and_list(client):
     df = pd.DataFrame(rng.normal(size=(100, 2)), columns=["f0", "f1"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    r = client.post(
+        "/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")}
+    )
     dataset_id = r.json()["id"]
 
     # Upload annotations
@@ -663,7 +668,9 @@ def test_annotations_upload_rejects_out_of_range(client):
     df = pd.DataFrame(np.zeros((10, 1)), columns=["f0"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    r = client.post(
+        "/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")}
+    )
     dataset_id = r.json()["id"]
 
     ann_csv = "t,label\n5,ok\n999,out_of_range\n"
@@ -683,7 +690,9 @@ def test_annotations_upload_rejects_missing_columns(client):
     df = pd.DataFrame(np.zeros((10, 1)), columns=["f0"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    r = client.post(
+        "/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")}
+    )
     dataset_id = r.json()["id"]
 
     ann_csv = "foo,bar\n1,2\n"
@@ -703,7 +712,9 @@ def test_annotations_replace_on_re_upload(client):
     df = pd.DataFrame(np.zeros((100, 1)), columns=["f0"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    r = client.post(
+        "/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")}
+    )
     dataset_id = r.json()["id"]
 
     ann1 = "t,label\n10,a\n20,b\n"
@@ -729,7 +740,9 @@ def test_delete_annotation(client):
     df = pd.DataFrame(np.zeros((100, 1)), columns=["f0"])
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    r = client.post("/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")})
+    r = client.post(
+        "/api/data/upload", files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")}
+    )
     dataset_id = r.json()["id"]
 
     ann = "t,label\n10,a\n20,b\n"

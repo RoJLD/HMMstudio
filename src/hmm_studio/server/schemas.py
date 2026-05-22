@@ -54,7 +54,7 @@ class FitJobResult(BaseModel):
     converged: bool | None = None
     result_path: str | None = None
     error: str | None = None
-    dataset_id: str | None = None   # for annotation lookups
+    dataset_id: str | None = None  # for annotation lookups
 
 
 class FitJobScanCreate(BaseModel):

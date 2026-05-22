@@ -1,6 +1,6 @@
 """hmm-core: constrained Baum-Welch fit + topology authoring for HMMs."""
 
-__version__ = "0.2.0"  # bumped: NHMM added
+__version__ = "1.0.0"
 
 from hmm_core.fit import FittedModel, fit
 from hmm_core.io import load_model, load_topology, save_decoded, save_model
