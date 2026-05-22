@@ -8,6 +8,7 @@ package keeps working.
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import numpy as np
@@ -63,6 +64,7 @@ class HmmlearnBackend:
         initial_startprob: np.ndarray,
         emission_kwargs: dict[str, np.ndarray],
         mask: np.ndarray,
+        progress_callback=None,
     ) -> BackendFitResult:
         if topology.emission.type not in _CLASS_BY_EMISSION:
             raise ValueError(
@@ -93,10 +95,46 @@ class HmmlearnBackend:
         default_init = getattr(model, "init_params", "stmc")
         model.init_params = "".join(c for c in default_init if c not in skip_letters)
 
-        if lengths is not None:
-            model.fit(X, lengths=lengths)
-        else:
-            model.fit(X)
+        # Spawn a polling thread when a progress_callback is provided.
+        # The thread reads model.monitor_.history every 200 ms while the
+        # blocking model.fit() runs in this thread.
+        stop_polling = None
+        poll_thread = None
+        if progress_callback is not None:
+            stop_polling = threading.Event()
+
+            def _poll():
+                while not stop_polling.is_set():
+                    monitor = getattr(model, "monitor_", None)
+                    history = list(getattr(monitor, "history", [])) if monitor is not None else []
+                    if history:
+                        try:
+                            progress_callback(history)
+                        except Exception:
+                            pass  # callback failures must not break the fit
+                    stop_polling.wait(0.2)
+
+            poll_thread = threading.Thread(target=_poll, daemon=True)
+            poll_thread.start()
+
+        try:
+            if lengths is not None:
+                model.fit(X, lengths=lengths)
+            else:
+                model.fit(X)
+        finally:
+            if stop_polling is not None:
+                stop_polling.set()
+                poll_thread.join(timeout=1.0)
+                # Final callback with the complete history so callers always
+                # receive at least one invocation even for very fast fits.
+                monitor = getattr(model, "monitor_", None)
+                history = list(getattr(monitor, "history", [])) if monitor is not None else []
+                if history:
+                    try:
+                        progress_callback(history)
+                    except Exception:
+                        pass
 
         log_lik = float(model.score(X))
         monitor = getattr(model, "monitor_", None)

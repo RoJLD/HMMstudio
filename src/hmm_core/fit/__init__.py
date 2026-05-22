@@ -8,6 +8,7 @@ everything in a :class:`FittedModel`.
 
 from __future__ import annotations
 
+import inspect
 import time
 from dataclasses import dataclass
 
@@ -72,6 +73,7 @@ def fit(
     lengths: np.ndarray | None = None,
     backend: HMMBackend | str | None = None,
     states: np.ndarray | None = None,
+    progress_callback=None,
 ) -> FittedModel:
     """Fit the HMM described by ``topology`` on observations ``X``.
 
@@ -102,6 +104,14 @@ def fit(
         and per-state emission statistics), one pass, deterministic. Partial
         labels (NaN positions) are reserved for semi-supervised training
         (Phase A.7.1, not yet implemented).
+    progress_callback : callable, optional
+        Called periodically during unsupervised (Baum-Welch) training with
+        the current ``monitor_.history`` list.  Signature::
+
+            progress_callback(history: list[float]) -> None
+
+        Exceptions raised inside the callback are silently suppressed so they
+        cannot interrupt the fit.  Not forwarded for supervised fits.
     """
     topology.validate()
     actual_seed = seed if seed is not None else topology.init.seed
@@ -140,6 +150,14 @@ def fit(
         emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
 
         t0 = time.perf_counter()
+        # Only pass progress_callback to backends that declare the parameter,
+        # so third-party backends implementing the original protocol still work.
+        _backend_fit_params = inspect.signature(backend_impl.fit).parameters
+        _extra = (
+            {"progress_callback": progress_callback}
+            if progress_callback is not None and "progress_callback" in _backend_fit_params
+            else {}
+        )
         result = backend_impl.fit(
             topology,
             X,
@@ -149,6 +167,7 @@ def fit(
             initial_startprob=initial_pi,
             emission_kwargs=emission_kwargs,
             mask=mask,
+            **_extra,
         )
         duration = time.perf_counter() - t0
 

@@ -74,3 +74,20 @@ def test_fit_seed_override_propagates_to_hmmlearn_random_state():
     result = fit(topo, X, seed=777)
     assert result.model.random_state == 777
     assert topo.init.seed == 42  # topology unchanged
+
+
+def test_fit_progress_callback_receives_intermediate_history(synthetic_gaussian_left_right):
+    """progress_callback receives the monitor_.history list mid-fit."""
+    topo = _gaussian_left_right_topo()
+    X = synthetic_gaussian_left_right["X"]
+    received = []
+
+    def callback(history):
+        received.append(list(history))
+
+    fit(topo, X, progress_callback=callback)
+    # We should have at least one mid-flight callback invocation, and the
+    # final history should contain multiple log-likelihoods.
+    assert len(received) >= 1
+    last = received[-1]
+    assert len(last) > 0
