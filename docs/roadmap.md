@@ -2,7 +2,8 @@
 
 **Date de création** : 2026-05-21
 **Auteur** : Robin Denis
-**Dernière mise à jour** : 2026-05-22 (session "fais toutes les phases")
+**Dernière mise à jour** : 2026-05-22 (session "architecte-CEO" : licence MIT
+actée, abstraction backend livrée, positionnement stratégique formalisé)
 
 > Document vivant. À ré-éditer à chaque transition de phase (fin de
 > sous-projet, décision majeure, pivot). Ce n'est pas un spec — c'est la
@@ -31,6 +32,117 @@ Le projet est découpé en **4 sous-projets** indépendants mais chaînés.
 Chaque sous-projet est livrable seul et apporte une fonctionnalité
 distincte à l'utilisateur.
 
+### Cadre : research tool *et* produit
+
+`hmm-studio` est construit avec deux casquettes en parallèle. Les deux
+informent toutes les décisions techniques et produit :
+
+1. **Outil de recherche personnel** — premier utilisateur réel : Robin
+   Denis, qui s'en sert pour modéliser des régimes (crypto / signaux
+   financiers) dans son propre travail. Ce statut "first user = builder"
+   garantit qu'au moins un cas d'usage est validé en permanence, mais ne
+   remplace **pas** la validation par un utilisateur externe (cf. wedge
+   markets section ci-dessous).
+2. **Produit potentiel** — l'architecture, la doc, la licence et la
+   roadmap sont pensées pour qu'un transfert vers un produit (open-source
+   contribué, SaaS niche, plug-in d'éditeur scientifique) reste possible
+   sans refonte structurelle. Les choix non-réversibles (licence, format
+   sérialisation, schéma topologie) sont tranchés en ce sens.
+
+---
+
+## Positionnement stratégique 2026
+
+> Section honnête sur ce que vaut un outil HMM en 2026. À relire à chaque
+> revue trimestrielle. Si la conclusion change, la roadmap aussi.
+
+### Pourquoi les HMM en 2026 ? Le marché honnête
+
+Sur la modélisation séquentielle généraliste, les HMM se font écraser :
+
+- **Transformers** (séquences discrètes, NLP, signaux longs) dominent dès
+  que le volume de données est là.
+- **State-space models** (Mamba, S4, Hyena) recouvrent une grande partie
+  du domaine "séquences continues longues" avec un meilleur scaling.
+- **Bayésien général** (Stan, PyMC, NumPyro) couvre les cas où
+  l'interprétabilité prime, avec un modèle plus expressif.
+
+**Conclusion lucide** : TAM des HMM = petit et stable, *pas en
+croissance*. Le projet ne vise donc **pas** à concurrencer les modèles
+neuronaux de séquence. Il s'inscrit dans une stratégie de niche.
+
+### Les niches où les HMM restent dominants
+
+| Niche | Pourquoi HMM gagne | Outils dominants existants |
+|---|---|---|
+| Speech recognition (legacy + edge) | Latence, ressources limitées, modèles très matures | Kaldi, HTK |
+| Bioinformatique (séquences/motifs) | Interprétabilité requise + standards de publication établis | HMMER, GeneMark, profile-HMM |
+| Maintenance prédictive industrielle | Petits datasets, états discrets explicables aux opérateurs | Solutions propriétaires + scikit-learn ad hoc |
+| Quant finance (régimes) | Interprétabilité réglementaire, faible volume de données | Implémentations maison + `hmmlearn` |
+| Recherche académique / enseignement | Modèle pédagogique canonique, attendu dans les cours ML/bioinfo | Notebook Jupyter + `hmmlearn` à la main |
+
+### Paysage compétitif (qui fait quoi déjà)
+
+| Outil | Position | Ce qu'il fait bien | Ce qu'il ne fait pas |
+|---|---|---|---|
+| `hmmlearn` | Moteur Python de référence (scikit-learn-style) | EM stable, API claire, mature | Pas d'UI, pas de contraintes structurelles, upstream peu actif |
+| `pomegranate` | Réécriture PyTorch, plus moderne | Multi-distrib, GPU possible | Pas d'éditeur visuel, API a beaucoup changé entre v0.x et v1.x |
+| `dynamax` | HMM/LDS en JAX | Performant, GPU/TPU, recherche | Pas d'UI, audience chercheurs |
+| `pyhsmm` | Bayésien HDP-HMM | Modèles non-paramétriques | Niche, abandonnware |
+| Stan / PyMC | Bayésien général | Très flexible | Courbe d'apprentissage abrupte, pas spécialisé HMM |
+| HMMER | Bioinfo profile-HMM | Standard du domaine | Mono-usage (alignement biologique) |
+| Kaldi | Speech recognition | Standard industriel | Mono-usage (speech), barrière technique élevée |
+
+**Le trou de marché** : aucun outil ne combine (a) un éditeur **visuel** de
+topologie, (b) du **Baum-Welch contraint** (left-right, branching, lifecycle)
+out-of-the-box, et (c) un livrable utilisable **sans écrire de Python**.
+C'est notre wedge.
+
+### Stratégie : la pince à trois mâchoires
+
+Plutôt que viser large, `hmm-studio` cible explicitement trois segments où
+l'éditeur visuel + les contraintes structurelles font une vraie différence :
+
+1. **Recherche académique** — chercheurs (économétrie, sciences sociales,
+   biologie quantitative, ingénierie) qui ont besoin d'un HMM contraint
+   *publication-ready* sans coder. Wedge : `CITATION.cff`, exemples canon,
+   figures publication-ready (C.4 dans Phase C).
+2. **Enseignement** — TP de cours ML / NLP / bioinfo. Wedge : Viterbi
+   colorisé en live + replay temporel (C.2) = outil pédagogique sans
+   équivalent. Bas coût d'acquisition : "use it for one class, students
+   already know it".
+3. **Praticien industriel niche** (maintenance prédictive, quant régimes)
+   qui veut un outil *interprétable* (audit, conformité) plutôt qu'un
+   transformer black-box. Wedge : contraintes structurelles + heatmaps
+   explicables.
+
+Hors-cible explicite : NLP grand public, speech recognition (Kaldi
+domine), bioinfo profile-HMM (HMMER domine). Ne pas y aller.
+
+### Critères de succès / d'échec (pour ce positionnement)
+
+À 6 mois post-livraison de B (MVP web) :
+
+- **Signal positif** : ≥ 3 utilisateurs externes réguliers (au-delà de
+  Robin), ≥ 1 citation académique, ≥ 1 retour qualitatif "j'aurais voulu
+  ça plus tôt".
+- **Signal négatif** : 0 utilisateur externe, 0 issue GitHub, 0
+  download/clone organique. → Pivot ou archivage.
+- **Kill criteria** : si à M3 + 6 mois on est dans le signal négatif et
+  que Robin n'utilise plus l'outil lui-même → archiver proprement (pas
+  d'acharnement).
+
+### Risques stratégiques (au-dessus des risques techniques)
+
+| Risque | Probabilité | Mitigation |
+|---|---|---|
+| `hmmlearn` upstream meurt ou stagne définitivement | Moyenne (déjà sleepy) | Abstraction backend livrée 2026-05-22 → on peut basculer sur pomegranate / dynamax / impl pure-numpy sans casser l'API publique |
+| Pas d'utilisateur externe à M3 + 6 mois | Élevée (par défaut) | Démo vidéo + 5-10 exemples canon + outreach minimal (Reddit r/MachineLearning, Twitter académique, mailing list bioinfo) au moment du ship B |
+| Un concurrent direct apparaît | Faible (niche peu attractive) | Vélocité d'exécution, focus wedge enseignement (peu défendable mais peu attaqué) |
+| Robin perd l'usage de son propre cas (crypto régimes) | Faible mais critique | Maintenir Phase D (dashboard crypto) comme test E2E permanent : c'est notre canary |
+| Licence MIT trop permissive si commercialisation future | Faible | Ré-licencier les nouvelles versions reste possible (le passé reste MIT) ; documentation explicite si pivot SaaS |
+| **Scope creep "unifier tous les modèles séquentiels"** (refus 2026-05-22) | Moyenne (séduisant intellectuellement) | Garde-fou explicite : toute extension qui sort du HMM-land doit passer le gating de A.6 minimum (signal externe avant build). Refuser le compilateur multi-paradigme tant qu'on n'a pas 50+ utilisateurs sur le wedge actuel. |
+
 ---
 
 ## Vue d'ensemble — où on en est
@@ -42,11 +154,18 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
    A.next Polish (GMM tied bug, coverage,  SHIPPED        A           livré 2026-05-22
          lengths param)
    A.1   NHMM dans le core (fit_nhmm)      SHIPPED v0.2   A           livré 2026-05-22
+   A.5   HMMBackend abstraction layer      SHIPPED        A           livré 2026-05-22
+         (decouple from hmmlearn)
+   A.7   Modes supervisé + semi-supervisé  PLANNED        A.5         ~1 semaine
+         (fit avec états labelés)                                     prioritaire avant A.6
+   A.6   BayesianHMMBackend (PyMC/NumPyro) OPTION         A.5, B,     conditionnel
+         — option défendue, pas engagement                signal ext. (voir gating)
    D     Migration dashboard crypto        VALIDATED      A           regression test
                                            (regression               passe, ADR ajoutée
                                            + ADR, pas               dans crypto repo,
                                            swap)                     non commitée
    Z.1   GitHub Actions CI + pre-commit    SHIPPED        —           livré 2026-05-22
+   Z.5   Licence MIT + CITATION.cff        SHIPPED        —           livré 2026-05-22
    B     hmm-studio web UI                 SPEC DRAFTED   A, A.1      ~6-8 semaines
                                                                      spec à brainstormer
    C     Visualisations avancées + viz NHMM SPEC DRAFTED  B           ~4-6 semaines
@@ -111,12 +230,225 @@ NHMM dans `hmm-core` (qu'on peut faire en A.next ou comme prélude à C).
 - **A.1** : NHMM (transitions covariate-dependent) — actuellement dans le
   dashboard crypto via une approche 2-étapes (logistic regression sur les
   transitions). À promouvoir dans `hmm-core` pour que B puisse l'animer.
-  Prérequis de **C**.
+  Prérequis de **C**. ✓ SHIPPED 2026-05-22.
 - **A.2** : Support multi-séquences via `lengths` dans `fit()` et `init.*`.
 - **A.3** : Pin `hmmlearn>=0.4` quand sortie (re-tester les 4 sous-classes
   contraintes).
 - **A.4** : Coverage gap fixes (multinomial-kmeans path + covariances
   non-full).
+- **A.5** : Abstraction `HMMBackend` — protocole + registry + backend
+  hmmlearn par défaut. Décou­ple `hmm-core` du seul moteur hmmlearn et
+  prépare le terrain pour pomegranate / dynamax (JAX/GPU) /
+  numpy-natif sans casser l'API publique. ✓ SHIPPED 2026-05-22 (10
+  tests dédiés, 76/76 total, coverage 92%).
+- **A.7** : **Modes d'entraînement supervisé et semi-supervisé**
+  (`fit(topo, X, states=...)`). Aujourd'hui le code est 100 %
+  non-supervisé (Baum-Welch only). Élargit le périmètre d'usage à
+  l'enseignement, la bioinfo, et les cas industriels avec labels
+  partiels. Prioritaire **avant A.6** (cf. fiche détaillée ci-dessous).
+
+### A.5 — Détail du backend abstrait (livré)
+
+**Pourquoi maintenant** : un risque stratégique listé en haut de la
+roadmap est qu'`hmmlearn` upstream meurt. L'abstraction *avant* que B
+(web UI) ne se branche sur l'API public permet de basculer de moteur sans
+breaking change pour les utilisateurs futurs.
+
+**Surface livrée** dans `src/hmm_core/backends/` :
+- `_protocol.py` : `HMMBackend` Protocol (runtime-checkable) +
+  `BackendFitResult` dataclass.
+- `_registry.py` : `register_backend()`, `get_backend()`, `list_backends()`.
+- `hmmlearn_backend.py` : `HmmlearnBackend` qui encapsule la logique
+  d'instanciation des `Constrained*HMM` + appel `.fit()`. Seul module du
+  package qui dépend (transitivement) d'`hmmlearn`.
+
+**Impact sur l'API publique** : ajout d'un paramètre optionnel
+`backend: HMMBackend | str | None = None` à `fit()`. Comportement par
+défaut strictement identique (76 tests passent sans modification de la
+suite existante).
+
+**Backends candidats à plus tard** (à implémenter quand le besoin
+émerge, pas avant) :
+- `PomegranateBackend` — utile si pomegranate v1.x (PyTorch) stabilise
+  son API et si on veut du GPU.
+- `DynamaxBackend` — utile pour la perf sur très longues séquences
+  (JAX/jit) et pour les utilisateurs recherche/HPC.
+- `NumpyBackend` — implémentation pure-NumPy de référence; sert de
+  filet de sécurité si hmmlearn devient non-installable et permet
+  d'expérimenter des variantes (HMM bayésien, contraintes molles, etc.).
+- `BayesianHMMBackend` (PyMC / NumPyro) — voir Phase A.6 ci-dessous.
+
+---
+
+## Phase A.7 — Modes supervisé et semi-supervisé
+
+**Status** : PLANNED · prioritaire avant A.6
+**Dépend de** : A.5 (abstraction backend, livrée)
+**Effort estimé** : ~1 semaine
+
+### Pourquoi maintenant
+
+Le code aujourd'hui est **100 % non-supervisé** par construction : `fit()`
+ne prend que des observations, Baum-Welch tourne sur des états entièrement
+latents. C'est un trou réel dans le périmètre d'usage, identifié par
+audit le 2026-05-22 (aucune mention de "supervised" / "unsupervised" /
+"labeled" nulle part dans le repo avant cette session).
+
+**Trois raisons pour lesquelles c'est bloquant pour le wedge** :
+
+1. **Enseignement** — La version supervisée est *toujours* introduite avant
+   Baum-Welch dans un cours HMM (juste du comptage, pédagogiquement
+   limpide). Sans elle, `hmm-studio` n'est pas utilisable pour enseigner
+   les bases. Or l'enseignement est une des trois mâchoires du wedge.
+2. **Bioinformatique** (HMMER-style profile HMM) — Construits depuis des
+   alignements multiples = données labelées. Marché niche mais réel.
+3. **Industrie / quant** — La réalité industrielle est **semi-supervisée**
+   plus que purement non-supervisée : quelques pannes annotées par les
+   opérateurs, quelques régimes labelés à la main par l'analyste, le reste
+   à inférer. Notre roadmap suppose implicitement des données nues, ce qui
+   est l'exception, pas la règle.
+
+### Math (rappel pour éviter de réinventer)
+
+| Mode | Données | Algorithme | Convergence |
+|---|---|---|---|
+| Non-supervisé (Baum-Welch) | `X` seul | EM itératif | itératif, sensible à l'init |
+| **Supervisé** | `(X, z)` complet | MLE direct : compte `n_ij` (transitions `i→j`) et stats d'émission par état | une passe, déterministe |
+| **Semi-supervisé** | `(X, z)` avec `z` partiellement `NaN` | EM contraint (positions labelées fixées dans l'E-step) ou Viterbi training | itératif, plus rapide que pur EM (moins d'entropie à résoudre) |
+
+Pas de magie : le supervisé est strictement plus simple que ce qu'on a
+déjà. Le semi-supervisé est une variante 5-10 lignes d'un E-step contraint.
+
+### Surface proposée
+
+**API publique** :
+```python
+fit(
+    topology,
+    X,
+    *,
+    states: np.ndarray | None = None,   # None → unsupervised (today),
+                                         # tableau int avec NaN → semi-supervised,
+                                         # tableau int complet → supervised
+    seed=None, lengths=None, backend=None,
+)
+```
+
+**Backend abstraction** : ajouter `fit_supervised(...)` au `HMMBackend`
+Protocol. Implémentation triviale (numpy pur, pas besoin d'hmmlearn) — c'est
+le **premier endroit où l'abstraction backend rapporte vraiment**, car
+on n'a plus à passer par EM pour ce mode.
+
+**CLI** : `hmm-fit run topo.yaml data.csv --labels states.csv` (optionnel).
+Le fichier `states.csv` accepte des entiers (indices d'état) et des valeurs
+manquantes pour le semi-supervisé.
+
+**YAML topologie** : aucun changement. La topologie est indépendante du
+mode d'entraînement.
+
+### Tests minimum
+
+- `test_supervised_fit_converges_in_one_pass` — `n_iter_actual == 1`.
+- `test_supervised_matches_count_matrix` — vérifier que `transmat_` matche
+  un comptage manuel sur un jeu jouet.
+- `test_supervised_respects_mask` — interdire des transitions, vérifier
+  qu'elles ne sont pas comptées (ou levée d'erreur explicite si données
+  inconsistantes avec la topologie).
+- `test_semisupervised_5050` — moitié labelée moitié non, vérifier que les
+  positions labelées sont **dures** dans le résultat (le posterior à ces
+  positions doit être one-hot).
+- `test_semisupervised_converges_faster_than_full_em` — itérations < pure
+  Baum-Welch sur le même problème.
+
+### Risques
+
+| Risque | Mitigation |
+|---|---|
+| `hmmlearn` ne supporte pas le supervised nativement | Pas un problème : on l'implémente côté backend en numpy (math triviale). C'est même mieux : pas de dépendance upstream pour ce mode. |
+| API ambiguë (`states` = labels durs ou priors ?) | Choisir une sémantique unique : `states` = labels durs (one-hot quand fournis). Le cas "priors mous" est hors-scope, et serait du Bayésien (cf. A.6). |
+| Inconsistance données ↔ topologie (un label `z_t=3` alors que `n_states=2`) | Validation stricte en début de `fit()`. Erreur explicite avec ligne fautive. |
+
+### Définition de "done" pour A.7
+
+- API `fit(topo, X, states=...)` documentée dans le README + docstring.
+- 5 tests passent, coverage maintenue ≥ 92 %.
+- CLI `hmm-fit run --labels` fonctionnel sur un exemple supervisé canonique
+  (ajouter `examples/data_pos_tagging.csv` ou équivalent simple).
+- Section "Training modes" dans le README avec un exemple côte-à-côte
+  supervised vs unsupervised sur le même topology YAML.
+
+---
+
+## Phase A.6 — Backend bayésien (PyMC / NumPyro) — *option défendue, pas engagement*
+
+**Status** : NOT STARTED · candidat post-B, et **après A.7** dans tous les cas
+**Dépend de** : A.5 (abstraction backend, livrée), A.7 (modes d'entraînement),
+B MVP shipped + signal externe
+
+### Origine
+
+Brainstorm 2026-05-22 d'une proposition externe ("meta-configurateur unifiant
+HMM / SSM / Transformer") — voir [Décisions tranchées](#décisions-tranchées-historique)
+pour le refus de la version maximaliste. Ce qu'il reste de défendable :
+ajouter un backend bayésien qui fit **la même topologie HMM** via PyMC ou
+NumPyro et produit une postérieure complète sur (A, π, paramètres
+d'émission) au lieu d'un point MAP. C'est la "mode interprétable" que
+visait la proposition, mais en restant dans le wedge HMM où la math est
+propre.
+
+### Pourquoi c'est on-strategy
+
+- **Aucun outil existant** ne combine éditeur visuel de topologie HMM +
+  fit fréquentiste + fit bayésien dans la même interface. Différenciation
+  forte sans expansion de scope.
+- **Ouvre le segment académique bayésien** (PyMC / Stan / NumPyro / Pyro
+  utilisateurs), large et bien aligné avec le wedge "recherche".
+- **Reste dans HMM-land** : pas de promesse de "compiler vers Transformer",
+  pas de génération de code multi-framework, pas de problèmes de
+  sémantique non-mappable. Le YAML de topologie a un sens **identique**
+  des deux côtés (mêmes mask, mêmes contraintes structurelles).
+- **Coût borné** : ~2-3 semaines de travail estimées, vs ~2-3 ans pour la
+  version maximaliste rejetée.
+
+### Surface proposée
+
+- Nouveau module `src/hmm_core/backends/bayesian/` avec
+  `PyMCBackend` (et éventuellement `NumPyroBackend` si demande utilisateur).
+- Output enrichi (extension de `BackendFitResult`) :
+  - `posterior_samples : dict[str, np.ndarray]` — échantillons MCMC sur
+    A, π, paramètres d'émission.
+  - `credible_intervals : dict[str, tuple[np.ndarray, np.ndarray]]` —
+    intervalles à 95 % par paramètre.
+  - `posterior_predictive : Optional[np.ndarray]` — pour les checks de
+    cohérence.
+- API publique inchangée : `fit(topology, X, backend="pymc")`.
+- Visualisation (côté B / C) : heatmaps de A avec barres d'incertitude,
+  posterior predictive overlay sur la séquence Viterbi.
+
+### Critères d'entrée (gating — ne pas démarrer avant)
+
+A.6 ne démarre **que si tous** les critères suivants sont réunis :
+
+1. **Phase B shippée** (MVP web utilisable par un utilisateur non-Python).
+2. **Au moins 1 utilisateur externe académique a contacté le projet** ou
+   forké le repo (signal réel, pas hypothèse). Si zéro signal externe à
+   M3 + 3 mois, A.6 reste en sommeil — c'est probable que le projet doive
+   re-questionner ses objectifs plutôt qu'ajouter une feature.
+3. **Robin n'est pas déjà en train de re-prioriser** vers d'autres chantiers
+   plus pressants (régimes crypto, autres outils de recherche).
+
+Si l'un de ces trois critères n'est pas rempli : A.6 reste une option
+documentée, pas un engagement. **Mieux vaut ne pas la livrer que la livrer
+sans demande réelle.**
+
+### Ce que A.6 n'est PAS (rappel anti-scope-creep)
+
+- **Pas** un "compilateur" vers Mamba / SSM / Transformer. Cf. décision
+  tranchée 2026-05-22 de refus du meta-configurateur.
+- **Pas** un outil de causal inference. Bayésien ≠ causal.
+- **Pas** une généralisation au-delà du HMM. Si on veut faire du SwitchingSSM
+  ou du DeepHMM, c'est une autre phase (potentiellement A.7), et pas
+  avant A.6 livrée et adoptée.
 
 ---
 
@@ -386,9 +718,17 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 3. **Backend persistence de B** : in-memory vs SQLite (recommandation : in-memory MVP)
 4. **NHMM "breathing" en B ou en C ?** (recommandation : statique en B, animé en C)
 5. **PyPI public ou private ?** — à décider en M5.
-6. **Licence finale** : MIT (par défaut) vs Apache-2 (patent grant) vs
-   proprio. Aucun choix encore pris.
-7. **Doc site** : mkdocs vs docusaurus vs custom. À trancher en Z.2.
+6. **Doc site** : mkdocs vs docusaurus vs custom. À trancher en Z.2.
+
+### Décisions tranchées (historique)
+
+| Date | Décision | Notes |
+|---|---|---|
+| 2026-05-22 | Licence : **MIT** | `LICENSE` + `CITATION.cff` à la racine. Ré-licenciement futur possible (les versions passées restent MIT, mais c'est acceptable). |
+| 2026-05-22 | Abstraction backend : **HMMBackend Protocol** + registry, hmmlearn comme backend par défaut | Décou­ple `hmm-core` de hmmlearn. Voir A.5. |
+| 2026-05-22 | Premier utilisateur officiel : **Robin (recherche perso, régimes crypto)** | Garantit un canary permanent via Phase D. Ne dispense pas de chercher des utilisateurs externes (cf. critères de succès dans positionnement stratégique). |
+| 2026-05-22 | **Refus** du pivot "meta-configurateur unifiant HMM / SSM / Transformer" | Brainstorm externe proposant un IR commun + compiler vers PyMC/Mamba/HuggingFace selon annotations utilisateur. **Rejeté** : (a) les sémantiques mathématiques ne mappent pas (HMM discret-Markov vs Transformer non-récurrent vs SSM continu) ; (b) "compile vers Mamba" serait du templating, pas un compilateur ; (c) ~2-3 ans de travail pour solo part-time ; (d) torpille le wedge HMM-niche qu'on vient de formaliser. **Ce qu'on garde** : le slogan "knowledge engineering for sequential processes" + l'idée d'un backend bayésien *dans le wedge HMM* (cf. Phase A.6). |
+| 2026-05-22 | **Slogan adopté** : `hmm-studio` vend de l'**ingénierie de la connaissance pour processus séquentiels**, pas "un modèle HMM" | À utiliser dans README, doc site (Z.2), et toute communication externe. Aide à expliquer la valeur sans entrer dans la technique. |
 
 ---
 
@@ -396,15 +736,18 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 
 À monitorer en continu :
 
-| Métrique | Cible | 2026-05-21 | 2026-05-22 |
-|---|---|---|---|
-| Test coverage `src/hmm_core/` | ≥ 85% | 87% | 92% ↑ |
-| Test count | croissant | 54 | 66 ↑ |
-| Tests passing | 100% | 100% | 100% ✓ |
-| Open dette (items du final review) | ≤ 5 | 3 | 0 ✓ |
-| Sub-projects livrés / planifiés | — | 1 / 4 | 2 + 1 validé / 5 |
-| Specs draftées (B, C) | — | 0 | 2 ✓ |
-| CI configurée | oui | non | oui (en attente de remote) |
+| Métrique | Cible | 2026-05-21 | 2026-05-22 | 2026-05-22 (PM) |
+|---|---|---|---|---|
+| Test coverage `src/hmm_core/` | ≥ 85% | 87% | 92% ↑ | 92% (maintenu post-backend) |
+| Test count | croissant | 54 | 66 ↑ | 76 ↑ |
+| Tests passing | 100% | 100% | 100% ✓ | 100% ✓ |
+| Open dette (items du final review) | ≤ 5 | 3 | 0 ✓ | 0 ✓ |
+| Sub-projects livrés / planifiés | — | 1 / 4 | 2 + 1 validé / 5 | 3 + 1 validé / 5 (A.5) |
+| Specs draftées (B, C) | — | 0 | 2 ✓ | 2 ✓ |
+| CI configurée | oui | non | oui (en attente de remote) | oui |
+| Licence formalisée | oui | non | non | **MIT ✓** |
+| Découplage backend (résilience hmmlearn) | oui | non | non | **HMMBackend ✓** |
+| Utilisateurs externes réguliers | ≥ 3 à M3+6mois | 0 | 0 | 0 (premier user = Robin, à monitorer) |
 
 ---
 
@@ -428,6 +771,9 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 - **Spec DRAFT sous-projet C** (à brainstormer) : [docs/specs/2026-05-21-hmm-viz-advanced-design.md](specs/2026-05-21-hmm-viz-advanced-design.md)
 - CI workflow : `.github/workflows/ci.yml`
 - Pre-commit config : `.pre-commit-config.yaml`
+- Licence : `LICENSE` (MIT, actée 2026-05-22)
+- Citation académique : `CITATION.cff`
+- Abstraction backend : `src/hmm_core/backends/` (livrée 2026-05-22)
 - README utilisateur : see [Home](index.md)
 - Dashboard HMM existant (validation D faite, swap futur) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\src\cmex_crypto\viz\hmm_dashboard\`
 - ADR de migration côté crypto (uncommitée pour relecture) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\notes\decisions.md` (entrée 2026-05-21)
