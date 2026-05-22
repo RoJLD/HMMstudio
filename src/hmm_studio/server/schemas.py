@@ -32,6 +32,7 @@ class FitJobCreate(BaseModel):
     dataset_id: str
     seed: int | None = None
     covariate_names: list[str] | None = None  # NHMM: column names from dataset to use as Z
+    lengths: list[int] | None = None  # multi-sequence boundaries
 
 
 class FitJobStatusOut(BaseModel):
@@ -64,6 +65,7 @@ class FitJobScanCreate(BaseModel):
     k_max: int
     seed: int | None = None
     covariate_names: list[str] | None = None  # NHMM still supported per child
+    lengths: list[int] | None = None  # multi-sequence boundaries
 
 
 class ScanChildStatus(BaseModel):

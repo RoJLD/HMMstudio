@@ -48,5 +48,6 @@ class FitJob(SQLModel, table=True):
     ended_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     covariate_names: str = ""  # JSON list[str] of column names used as NHMM covariates
+    lengths: str = ""  # JSON list[int], empty = single sequence
     parent_id: str | None = Field(default=None)  # if set, this is a child of a scan job
     k_override: int | None = None  # if set, this child overrides topology.n_states

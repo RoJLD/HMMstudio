@@ -19,6 +19,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from hmm_core import save_model
@@ -118,6 +119,7 @@ class JobRunner:
         dataset_id: str,
         seed=None,
         covariate_names: list[str] | None = None,
+        lengths: list[int] | None = None,
     ) -> str:
         """Create a FitJob row + schedule the fit. Returns job_id."""
         with get_session(self._engine) as session:
@@ -127,6 +129,7 @@ class JobRunner:
                 seed=seed,
                 status=FitJobStatus.QUEUED,
                 covariate_names=json.dumps(covariate_names) if covariate_names else "",
+                lengths=json.dumps(lengths) if lengths else "",
             )
             session.add(job)
             session.commit()
@@ -146,6 +149,7 @@ class JobRunner:
         k_max: int,
         seed: int | None = None,
         covariate_names: list[str] | None = None,
+        lengths: list[int] | None = None,
     ) -> str:
         """Create a parent job + K child jobs, one per K in [k_min, k_max].
 
@@ -164,6 +168,7 @@ class JobRunner:
                 seed=seed,
                 status=FitJobStatus.QUEUED,
                 covariate_names=json.dumps(covariate_names) if covariate_names else "",
+                lengths=json.dumps(lengths) if lengths else "",
             )
             session.add(parent)
             session.commit()
@@ -179,6 +184,7 @@ class JobRunner:
                     seed=seed,
                     status=FitJobStatus.QUEUED,
                     covariate_names=json.dumps(covariate_names) if covariate_names else "",
+                    lengths=json.dumps(lengths) if lengths else "",
                     parent_id=parent_id,
                     k_override=k,
                 )
@@ -238,6 +244,7 @@ class JobRunner:
                 topology_yaml = job.topology
                 seed = job.seed
                 covariate_names_json = job.covariate_names
+                lengths_raw = job.lengths
                 k_override = job.k_override  # NEW: K-scan override
                 job_parent_id = job.parent_id  # NEW: scan parent tracking (overrides outer None)
                 if dataset is None:
@@ -292,6 +299,16 @@ class JobRunner:
                 else:
                     X = df.to_numpy(dtype=float)
 
+            # Parse lengths for multi-sequence fits
+            lengths_list = json.loads(lengths_raw) if lengths_raw else None
+            lengths_arr = np.array(lengths_list, dtype=int) if lengths_list else None
+
+            # Validate: sum(lengths) must equal len(X)
+            if lengths_arr is not None and int(lengths_arr.sum()) != len(X):
+                raise ValueError(
+                    f"lengths sum {int(lengths_arr.sum())} != len(X) {len(X)}"
+                )
+
             # Step 4: mark running
             with get_session(self._engine) as session:
                 job = session.get(FitJob, job_id)
@@ -322,9 +339,16 @@ class JobRunner:
                         Z,
                         covariate_names=covariate_names,
                         seed=seed,
+                        lengths=lengths_arr,
                     )
                 else:
-                    result = core_fit(topology, X, seed=seed, progress_callback=_persist_progress)
+                    result = core_fit(
+                        topology,
+                        X,
+                        seed=seed,
+                        lengths=lengths_arr,
+                        progress_callback=_persist_progress,
+                    )
             except Exception as exc:
                 with get_session(self._engine) as session:
                     job = session.get(FitJob, job_id)

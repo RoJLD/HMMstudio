@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTopologyStore } from "../store/topologyStore";
 import { useDatasetStore } from "../store/datasetStore";
@@ -17,8 +17,31 @@ export default function FitPage() {
   const [scanMode, setScanMode] = useState(false);
   const [kMin, setKMin] = useState(2);
   const [kMax, setKMax] = useState(6);
+  const [lengthsText, setLengthsText] = useState("");
 
-  const canSubmit = !!dataset && states.length > 0 && !submitting;
+  // Derive parsed lengths + validation error from the text input
+  const { lengths, lengthsError } = useMemo(() => {
+    const text = lengthsText.trim();
+    if (text === "") return { lengths: undefined, lengthsError: null };
+    const parts = text.split(/[,;\s]+/).filter(Boolean);
+    const nums: number[] = [];
+    for (const p of parts) {
+      const n = parseInt(p, 10);
+      if (!Number.isFinite(n) || n <= 0) {
+        return { lengths: undefined, lengthsError: `Invalid length: "${p}"` };
+      }
+      nums.push(n);
+    }
+    if (dataset && nums.reduce((a, b) => a + b, 0) !== dataset.n_rows) {
+      return {
+        lengths: undefined,
+        lengthsError: `Sum ${nums.reduce((a, b) => a + b, 0)} ≠ dataset rows ${dataset.n_rows}`,
+      };
+    }
+    return { lengths: nums, lengthsError: null };
+  }, [lengthsText, dataset]);
+
+  const canSubmit = !!dataset && states.length > 0 && !submitting && !lengthsError;
 
   async function handleSubmit() {
     if (!dataset) return;
@@ -34,6 +57,7 @@ export default function FitPage() {
           k_max: kMax,
           seed: seed === "" ? undefined : Number(seed),
           covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
+          lengths,
         });
         navigate(`/scan/${r.parent_id}`);
       } else {
@@ -42,6 +66,7 @@ export default function FitPage() {
           dataset_id: dataset.id,
           seed: seed === "" ? undefined : Number(seed),
           covariate_names: covariateNames.length > 0 ? covariateNames : undefined,
+          lengths,
         });
         navigate(`/results/${result.id}`);
       }
@@ -155,6 +180,30 @@ export default function FitPage() {
               </label>
             ))}
           </div>
+        </div>
+      )}
+
+      {dataset && (
+        <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">
+            Sequence boundaries (optional)
+          </h3>
+          <p className="text-xs text-slate-500 mb-2">
+            Comma-separated lengths if the CSV is a concatenation of multiple
+            sessions (e.g. <code>100, 200, 100</code>). Sum must equal{" "}
+            <strong>{dataset.n_rows}</strong> (dataset rows). Leave blank for a
+            single sequence.
+          </p>
+          <input
+            type="text"
+            value={lengthsText}
+            onChange={(e) => setLengthsText(e.target.value)}
+            placeholder="(single sequence)"
+            className="border border-slate-300 rounded px-2 py-1 text-sm w-full font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+          />
+          {lengthsError && (
+            <p className="text-xs text-red-700 mt-1">{lengthsError}</p>
+          )}
         </div>
       )}
 

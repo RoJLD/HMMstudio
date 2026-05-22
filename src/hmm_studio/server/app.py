@@ -138,6 +138,7 @@ def create_app() -> FastAPI:
             dataset_id=req.dataset_id,
             seed=req.seed,
             covariate_names=req.covariate_names,
+            lengths=req.lengths,
         )
         status = runner.get_status(job_id)
         return FitJobResult(
@@ -387,6 +388,7 @@ def create_app() -> FastAPI:
                 k_max=req.k_max,
                 seed=req.seed,
                 covariate_names=req.covariate_names,
+                lengths=req.lengths,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))

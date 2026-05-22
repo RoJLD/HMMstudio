@@ -519,3 +519,101 @@ fit: {algorithm: baum_welch, n_iter: 5, tol: 1.0e-3}
         },
     )
     assert r.status_code == 400
+
+
+def test_fit_with_lengths_succeeds(client):
+    """A multi-sequence fit with explicit lengths runs and returns done."""
+    import io
+    import time
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    n = 300  # 3 sequences of 100
+    X = np.vstack([
+        rng.normal(loc=-2.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=0.0, scale=0.3, size=(100, 2)),
+        rng.normal(loc=2.0, scale=0.3, size=(100, 2)),
+    ])
+    df = pd.DataFrame(X, columns=["f0", "f1"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("multi.csv", buf.getvalue().encode(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: multi_seq
+n_states: 3
+state_names: [a, b, c]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}
+"""
+    r = client.post(
+        "/api/fit/start",
+        json={
+            "topology_yaml": topology,
+            "dataset_id": dataset_id,
+            "seed": 42,
+            "lengths": [100, 100, 100],
+        },
+    )
+    assert r.status_code == 200, r.text
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    assert r.json()["status"] == "done", r.json()
+
+
+def test_fit_with_invalid_lengths_sum_fails(client):
+    """If sum(lengths) != n_rows, the fit fails with a clear error."""
+    import io
+    import time
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 2))
+    df = pd.DataFrame(X, columns=["f0", "f1"])
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("d.csv", buf.getvalue().encode(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+
+    topology = """
+name: bad_lengths
+n_states: 2
+state_names: [a, b]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: uniform, seed: 0}
+fit: {algorithm: baum_welch, n_iter: 5, tol: 1.0e-3}
+"""
+    r = client.post(
+        "/api/fit/start",
+        json={
+            "topology_yaml": topology,
+            "dataset_id": dataset_id,
+            "lengths": [50, 30],  # sum 80 != 100
+        },
+    )
+    assert r.status_code == 200  # job is queued OK
+    job_id = r.json()["id"]
+    for _ in range(30):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    final = r.json()
+    assert final["status"] == "failed"
+    assert "lengths" in (final["error"] or "").lower()

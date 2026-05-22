@@ -75,6 +75,7 @@ export async function startFit(params: {
   dataset_id: string;
   seed?: number;
   covariate_names?: string[];
+  lengths?: number[];
 }): Promise<FitJobResult> {
   return jsonFetch<FitJobResult>("/api/fit/start", {
     method: "POST",
@@ -194,6 +195,7 @@ export async function startScan(params: {
   k_max: number;
   seed?: number;
   covariate_names?: string[];
+  lengths?: number[];
 }): Promise<{ parent_id: string }> {
   return jsonFetch<{ parent_id: string }>("/api/fit/scan/start", {
     method: "POST",
