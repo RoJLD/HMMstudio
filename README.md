@@ -135,9 +135,9 @@ fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
   editor that produces these YAML files.
 - **C — Advanced viz** (planned) — NHMM breathing transitions, replay UI.
 
-## Web UI (B.1 backend skeleton)
+## Web UI (B.1 backend skeleton + B.4.1 topology editor)
 
-`hmm-studio` (sub-project B) is in progress. The backend skeleton ships with:
+`hmm-studio` (sub-project B) is in progress. The backend ships with:
 
 - FastAPI app with topology validation, dataset upload, and fit job orchestration
 - SQLite persistence (jobs survive restarts)
@@ -149,12 +149,32 @@ Install + launch:
 ```bash
 pip install -e ".[web,dev]"
 python scripts/build_frontend.py   # builds + copies frontend assets
-hmm-studio serve                    # http://127.0.0.1:8000
+hmm-studio                          # http://127.0.0.1:8000
 ```
 
 If you skip the frontend build step, only the REST API is served — the React UI returns a default FastAPI 404.
 
 Swagger UI is always available at `http://127.0.0.1:8000/docs` regardless of whether the frontend build has been run.
+
+### Visual topology editor (B.4.1)
+
+The visual topology editor is shipped. After `hmm-studio`, open
+`http://127.0.0.1:8000/topology` in a browser to:
+
+- Drag-drop states onto the canvas
+- Draw transitions by dragging from a node's right handle to another's left
+- Rename states by clicking on the label
+- Configure global emission/init/fit params in the side panel
+- See live validation feedback (debounced 400ms against the API)
+- Undo/redo (50 steps)
+- Import / Export topology YAML (byte-compatible with `hmm-fit`)
+
+Data upload (B.5) and results view (B.6) are next.
+
+The visual editor currently exposes the hmm-core API as it exists today
+(single global EmissionSpec, hard 0/1 allowed_transitions). Per-state
+emissions (A.8 + B.4.2) and Dirichlet priors on transitions (A.9 +
+B.4.3) are planned extensions documented in the roadmap.
 
 See [docs/roadmap.md](docs/roadmap.md)
 and [docs/specs/2026-05-21-hmm-studio-web-design.md](docs/specs/2026-05-21-hmm-studio-web-design.md).
