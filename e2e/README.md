@@ -85,6 +85,28 @@ Severity policy:
 
 If the dark-mode broad CSS overrides cause contrast violations, they appear in this audit. They are tracked in the README "known issues" section.
 
+## Recording a tour video
+
+`tour-recording.spec.ts` runs a slowed-down walkthrough of the studio
+(home → data → topology → fit → results → academy) and records a video
+via Playwright's built-in video capture.
+
+```bash
+# Make sure the studio is running first (or use the auto-start mode)
+npx playwright test tour-recording.spec.ts
+```
+
+The WebM is written to `test-results/<test-name>/video.webm` (Playwright
+names it deterministically once `video: "on"` is set in the test).
+
+Convert to GIF or MP4 with ffmpeg — see [`scripts/convert-tour-to-gif.md`](scripts/convert-tour-to-gif.md).
+
+The video is ~30-45 seconds; final GIF lands around 3-6 MB at 720p / 12 fps.
+
+**Note:** this test is intentionally not part of the CI suite — it's a
+manual artifact generator. Add `@tour` to the test name and grep-filter
+it out of CI if you wire it up later.
+
 ## CI
 
 `.github/workflows/e2e.yml` runs these tests in headless Chromium on each
