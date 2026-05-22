@@ -158,6 +158,18 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
          (decouple from hmmlearn)
    A.7   Modes supervisé + semi-supervisé  PLANNED        A.5         ~1 semaine
          (fit avec états labelés)                                     prioritaire avant A.6
+   A.10  GMM-NHMM (GMM emissions +         PLANNED        A.1, A.5,   ~1-2 semaines
+         covariate-dependent transitions)                 V           use case crypto direct
+                                                                     pas de gating signal ext.
+   A.13  Factorial NHMM (D chaînes        PLANNED        A.1, A.5,   ~2-3 semaines
+         parallèles, trend×vol×macro)                     V, A.10     use case crypto direct
+   A.11  Hierarchical HMM (HHMM)          SPEC-ONLY      A.5         ~3-4 sem code
+         spec drafted, code gated                                    GATED sur signal externe
+                                                                     (prof/chercheur explicite)
+   A.12  Profile-HMM (bioinfo)            DEFERRED       —           reconsider post-M3+6mois
+                                                                     pas dans wedge actuel
+   B.10  Data warehouse local + multi-fmt PLANNED        B           ~3-4 jours
+         (CSV/parquet/JSON/Excel/feather)                            use case Robin direct
    A.6   BayesianHMMBackend (PyMC/NumPyro) OPTION         A.5, B,     conditionnel
          — option défendue, pas engagement                signal ext. (voir gating)
    D     Migration dashboard crypto        VALIDATED      A           regression test
@@ -168,6 +180,11 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
    Z.5   Licence MIT + CITATION.cff        SHIPPED        —           livré 2026-05-22
    B     hmm-studio web UI                 SPEC DRAFTED   A, A.1      ~6-8 semaines
                                                                      spec à brainstormer
+   V     Scientific validation suite       SPEC DRAFTED   A           ~3-5 jours
+         (textbook + recovery + stability)                            prioritaire avant E
+                                                                     et toute adoption externe
+   E     Academy (interactive learning)    SPEC DRAFTED   B, V        ~1-2 semaines
+         tab pédagogique + 7 leçons + bridge vers éditeur             gated sur V livrée
    C     Visualisations avancées + viz NHMM SPEC DRAFTED  B           ~4-6 semaines
                                                                      spec à brainstormer
    Z.2+  Doc site, release, packaging      NOT STARTED    B, C        continu
@@ -379,6 +396,205 @@ mode d'entraînement.
 
 ---
 
+## Phase A.10 — GMM-NHMM (GMM emissions + covariate-dependent transitions)
+
+**Status** : PLANNED · engagement direct (use case crypto)
+**Dépend de** : A.1 (NHMM livré), A.5 (abstraction backend livrée), V (validation suite — livrée avant A.10)
+**Effort estimé** : 1-2 semaines
+
+> Spec complet : [docs/specs/2026-05-22-phase-a10-gmm-nhmm.md](specs/2026-05-22-phase-a10-gmm-nhmm.md)
+
+### Pourquoi A.10 existe
+
+Le besoin moteur vient du dashboard crypto de Robin (Phase D). Aujourd'hui :
+- Un NHMM standard force le choix entre **"un régime bull"** (perte
+  d'information sur les sous-modes) et **"deux régimes bull distincts"**
+  (transitions bull-low-vol → bull-high-vol modélisées comme transitions
+  de régime, ce qui dilue la sémantique régime/sous-mode).
+- En réalité un régime **"bull"** a souvent deux sous-modes :
+  *smooth uptrend* (μ=+0.5 %/j, σ=1 %) et *explosive squeeze* (μ=+2 %/j,
+  σ=4 %). Les deux appartiennent au même régime macro mais diffèrent
+  microscopiquement.
+
+**GMM-NHMM modélise exactement ça** : chaque état (régime) a un GMM en
+émission (M composantes capturant les sous-modes intra-régime), et les
+transitions entre régimes restent covariate-dependent (NHMM standard).
+
+### État de l'art (audit 2026-05-22)
+
+Aucun outil Python ne fait GMM-NHMM proprement :
+- `hmmlearn` GMMHMM : GMM oui, NHMM non
+- `sequentia` : GMM oui, NHMM non
+- IOHMM (Mogeng) : NHMM oui, GMM non
+- GaussianIOHMM : NHMM + Gaussian, GMM en placeholder non livré
+- R package `NHMM` (CRAN) : a tout, mais R (pas notre stack)
+
+**Le trou produit est réel**. Notre wedge tient.
+
+### Approche : Stratégie C hybride
+
+| Phase | Approche | Effort |
+|---|---|---|
+| **MVP** | Stratégie A : expansion K·M (chaque état k → M sous-états (k,1)..(k,M) avec mask block-structured) | 3-5 jours |
+| **Validation V.5** | Cross-check Stratégie A vs Stratégie B (impl directe pure-numpy) sur jouets canoniques | 1-2 jours |
+| **Refactor optionnel** | Stratégie B : GMM-NHMM direct via `NumpyGMMNHMMBackend` (E-step avec 2 niveaux de latence) | 1 semaine — seulement si MVP s'avère trop limité |
+
+### Limites identifiabilité (documentées en spec)
+
+- $K \leq 4$, $M \leq 3$ en MVP (au-delà : sur-paramétrisation sur crypto)
+- Régularisation L2 sur coefficients TVTP
+- Multi-start (5-10 init aléatoires) + sélection log-likelihood
+- Contrainte d'identification : états ordonnés par $\mu_{k,1}$ croissant
+- BIC pour sélection $(K, M)$
+
+### Ce que A.10 n'est PAS
+
+- Pas une généralisation vers GMM-SSM ou GMM-Transformer (anti-scope-creep)
+- Pas un nouveau backend complet : c'est une extension de l'API existante
+  (`emission.type: gmm` + `transitions.type: covariate` simultanés)
+- Pas du Bayésien : MAP point estimate seulement. Le Bayésien GMM-NHMM
+  est une intersection de A.6 (gated) et A.10, à reporter à plus tard.
+
+### Définition de "done" pour A.10
+
+- [ ] API publique : `fit(topology, X, covariates=...)` accepte
+      `emission.type='gmm'` quand `transitions.type='covariate'`
+- [ ] Stratégie A (K·M expansion) implémentée et testée
+- [ ] Suite V.5 dédiée : 3-4 tests cross-check stratégies A vs B
+- [ ] Tests de récupération sur synthétique GMM-NHMM (loi des grands nombres)
+- [ ] Tests d'identifiabilité (label switching robuste)
+- [ ] Intégration dashboard crypto (Phase D) : démontrer un gain de
+      log-likelihood vs NHMM standard sur données BTC réelles
+- [ ] Section README "GMM-NHMM for multimodal regimes" avec exemple crypto
+
+---
+
+## Phase A.13 — Factorial NHMM (D chaînes parallèles)
+
+**Status** : PLANNED · engagement direct (use case crypto multi-facteur)
+**Dépend de** : A.1 (NHMM ✓), A.5 (backend abstraction ✓), V (validation suite), A.10 (GMM-NHMM — partagent l'infra Strategy A)
+**Effort estimé** : 2-3 semaines
+
+> Spec complet : [docs/specs/2026-05-22-phase-a13-factorial-nhmm.md](specs/2026-05-22-phase-a13-factorial-nhmm.md)
+
+### Pourquoi A.13 existe
+
+Le crypto a **plusieurs dimensions de régime qui évoluent indépendamment** :
+- Trend regime : {bear, range, bull}
+- Volatility regime : {low-vol, normal, high-vol}
+- Macro regime : {risk-on, risk-off}
+
+Modéliser ces 3 dimensions comme un seul HMM à 3×3×2 = 18 états force
+des transitions synchrones (toutes les dimensions changent en même temps
+ou aucune), ce qui est **faux empiriquement** : la vol peut spiker sans
+que le trend ne change, et vice-versa.
+
+**Factorial HMM** modélise D chaînes de Markov **indépendantes** générant
+conjointement les observations. Chaque chaîne a sa propre matrice de
+transition, ses propres covariates. C'est mathématiquement et
+sémantiquement plus correct pour ce cas.
+
+### Math en bref
+
+- D chaînes : $z^{(d)}_t \in \{1, \dots, K_d\}$ pour $d \in [D]$
+- Transitions indépendantes : $A^{(d)}_{ij}(u^{(d)}_t)$ par chaîne
+- Émission jointe : $p(x_t \mid z^{(1)}_t, \dots, z^{(D)}_t)$ — Gaussien
+  paramétré par $(z^{(1)}, \dots, z^{(D)})$ ou additif Ghahramani-style
+- Espace d'états joint : $\prod_d K_d$ mais paramétrisation en $O(\sum_d K_d^2)$
+
+### Stratégie d'implémentation : C hybride (cohérent avec A.10)
+
+- **MVP Strategy A** : encoder le HMM joint à $\prod K_d$ états avec
+  **transition matrix factorisée** via mask block-structured. Réutilise
+  toute l'infra A.1 + A.5 + A.10.
+- **Strategy B** : `NumpyFactorialHMMBackend` avec inférence variationnelle
+  mean-field structurée (Ghahramani & Jordan 1997). Sert d'oracle pour
+  V.6 cross-check + débloque les cas $D \geq 4$ ou $K_d \geq 5$.
+
+### Limites identifiabilité
+
+- $D \leq 3$, $K_d \leq 3$ en MVP (au-delà : Strategy A trop coûteux,
+  passer à Strategy B variationnelle)
+- Même contraintes que A.10 sur covariates : $P_d \leq 6$ par chaîne
+- T $\geq 200 \cdot$ free_params
+
+### Définition de "done"
+
+- [ ] API : `topology.type = "factorial"` avec `chains: [topo1, topo2, ...]`
+- [ ] Strategy A (joint state expansion) livrée
+- [ ] Strategy B (`NumpyFactorialHMMBackend`) livrée comme oracle
+- [ ] V.6 cross-check Strategy A vs B
+- [ ] Tests de récupération synthétique
+- [ ] Démo crypto : trend + vol + macro, BIC vs HMM unique 18-état
+- [ ] ADR-0009 sur factorisation joint state vs variationnel
+
+---
+
+## Phase A.11 — Hierarchical HMM (HHMM) — *spec drafted, code gated*
+
+**Status** : SPEC-ONLY (code GATED sur signal externe explicite)
+**Dépend de** : A.5 (backend abstraction ✓)
+**Effort estimé code** : 3-4 semaines · **Effort actuel** : 0 (spec only)
+
+> Spec complet : [docs/specs/2026-05-22-phase-a11-hhmm.md](specs/2026-05-22-phase-a11-hhmm.md)
+
+### Pourquoi spec sans code
+
+HHMM modélise des données **multi-échelle** (phonèmes → syllabes → mots ;
+gestes → mouvements → actions ; micro-régimes → macro-cycles). C'est un
+modèle canonique en bioinfo et en speech, mais aucun outil Python ne
+l'implémente proprement.
+
+**Notre position** :
+- Le spec est rédigé pour montrer la profondeur de la pensée (marketing
+  + crédibilité académique)
+- L'implémentation est **gated** : ne démarre que si un utilisateur
+  externe (prof, chercheur) demande explicitement
+- C'est cohérent avec la discipline anti-scope-creep (hmm-studio-scope-discipline) :
+  spec ≠ engagement
+
+### Critère d'entrée code (gating)
+
+A.11 ne démarre **que si TOUS** :
+1. ≥ 1 utilisateur externe (prof/chercheur) demande explicitement HHMM
+2. Phase E (Academy) shippée et adoptée (preuve que le wedge enseignement
+   marche)
+3. A.10, A.13 stables (parce qu'ils mobilisent le même type d'effort
+   recherche)
+
+Si ces 3 ne sont pas réunis : spec reste documentation, code reste non
+écrit. C'est OK.
+
+---
+
+## Phase A.12 — Profile-HMM (bioinformatique) — *DEFERRED*
+
+**Status** : DEFERRED (pas dans le wedge actuel)
+**Effort estimé code** : 2-3 semaines + 1-2 sem formats bio
+**Réévaluation** : post-M3+6mois ou si signal bio explicite
+
+### Pourquoi pas maintenant
+
+Profile-HMM est *le* modèle canonique en bioinformatique (HMMER, Pfam,
+HHsuite). Si on voulait pénétrer ce marché, ce serait la porte d'entrée.
+
+**Mais** :
+- La bioinfo est un sous-marché spécifique avec ses propres formats
+  (Stockholm, FASTA, MSA), conventions, attentes
+- HMMER domine et est gratuit/open
+- Notre wedge actuel (recherche académique générique + enseignement +
+  interpretability-mandate finance/industriel) ne le requiert pas
+
+### Conditions de réactivation
+
+- Un chercheur bio identifié demande explicitement
+- OU stratégie pivote vers la bioinfo (décision business explicite, ADR
+  dédiée)
+
+Tant qu'aucune de ces conditions n'est rencontrée : ne pas investir.
+
+---
+
 ## Phase A.6 — Backend bayésien (PyMC / NumPyro) — *option défendue, pas engagement*
 
 **Status** : NOT STARTED · candidat post-B, et **après A.7** dans tous les cas
@@ -549,6 +765,191 @@ L'éditeur node-based promis dans la framing initiale "Gemini". L'utilisateur :
 - Un utilisateur installe le studio (`docker compose up` ou `pip install hmm-studio[web] && hmm-studio serve`), ouvre `http://localhost:8000`, dessine un graphe à 3 états, upload un CSV gaussien, lance un fit, voit la barre de progression, et obtient un résultat avec le Viterbi colorisé. Aucune connaissance Python requise.
 - Le YAML produit par l'éditeur est byte-compatible avec ce que `hmm-fit` (CLI de A) accepte.
 - Test E2E Playwright/Cypress couvre le golden path.
+
+---
+
+## Phase B.10 — Data warehouse local + multi-format
+
+**Status** : PLANNED · engagement direct (use case Robin + tous utilisateurs)
+**Dépend de** : B (UI socle, livré pour l'essentiel)
+**Effort estimé** : 3-4 jours
+
+> Spec complet : [docs/specs/2026-05-22-phase-b10-data-warehouse.md](specs/2026-05-22-phase-b10-data-warehouse.md)
+
+### Pourquoi B.10 existe
+
+Aujourd'hui, chaque fit demande un chemin CSV ; l'utilisateur gère son
+filesystem sans aide. C'est invisible pour un chercheur expérimenté, mais
+**friction d'onboarding** pour un newcomer et **inefficient pour la
+réutilisation** de datasets.
+
+B.10 ajoute :
+- Un répertoire désigné comme "data warehouse" (configurable par
+  utilisateur)
+- Navigation des datasets dans le tab Data avec métadonnées (rows, cols,
+  dtypes, date modif, taille)
+- Sidecar `.hmm.yaml` par dataset pour provenance + colonnes annotées
+- Auto-détection du format à partir de l'extension
+
+### Scope explicite — anti-MLflow/DVC
+
+| ✅ Inclus (MVP) | ❌ Exclu (scope creep) |
+|---|---|
+| Local filesystem, single warehouse dir | Multi-workspace |
+| Auto-discovery par scan | Indexation DB |
+| Sidecar metadata yaml | Versioning git-like |
+| Multi-format (CSV/parquet/JSON/Excel/feather) | Remote storage (S3/GCS) |
+| Re-utilisation cross-fit du dataset | Lineage formel / DAG |
+| Refresh manuel (bouton) ou scan auto-périodique | Pipeline d'ingestion |
+
+C'est **un explorateur de fichiers spécialisé**, pas un data engineering
+platform. DVC / MLflow / Delta Lake jouent ce rôle là, on ne les
+concurrence pas.
+
+### Définition de "done"
+
+- [ ] Configuration utilisateur expose `warehouse_path` (settings)
+- [ ] Endpoint backend `GET /api/warehouse` retourne liste fichiers + meta
+- [ ] Endpoint `POST /api/warehouse/refresh` re-scan
+- [ ] Tab Data : sidebar navigable + preview
+- [ ] Multi-format read : CSV, parquet, JSON/JSONL, Excel, feather
+- [ ] Sidecar `.hmm.yaml` détecté et exposé en metadata
+- [ ] Tests E2E : upload, browse, select, fit avec dataset warehouse
+
+---
+
+## Phase V — Scientific validation suite
+
+**Status** : SPEC DRAFTED · prioritaire avant toute adoption externe
+**Dépend de** : A (core stable, livré)
+**Effort estimé** : ~3-5 jours
+
+> Spec complet : [docs/specs/2026-05-22-phase-v-validation.md](specs/2026-05-22-phase-v-validation.md)
+
+### Pourquoi V existe
+
+Les 131 tests actuels testent la **correction du code** (régressions, contrats
+d'API, edge cases). Ils ne testent **pas** la **correction du modèle
+mathématique** sur des exemples canoniques où la réponse est connue
+analytiquement ou par référence académique. C'est un trou critique pour un
+outil scientifique destiné à la recherche et à l'enseignement (deux mâchoires
+sur trois de notre wedge).
+
+Le jour où un chercheur publie un papier basé sur `hmm-studio`, ou un prof
+l'utilise en cours, la question "comment savez-vous que c'est correct ?"
+doit avoir une réponse documentée et reproductible.
+
+### 4 couches de validation
+
+| Couche | Objectif | Effort | Tests visés |
+|---|---|---|---|
+| **V.1** Cross-check `hmmlearn` | Sanity : notre dispatcher = hmmlearn brut sur topologie ergodique | 0.5 j | 4 (un par émission) |
+| **V.2** Recovery sur synthétique | Statistique : estimateur converge vers vrais paramètres quand N→∞ | 1-1.5 j | 5-6 (par émission + topologie left-right) |
+| **V.3** Textbook canoniques | Analytique : reproduit Russell & Norvig (parapluie), Durbin (dishonest casino), Rabiner 1989, Eisner ice cream | 1-1.5 j | 4-6 |
+| **V.4** Stabilité numérique | Robustesse : séquences longues, covariances quasi-singulières, états rares, K grand | 0.5-1 j | 4-5 |
+| **V.5** Cross-check A.10 strategies (gated sur A.10 PLANNED) | Stratégies A (K·M expansion) vs B (direct GMM-NHMM) donnent mêmes résultats sur jouets canoniques | 1 j | 3-4 (Gaussian K=2 M=2, K=3 M=2, identification, etc.) |
+| **V.6** Cross-check A.13 strategies (gated sur A.13 PLANNED) | Stratégies A (joint state expansion ∏K_d) vs B (variationnel mean-field) donnent mêmes résultats sur petits jouets D=2 K=2 | 1 j | 3-4 (D=2 K=2, D=2 K=3, identification) |
+
+### Surface livrée (cible)
+
+- Dossier `validation/` séparé de `tests/` (suite séparée, non lancée dans
+  la CI quotidienne, dédiée au scientifique).
+- Un fichier README dans `validation/` listant chaque test avec : source
+  canonique citée, tolérance numérique, résultat attendu.
+- 4-5 jeux de données fixtures dans `validation/fixtures/`.
+- Badge "Validated against Russell & Norvig + Durbin + Rabiner canonical
+  examples" sur le README principal (signal de qualité pour les academics).
+
+### Gating et critères
+
+- **Prérequis pour lancer V** : aucun bloquant (peut démarrer maintenant).
+- **Définition de "done"** : les ~18-20 tests passent avec leurs tolérances
+  documentées, README de validation à jour, badge ajouté au README projet.
+- **Critère de re-validation** : V doit être ré-exécuté à chaque changement
+  de version d'`hmmlearn` ou d'un autre backend, et à chaque release majeure.
+
+### Risques
+
+| Risque | Mitigation |
+|---|---|
+| Tolérance trop stricte → tests flakies | Documenter chaque tolérance avec sa justification (loi des grands nombres, précision flottante, etc.) |
+| Coût compute des recovery tests (N=10000) | Marker pytest `@slow`, run nightly seulement |
+| Discrépance avec hmmlearn sur cas extrêmes | C'est exactement ce qu'on veut détecter — si V.1 échoue, c'est un bug à fixer |
+
+---
+
+## Phase E — Academy (apprentissage interactif intégré)
+
+**Status** : SPEC DRAFTED · gated sur V livrée
+**Dépend de** : B (UI socle, livré pour l'essentiel), V (crédibilité scientifique)
+**Effort estimé** : ~1-2 semaines
+
+> Spec complet : [docs/specs/2026-05-22-phase-e-academy.md](specs/2026-05-22-phase-e-academy.md)
+
+### Pourquoi E existe
+
+L'enseignement est **explicitement** une des trois mâchoires du wedge
+stratégique (cf. § Positionnement stratégique 2026). C'est même la
+mâchoire la plus défendable parce qu'**un prof qui adopte hmm-studio
+en TP entraîne 20-100 étudiants par an** qui apprennent les HMM via
+notre outil et l'utiliseront ensuite en recherche et en industrie.
+
+Aujourd'hui : zéro contenu pédagogique intégré. Un utilisateur qui ne
+connaît pas les HMM débarque sur l'éditeur de topologie et ne sait pas
+ce qu'est une matrice de transition. **C'est un trou d'acquisition.**
+
+### Surface livrée (cible MVP)
+
+- Nouvel onglet **"Academy"** dans la navigation B (à côté de Home, Data,
+  Topology editor, Fit, Results).
+- 7 leçons interactives courtes (~10-15 min chacune, 1-2h total).
+- Chaque leçon = HTML + MDX (markdown + composants React) + visualisations
+  D3.js + composants UI réutilisés de l'éditeur.
+- Chaque leçon se termine par un bouton **"Try it in the editor →"** qui
+  pré-remplit l'éditeur avec un YAML d'exemple correspondant. Bridge
+  apprentissage → pratique.
+
+### Les 7 leçons
+
+1. **"Qu'est-ce qu'un état caché ?"** — pièce truquée/honnête + slider
+2. **"La matrice de transition, c'est un graphe"** — mini-éditeur 2 états
+3. **"Forward algorithm : pourquoi on additionne"** — animation belief propagation
+4. **"Viterbi vs Forward-Backward"** — même données, deux algos, comparaison côte-à-côte
+5. **"Topologie : left-right vs ergodique"** — switcher topologie, voir l'effet
+6. **"Supervised vs Unsupervised"** — toggle labels on/off
+7. **"Quand NE PAS utiliser un HMM"** — honnêteté intellectuelle, pointer vers Transformer/SSM
+
+La leçon 7 est **critique** — elle distingue un outil sérieux d'un outil
+commercial qui surjoue. Elle renforce le wedge en clarifiant ce qu'on
+n'est pas.
+
+### Stack technique
+
+- **MDX** (Markdown + React) pour le contenu — authoring accessible
+- **D3.js** pour les visualisations probabilistes (simplexes, paths, animations)
+- **Réutiliser** les composants existants de l'éditeur de topologie
+- **NON aux Jupyter notebooks** : kernel = friction, fragiles, mauvais bridge
+
+### Critères de succès / d'échec (à M+3 post-ship)
+
+| Signal | Seuil | Conséquence si raté |
+|---|---|---|
+| Visites uniques /mois sur `/academy` | ≥ 100 | Re-tester contenu / SEO / discoverability |
+| Utilisations du bridge "Try in editor" | ≥ 10 / mois | Le bridge n'est pas adopté → repenser CTA |
+| Profs qui l'utilisent en cours | ≥ 1 confirmé (signal manuel) | Wedge enseignement reste théorique → repenser format |
+| Mentions externes (Reddit, Twitter, blog) | ≥ 3 | Pas de bouche-à-oreille → outreach manuel nécessaire |
+
+**Kill criteria** : si à M+3 zéro signal externe ET aucun usage interne par
+Robin, archiver l'académie (la laisser en lecture seule, ne plus
+investir).
+
+### Risques
+
+| Risque | Mitigation |
+|---|---|
+| Scope creep ("ajoutons 50 leçons", "ajoutons un quiz") | Critères de "done" stricts : 7 leçons, pas une de plus dans le MVP. Quiz reportés à E.2 (gated sur signal) |
+| Contenu se périme quand l'UI évolue | Tests E2E Playwright sur les bridges éditeur ; régressions détectées |
+| Pas le bon ton pédagogique | Faire relire les 7 brouillons par 2-3 profs / chercheurs avant ship |
 
 ---
 
@@ -777,3 +1178,48 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 - README utilisateur : see [Home](index.md)
 - Dashboard HMM existant (validation D faite, swap futur) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\src\cmex_crypto\viz\hmm_dashboard\`
 - ADR de migration côté crypto (uncommitée pour relecture) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\notes\decisions.md` (entrée 2026-05-21)
+
+---
+
+## Appendix — Variantes HMM hors-scope (gardées en mémoire)
+
+> Cette section consigne les variantes HMM qu'on **n'implémente
+> volontairement pas**, avec la justification du rejet. Elle existe pour
+> éviter qu'une future session (ou une suggestion externe) revienne avec
+> les mêmes propositions sans contexte. **Rejet ≠ ignorance** : on
+> connaît, on a évalué, on a décidé que non.
+
+| Variant | Description | Pourquoi rejet/defer | Conditions de réactivation |
+|---|---|---|---|
+| **Profile-HMM** (DEFERRED, voir A.12) | Modèle canonique bioinfo pour familles de séquences (HMMER, Pfam) | Marché bio dominé par HMMER ; pas notre wedge actuel | Signal bio explicite ou pivot business |
+| **Pair-HMM** | Modèle d'alignement de paires de séquences | 100 % bioinfo. Sans A.12, sans intérêt. | Si A.12 réactivé, A.12.1 = Pair-HMM |
+| **Coupled HMM** | Plusieurs chaînes qui interagissent (état d'une chaîne dépend des autres à t-1) | NHMM avec covariates exogènes (= sortie des autres chaînes) couvre les cas pratiques. Différent de Factorial qui suppose indépendance. | Cas d'usage où la dépendance entre chaînes est essentielle ET non capturable par covariates |
+| **Topological HMM** | Extension recherche pour espaces topologiques complexes | Recherche exotique, aucun cas d'usage industriel, aucun bibliographic critical mass | Signal recherche académique très précis |
+| **Auto-regressive HMM (AR-HMM)** | Observations dépendent de $x_{t-1}$ conditionnellement à l'état | Cas d'usage finance/signal réel. À reconsidérer si A.10/A.13 sur crypto montrent une limite résiduelle (autocorrélation non capturée) | Si fit GMM-NHMM ou Factorial sur crypto laisse une autocorrélation résiduelle visible |
+| **Switching state-space model (Linear Gaussian SSM avec switching)** | Combine HMM et Kalman | Hors-scope HMM-land. Voir aussi décision tranchée 2026-05-22 contre meta-configurateur. | Pivot stratégique explicite vers SSM (non prévu) |
+| **Variational HMM (deep learning)** | HMM avec encoder/decoder neural | Hors-scope (pivote vers deep learning). Stay in wedge. | Jamais sans pivot stratégique |
+| **Continuous-time HMM (CTMC observed at irregular intervals)** | HMM en temps continu | Cas d'usage : événements rares (clicks, fraude). Niche, pas notre wedge | Signal industriel explicite (insurance, fraud detection) |
+
+### Variantes **promues** ou **shippées** depuis l'audit initial
+
+| Variant | Statut | Phase |
+|---|---|---|
+| Ergodic HMM | ✅ shippé | A |
+| Left-Right (Bakis) HMM | ✅ shippé via `allowed_transitions` | A |
+| Multinomial / Gaussian / GMM / Poisson HMM | ✅ shippé (4 émissions) | A |
+| **IOHMM** (transitions covariate) | ✅ shippé | A.1 NHMM |
+| **GMM-HMM statique** | ✅ shippé | A (émission GMM) |
+| **GMM-NHMM** | 🚧 PLANNED | A.10 |
+| **Markov Switching Model** | ✅ mathématiquement équivalent à HMM/NHMM (terminologie économétrique) | A + A.1 — pas de nouveau code, marketing dans le README |
+| **Factorial NHMM** | 🚧 PLANNED (promu depuis appendix sur instinct Robin re: crypto multi-facteur) | A.13 |
+| **Hierarchical HMM (HHMM)** | 📋 SPEC-ONLY (code gated) | A.11 |
+| Profile-HMM | ⏸ DEFERRED | A.12 |
+
+### Discipline appliquée
+
+- Chaque rejet est **documenté** avec justification et conditions de
+  réactivation
+- Chaque promotion (Factorial dans cette session) est **explicite**, avec
+  le raisonnement préservé
+- Pas de "on verra" mou : soit on engage avec date, soit on défère avec
+  conditions claires

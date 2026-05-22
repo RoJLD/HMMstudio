@@ -1,7 +1,8 @@
 site_name: hmm-studio
 site_description: HMM topology editor, constrained fit engine, and visualizer
-repo_url: ""  # set this when remote is created
-site_url: ""  # set this on deploy
+repo_url: https://github.com/<user>/hmm-studio  # replace <user> once the GitHub remote is set up
+edit_uri: edit/main/docs/
+site_url: https://<user>.github.io/hmm-studio/  # replace <user> once the GitHub remote is set up
 
 docs_dir: docs
 
@@ -31,6 +32,16 @@ theme:
     - search.highlight
     - content.code.copy
 
+plugins:
+  - search
+  # social plugin requires cairosvg + pillow system libs; enable once those are
+  # installed in the CI image or locally. Uncomment to activate:
+  # - social:
+  #     cards: true
+  #     cards_layout_options:
+  #       background_color: "#4f46e5"
+  #       color: "#ffffff"
+
 markdown_extensions:
   - admonition
   - attr_list
@@ -48,6 +59,11 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
   - Home: index.md
@@ -62,8 +78,19 @@ nav:
       - "Sub-project C: advanced viz (draft)":
           - "Design spec (DRAFT)": specs/2026-05-21-hmm-viz-advanced-design.md
       - "Sub-project B.1 plan (backend skeleton)": plans/2026-05-22-b1-backend-skeleton.md
+      - "Specs":
+          - "Phase V: validation": specs/2026-05-22-phase-v-validation.md
+          - "Phase A.10: GMM-NHMM": specs/2026-05-22-phase-a10-gmm-nhmm.md
+          - "Phase A.11: HHMM": specs/2026-05-22-phase-a11-hhmm.md
+          - "Phase A.13: Factorial NHMM": specs/2026-05-22-phase-a13-factorial-nhmm.md
+          - "Phase B.10: Data warehouse": specs/2026-05-22-phase-b10-data-warehouse.md
+          - "Phase E: Academy": specs/2026-05-22-phase-e-academy.md
   - Decisions:
       - "ADR-0001: hmmlearn patch": decisions/0001-backend-hmmlearn-patch.md
       - "ADR-0002: B stack decisions": decisions/0002-b-stack-decisions.md
       - "ADR-0003: backend abstraction": decisions/0003-backend-abstraction.md
       - "ADR-0004: supervised training": decisions/0004-supervised-training.md
+      - "ADR-0005: per-state EmissionSpec": decisions/0005-per-state-emissions-scope.md
+      - "ADR-0006: Dirichlet priors": decisions/0006-dirichlet-priors-scope.md
+      - "ADR-0007: GMM-NHMM": decisions/0007-gmm-nhmm-scope.md
+  - Contributing: contributing.md

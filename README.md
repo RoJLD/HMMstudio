@@ -207,12 +207,27 @@ result = fit(topo, X, state_labels=y)      # y shape (T,), int in [0, K)
 
 ## Documentation
 
+Full documentation is built with [mkdocs-material](https://squidfunk.github.io/mkdocs-material/)
+and (when the repo has a remote) auto-deployed to GitHub Pages on every push to `main`.
+
+Build it locally:
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve   # http://127.0.0.1:8000
+```
+
+Hosted URL (placeholder until the GitHub remote is set up):
+`https://<user>.github.io/hmm-studio/`
+
+To add a doc page, see [docs/contributing.md](docs/contributing.md).
+
+Other quick links:
+
 - [Roadmap](docs/roadmap.md) — strategic overview and planned work.
 - [Specs](docs/specs/) — detailed specs for sub-projects A, B, C.
-- [ADRs](docs/decisions/) — 6 architecture decision records.
+- [ADRs](docs/decisions/) — architecture decision records.
 - [CHANGELOG](CHANGELOG.md) — full history.
-
-Serve locally with `mkdocs serve` (requires `pip install "hmm-studio[docs]"`).
 
 ## Publishing
 
