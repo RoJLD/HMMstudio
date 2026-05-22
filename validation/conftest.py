@@ -20,6 +20,10 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
+        "perf: performance regression tests (budget assertions on fit time)",
+    )
+    config.addinivalue_line(
+        "markers",
         "slow: validation test that may take >10s (recovery tests with N=10000)",
     )
 
