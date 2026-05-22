@@ -69,6 +69,24 @@ def load_topology(path: str | Path) -> Topology:
         if allowed is not None:
             allowed = [tuple(pair) for pair in allowed]
 
+        emissions = None
+        if raw.get("emissions"):
+            emissions = []
+            for e_raw in raw["emissions"]:
+                emissions.append(
+                    EmissionSpec(
+                        type=e_raw.get("type", emission.type),
+                        n_features=e_raw.get("n_features", emission.n_features),
+                        covariance_type=e_raw.get("covariance_type", emission.covariance_type),
+                        n_mix=e_raw.get("n_mix", emission.n_mix),
+                        n_symbols=e_raw.get("n_symbols", emission.n_symbols),
+                        init_mean=e_raw.get("init_mean"),
+                        init_covar=e_raw.get("init_covar"),
+                        init_lambda=e_raw.get("init_lambda"),
+                        init_emissionprob=e_raw.get("init_emissionprob"),
+                    )
+                )
+
         topo = Topology(
             name=raw["name"],
             n_states=int(raw["n_states"]),
@@ -78,6 +96,7 @@ def load_topology(path: str | Path) -> Topology:
             startprob=raw["startprob"],
             init=init,
             fit=fit,
+            emissions=emissions,
         )
     except KeyError as exc:
         raise TopologyError(f"missing required field: {exc}") from exc

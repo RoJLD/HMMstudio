@@ -99,23 +99,110 @@ def emission_params(
     For Poisson: ``lambdas_``.
 
     Empty dict if the strategy does not pre-set emissions (uniform, random).
+
+    A.8: If ``topology.emissions`` is set, per-state init hints override the
+    base strategy results before returning.
     """
     strategy = topology.init.strategy
     if strategy in ("uniform", "random"):
-        return {}
-
-    if strategy == "kmeans":
+        params: dict[str, np.ndarray] = {}
+    elif strategy == "kmeans":
         if X is None:
             raise ValueError("kmeans emission init requires X")
-        return _kmeans_emission_params(topology, X, seed=seed)
-
-    if strategy == "data_frequencies":
+        params = _kmeans_emission_params(topology, X, seed=seed)
+    elif strategy == "data_frequencies":
         if X is None:
             raise ValueError("data_frequencies emission init requires X")
         # data_frequencies reuses the kmeans-based emission init.
-        return _kmeans_emission_params(topology, X, seed=seed)
+        params = _kmeans_emission_params(topology, X, seed=seed)
+    else:
+        raise ValueError(f"unknown init strategy: {strategy!r}")
 
-    raise ValueError(f"unknown init strategy: {strategy!r}")
+    return _apply_per_state_init_overrides(params, topology)
+
+
+def _apply_per_state_init_overrides(
+    params: dict[str, np.ndarray],
+    topology: Topology,
+) -> dict[str, np.ndarray]:
+    """If ``topology.emissions`` is set, override per-state init hints into ``params``.
+
+    A.8: applies init_mean, init_lambda, and init_emissionprob hints from
+    each entry in ``topology.emissions`` to the corresponding row of the
+    relevant parameter array.  Only affects states where a hint is present;
+    states without hints keep whatever was computed by the base strategy.
+    """
+    if topology.emissions is None:
+        return params
+
+    K = topology.n_states
+    e_type = topology.emission.type
+
+    if e_type in ("gaussian", "gmm"):
+        means_override = []
+        any_override = False
+        for k in range(K):
+            hint = topology.emissions[k].init_mean
+            if hint is not None:
+                means_override.append(hint)
+                any_override = True
+            else:
+                if "means_" in params:
+                    if e_type == "gaussian":
+                        means_override.append(list(params["means_"][k]))
+                    else:
+                        # gmm: shape (K, n_mix, D) — use first mixture component
+                        means_override.append(list(params["means_"][k][0]))
+                else:
+                    means_override.append([0.0] * (topology.emission.n_features or 1))
+        if any_override:
+            arr = np.array(means_override, dtype=float)
+            if e_type == "gaussian":
+                params["means_"] = arr
+            else:  # gmm: override first mixture component per state
+                if "means_" in params and params["means_"].ndim == 3:
+                    new = params["means_"].copy()
+                    for k in range(K):
+                        if topology.emissions[k].init_mean is not None:
+                            new[k, 0] = arr[k]
+                    params["means_"] = new
+
+    elif e_type == "poisson":
+        lambdas_override = []
+        any_override = False
+        for k in range(K):
+            hint = topology.emissions[k].init_lambda
+            if hint is not None:
+                lambdas_override.append(hint)
+                any_override = True
+            else:
+                if "lambdas_" in params:
+                    lambdas_override.append(list(params["lambdas_"][k]))
+                else:
+                    lambdas_override.append([1.0] * (topology.emission.n_features or 1))
+        if any_override:
+            params["lambdas_"] = np.array(lambdas_override, dtype=float)
+
+    elif e_type == "multinomial":
+        ep_override = []
+        any_override = False
+        for k in range(K):
+            hint = topology.emissions[k].init_emissionprob
+            if hint is not None:
+                ep_override.append(hint)
+                any_override = True
+            else:
+                if "emissionprob_" in params:
+                    ep_override.append(list(params["emissionprob_"][k]))
+                else:
+                    n = topology.emission.n_symbols or 2
+                    ep_override.append([1.0 / n] * n)
+        if any_override:
+            arr = np.array(ep_override, dtype=float)
+            arr /= arr.sum(axis=1, keepdims=True)
+            params["emissionprob_"] = arr
+
+    return params
 
 
 def _kmeans_emission_params(

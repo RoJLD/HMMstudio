@@ -19,6 +19,14 @@ class EmissionSpec:
     covariance_type: str | None = None
     n_mix: int | None = None
     n_symbols: int | None = None
+    # A.8: optional per-state init hints.  When provided in a list of EmissionSpec
+    # via Topology(emissions=[...]), these prime the corresponding state's
+    # emission parameters before EM.  The hyperparams (type, n_features,
+    # covariance_type, n_mix, n_symbols) must be IDENTICAL across the list.
+    init_mean: list[float] | None = None  # gaussian/gmm: (n_features,)
+    init_covar: list[list[float]] | None = None  # gaussian/gmm: (n_features, n_features) for full
+    init_lambda: list[float] | None = None  # poisson: (n_features,)
+    init_emissionprob: list[float] | None = None  # multinomial: (n_symbols,)
 
 
 @dataclass(frozen=True)
@@ -44,6 +52,10 @@ class Topology:
     startprob: str | list[float]
     init: InitSpec
     fit: FitSpec
+    # A.8: optional per-state emissions.  If provided, MUST have len == n_states
+    # and every entry must share the same hyperparams (type, n_features, etc.)
+    # as Topology.emission.  Used to seed per-state init hints.
+    emissions: list[EmissionSpec] | None = None
 
     def validate(self) -> None:
         if len(self.state_names) != self.n_states:
@@ -91,6 +103,28 @@ class Topology:
             raise TopologyError(
                 f"startprob must be 'uniform', 'first_state', or a list of {self.n_states} floats"
             )
+
+        if self.emissions is not None:
+            if len(self.emissions) != self.n_states:
+                raise TopologyError(
+                    f"emissions has length {len(self.emissions)} but n_states={self.n_states}"
+                )
+            for i, es in enumerate(self.emissions):
+                if es.type != self.emission.type:
+                    raise TopologyError(
+                        f"emissions[{i}].type={es.type!r} does not match "
+                        f"emission.type={self.emission.type!r}; "
+                        "mixed emission types per state are not yet supported (planned A.8.x)"
+                    )
+                for field in ("n_features", "covariance_type", "n_mix", "n_symbols"):
+                    es_val = getattr(es, field)
+                    em_val = getattr(self.emission, field)
+                    if es_val is not None and es_val != em_val:
+                        raise TopologyError(
+                            f"emissions[{i}].{field}={es_val!r} does not match "
+                            f"emission.{field}={em_val!r}; "
+                            "heterogeneous hyperparams per state are not yet supported (planned A.8.x)"
+                        )
 
     def transition_mask(self) -> np.ndarray:
         K = self.n_states
