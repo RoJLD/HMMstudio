@@ -26,8 +26,8 @@ site/
 .DS_Store
 Thumbs.db
 
-# hmm-core outputs
-results/
+# hmm-core outputs (anchored at repo root — don't catch frontend/src/components/results/)
+/results/
 *.pkl
 !examples/**/*.pkl
 .gitnexus
