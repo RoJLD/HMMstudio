@@ -31,7 +31,8 @@ class ConstrainedPoissonHMM(PoissonHMM):
     ):
         super().__init__(*args, **kwargs)
         self.transmat_mask = transmat_mask
-        self.transmat_prior = transmat_prior
+        if transmat_prior is not None:
+            self.transmat_prior = transmat_prior
 
     def _do_mstep(self, stats):
         super()._do_mstep(stats)

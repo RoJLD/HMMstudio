@@ -31,7 +31,11 @@ class ConstrainedGaussianHMM(GaussianHMM):
     ):
         super().__init__(*args, **kwargs)
         self.transmat_mask = transmat_mask
-        self.transmat_prior = transmat_prior
+        # Only override hmmlearn's internal transmat_prior (default 1.0) when a
+        # custom prior is actually provided; setting it to None crashes hmmlearn's
+        # _do_mstep which does transmat_prior - 1.
+        if transmat_prior is not None:
+            self.transmat_prior = transmat_prior
 
     def _do_mstep(self, stats):
         super()._do_mstep(stats)
