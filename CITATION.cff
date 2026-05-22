@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use hmm-studio in your research, please cite it as below."
+title: "hmm-studio: constrained Baum-Welch fits, topology authoring, and visualization for Hidden Markov Models"
+type: software
+authors:
+  - given-names: Robin
+    family-names: Denis
+repository-code: "https://github.com/<user>/hmm_studio"
+license: MIT
+version: "0.2.0"
+date-released: 2026-05-22
+keywords:
+  - hidden-markov-models
+  - hmm
+  - baum-welch
+  - viterbi
+  - constrained-estimation
+  - topology
+  - nhmm
+  - sequence-modeling
+abstract: >
+  hmm-studio is a Python library and (forthcoming) web tool for authoring
+  Hidden Markov Models with structurally constrained transition matrices
+  (left-right, Bakis, lifecycle, branching topologies). It wraps a constrained
+  Baum-Welch fit engine over hmmlearn and exposes a backend-agnostic interface
+  so alternative engines (pomegranate, dynamax, pure-numpy) can be plugged in.
+  It also implements non-homogeneous HMMs (NHMM) with covariate-dependent
+  transitions.
