@@ -1,9 +1,14 @@
+import { useSvgExport } from "../../hooks/useSvgExport";
+import { ExportButton } from "../../hooks/ExportButton";
+
 interface BicScatterProps {
   data: { k: number; bic: number; aic: number }[];
   bestBic: number | null;
 }
 
 export function BicScatter({ data, bestBic }: BicScatterProps) {
+  const { svgRef, exportSvg } = useSvgExport("bic_vs_k");
+
   if (data.length === 0) {
     return <p className="text-xs text-slate-500">No completed fits yet.</p>;
   }
@@ -40,7 +45,10 @@ export function BicScatter({ data, bestBic }: BicScatterProps) {
 
   return (
     <div>
-      <svg width={W} height={H} className="block w-full">
+      <div className="flex justify-end mb-1">
+        <ExportButton onClick={() => exportSvg()} />
+      </div>
+      <svg ref={svgRef} width={W} height={H} className="block w-full">
         {/* axes */}
         <line x1={padL} y1={padT} x2={padL} y2={padT + innerH} stroke="#cbd5e1" />
         <line

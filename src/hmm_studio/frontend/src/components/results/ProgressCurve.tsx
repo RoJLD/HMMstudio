@@ -1,8 +1,13 @@
+import { useSvgExport } from "../../hooks/useSvgExport";
+import { ExportButton } from "../../hooks/ExportButton";
+
 interface Props {
   history: number[];
 }
 
 export function ProgressCurve({ history }: Props) {
+  const { svgRef, exportSvg } = useSvgExport("progress");
+
   if (history.length === 0) {
     return <div className="h-32" />;
   }
@@ -23,40 +28,45 @@ export function ProgressCurve({ history }: Props) {
   });
 
   return (
-    <svg width={W} height={H} className="block w-full">
-      <line x1={padL} y1={padT} x2={padL} y2={padT + innerH} stroke="#cbd5e1" />
-      <line
-        x1={padL}
-        y1={padT + innerH}
-        x2={padL + innerW}
-        y2={padT + innerH}
-        stroke="#cbd5e1"
-      />
-      <polyline
-        fill="none"
-        stroke="#4f46e5"
-        strokeWidth={2}
-        points={pts.join(" ")}
-      />
-      <text x={padL - 6} y={padT + 4} textAnchor="end" className="text-[10px] fill-slate-500">
-        {hi.toFixed(0)}
-      </text>
-      <text
-        x={padL - 6}
-        y={padT + innerH}
-        textAnchor="end"
-        className="text-[10px] fill-slate-500"
-      >
-        {lo.toFixed(0)}
-      </text>
-      <text
-        x={padL + innerW / 2}
-        y={H - 6}
-        textAnchor="middle"
-        className="text-[10px] fill-slate-500"
-      >
-        iteration ({history.length})
-      </text>
-    </svg>
+    <div>
+      <div className="flex justify-end mb-1">
+        <ExportButton onClick={() => exportSvg()} />
+      </div>
+      <svg ref={svgRef} width={W} height={H} className="block w-full">
+        <line x1={padL} y1={padT} x2={padL} y2={padT + innerH} stroke="#cbd5e1" />
+        <line
+          x1={padL}
+          y1={padT + innerH}
+          x2={padL + innerW}
+          y2={padT + innerH}
+          stroke="#cbd5e1"
+        />
+        <polyline
+          fill="none"
+          stroke="#4f46e5"
+          strokeWidth={2}
+          points={pts.join(" ")}
+        />
+        <text x={padL - 6} y={padT + 4} textAnchor="end" className="text-[10px] fill-slate-500">
+          {hi.toFixed(0)}
+        </text>
+        <text
+          x={padL - 6}
+          y={padT + innerH}
+          textAnchor="end"
+          className="text-[10px] fill-slate-500"
+        >
+          {lo.toFixed(0)}
+        </text>
+        <text
+          x={padL + innerW / 2}
+          y={H - 6}
+          textAnchor="middle"
+          className="text-[10px] fill-slate-500"
+        >
+          iteration ({history.length})
+        </text>
+      </svg>
+    </div>
   );
 }

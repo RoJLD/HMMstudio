@@ -1,4 +1,6 @@
 import type { DecodedResponse } from "../../api/client";
+import { useSvgExport } from "../../hooks/useSvgExport";
+import { ExportButton } from "../../hooks/ExportButton";
 
 interface Props {
   data: DecodedResponse;
@@ -16,9 +18,14 @@ export function ViterbiTimeline({ data }: Props) {
   const H = 60;
   const cellW = W / T;
 
+  const { svgRef, exportSvg } = useSvgExport("viterbi");
+
   return (
     <div>
-      <svg width={W} height={H} className="block w-full">
+      <div className="flex justify-end mb-1">
+        <ExportButton onClick={() => exportSvg()} />
+      </div>
+      <svg ref={svgRef} width={W} height={H} className="block w-full">
         {data.viterbi.map((s, t) => (
           <rect
             key={t}
