@@ -9,12 +9,13 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
-from hmm_studio.server.models import Dataset
+from hmm_studio.server.models import Dataset, FitJob
 from hmm_studio.server.schemas import (
     DatasetPreview,
     FitJobCreate,
@@ -193,6 +194,118 @@ def create_app() -> FastAPI:
                 await asyncio.sleep(0.2)
         except WebSocketDisconnect:
             return
+
+    @app.get("/api/fit/{job_id}/transmat")
+    def get_fit_transmat(job_id: str):
+        """Return the fitted transition matrix + state labels for visualization."""
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(
+                status_code=409,
+                detail=f"job status is {status['status']!r}, not done",
+            )
+        result_path = status.get("result_path")
+        if not result_path:
+            raise HTTPException(status_code=500, detail="result_path missing")
+        with (Path(result_path) / "model.pkl").open("rb") as f:
+            fitted = pickle.load(f)
+        topology = fitted.topology
+        transmat = fitted.model.transmat_.tolist()
+        mask = topology.transition_mask().tolist()
+        return {
+            "state_names": list(topology.state_names),
+            "transmat": transmat,
+            "mask": mask,
+            "n_states": topology.n_states,
+        }
+
+    @app.get("/api/fit/{job_id}/decoded")
+    def get_fit_decoded(job_id: str):
+        """Return Viterbi path + posterior for visualization."""
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(
+                status_code=409,
+                detail=f"job status is {status['status']!r}, not done",
+            )
+        result_path = status.get("result_path")
+        if not result_path:
+            raise HTTPException(status_code=500, detail="result_path missing")
+        with (Path(result_path) / "model.pkl").open("rb") as f:
+            fitted = pickle.load(f)
+        with get_session(engine) as session:
+            job = session.get(FitJob, job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="job not found")
+            dataset = session.get(Dataset, job.dataset_id)
+            if dataset is None:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"original dataset {job.dataset_id} missing",
+                )
+            dataset_path = dataset.path
+        df = pd.read_csv(dataset_path)
+        if fitted.topology.emission.type == "multinomial":
+            X = df.to_numpy(dtype=int)
+        else:
+            X = df.to_numpy(dtype=float)
+        viterbi = fitted.model.predict(X).tolist()
+        posterior = fitted.model.predict_proba(X)
+        n = len(viterbi)
+        step = max(1, n // 2000)
+        viterbi_ds = viterbi[::step]
+        posterior_ds = posterior[::step].tolist()
+        return {
+            "viterbi": viterbi_ds,
+            "posterior": posterior_ds,
+            "n_total": n,
+            "step": step,
+            "state_names": list(fitted.topology.state_names),
+        }
+
+    @app.get("/api/fit/{job_id}/emissions")
+    def get_fit_emissions(job_id: str):
+        """Return per-state emission parameters for display."""
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(
+                status_code=409, detail=f"status: {status['status']}"
+            )
+        result_path = status.get("result_path")
+        if not result_path:
+            raise HTTPException(status_code=500, detail="result_path missing")
+        with (Path(result_path) / "model.pkl").open("rb") as f:
+            fitted = pickle.load(f)
+        e_type = fitted.topology.emission.type
+        model = fitted.model
+        payload: dict = {
+            "type": e_type,
+            "state_names": list(fitted.topology.state_names),
+        }
+        if e_type in ("gaussian", "gmm"):
+            payload["means"] = np.asarray(model.means_).tolist()
+            covars = model._covars_ if hasattr(model, "_covars_") else model.covars_
+            payload["covars"] = np.asarray(covars).tolist()
+        elif e_type == "multinomial":
+            payload["emissionprob"] = np.asarray(model.emissionprob_).tolist()
+        elif e_type == "poisson":
+            payload["lambdas"] = np.asarray(model.lambdas_).tolist()
+        return payload
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React

@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 const NAV = [
   { to: "/", label: "Home" },
   { to: "/data", label: "Data" },
+  { to: "/fit", label: "Fit" },
   { to: "/topology", label: "Topology editor" },
 ] as const;
 

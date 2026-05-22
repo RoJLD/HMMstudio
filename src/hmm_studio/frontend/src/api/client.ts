@@ -102,3 +102,39 @@ export function openFitProgressSocket(
   };
   return ws;
 }
+
+export interface TransmatResponse {
+  state_names: string[];
+  transmat: number[][];
+  mask: boolean[][];
+  n_states: number;
+}
+
+export interface DecodedResponse {
+  viterbi: number[];
+  posterior: number[][];
+  n_total: number;
+  step: number;
+  state_names: string[];
+}
+
+export interface EmissionsResponse {
+  type: "gaussian" | "gmm" | "multinomial" | "poisson";
+  state_names: string[];
+  means?: number[][];
+  covars?: number[][][];
+  emissionprob?: number[][];
+  lambdas?: number[][];
+}
+
+export async function getFitTransmat(jobId: string): Promise<TransmatResponse> {
+  return jsonFetch<TransmatResponse>(`/api/fit/${jobId}/transmat`);
+}
+
+export async function getFitDecoded(jobId: string): Promise<DecodedResponse> {
+  return jsonFetch<DecodedResponse>(`/api/fit/${jobId}/decoded`);
+}
+
+export async function getFitEmissions(jobId: string): Promise<EmissionsResponse> {
+  return jsonFetch<EmissionsResponse>(`/api/fit/${jobId}/emissions`);
+}

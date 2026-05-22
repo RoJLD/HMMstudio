@@ -240,3 +240,71 @@ def test_static_mount_serves_index_when_present(client, tmp_path, monkeypatch):
             asset_path.unlink()
         if not had_assets and assets_dir.exists() and not list(assets_dir.iterdir()):
             assets_dir.rmdir()
+
+
+def test_get_fit_transmat_done(client):
+    """After a successful fit, /api/fit/{id}/transmat returns the matrix."""
+    csv_bytes = _make_csv_bytes()
+    r = client.post("/api/data/upload", files={"file": ("d.csv", csv_bytes, "text/csv")})
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": VALID_TOPOLOGY, "dataset_id": dataset_id, "seed": 42},
+    )
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    assert r.json()["status"] == "done"
+    r = client.get(f"/api/fit/{job_id}/transmat")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["n_states"] == 3
+    assert len(body["transmat"]) == 3
+    assert len(body["transmat"][0]) == 3
+    assert len(body["state_names"]) == 3
+
+
+def test_get_fit_decoded_done(client):
+    csv_bytes = _make_csv_bytes()
+    r = client.post("/api/data/upload", files={"file": ("d.csv", csv_bytes, "text/csv")})
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": VALID_TOPOLOGY, "dataset_id": dataset_id, "seed": 42},
+    )
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    r = client.get(f"/api/fit/{job_id}/decoded")
+    assert r.status_code == 200
+    body = r.json()
+    assert "viterbi" in body
+    assert "posterior" in body
+    assert body["n_total"] == 300
+
+
+def test_get_fit_emissions_done(client):
+    csv_bytes = _make_csv_bytes()
+    r = client.post("/api/data/upload", files={"file": ("d.csv", csv_bytes, "text/csv")})
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": VALID_TOPOLOGY, "dataset_id": dataset_id, "seed": 42},
+    )
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    r = client.get(f"/api/fit/{job_id}/emissions")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["type"] == "gaussian"
+    assert len(body["means"]) == 3

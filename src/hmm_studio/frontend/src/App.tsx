@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import DataPage from "./pages/DataPage";
 import TopologyPage from "./pages/TopologyPage";
+import FitPage from "./pages/FitPage";
 import ResultsPage from "./pages/ResultsPage";
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="data" element={<DataPage />} />
         <Route path="topology" element={<TopologyPage />} />
+        <Route path="fit" element={<FitPage />} />
         <Route path="results/:jobId" element={<ResultsPage />} />
       </Route>
     </Routes>
