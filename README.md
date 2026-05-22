@@ -148,11 +148,15 @@ Install + launch:
 
 ```bash
 pip install -e ".[web,dev]"
-hmm-studio serve
-# Open http://127.0.0.1:8000/docs for the Swagger UI
+python scripts/build_frontend.py   # builds + copies frontend assets
+hmm-studio serve                    # http://127.0.0.1:8000
 ```
 
-Frontend (B.3+) is not yet implemented. See [docs/roadmap.md](docs/roadmap.md)
+If you skip the frontend build step, only the REST API is served — the React UI returns a default FastAPI 404.
+
+Swagger UI is always available at `http://127.0.0.1:8000/docs` regardless of whether the frontend build has been run.
+
+See [docs/roadmap.md](docs/roadmap.md)
 and [docs/specs/2026-05-21-hmm-studio-web-design.md](docs/specs/2026-05-21-hmm-studio-web-design.md).
 
 ## License

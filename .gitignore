@@ -36,3 +36,7 @@ results/
 # frontend's own .gitignore; this catches them at the repo root too).
 src/hmm_studio/frontend/node_modules/
 src/hmm_studio/frontend/dist/
+
+# Frontend build copied into the server package (built artifact, regenerated)
+src/hmm_studio/server/static/index.html
+src/hmm_studio/server/static/assets/

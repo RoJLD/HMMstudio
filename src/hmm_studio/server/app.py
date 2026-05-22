@@ -194,4 +194,24 @@ def create_app() -> FastAPI:
         except WebSocketDisconnect:
             return
 
+    # Mount the React frontend build at /, if available. The catch-all route
+    # serves index.html for any path not handled by /api/* or /ws/* so React
+    # Router can handle client-side routing.
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists() and (static_dir / "index.html").exists():
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        # Mount /assets explicitly so Vite-built assets resolve.
+        assets_dir = static_dir / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        # Catch-all for non-API routes -> index.html (SPA-style routing).
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def spa_fallback(full_path: str):
+            # API and WS already handled by their respective routes. Anything
+            # left should serve index.html so React Router takes over.
+            return FileResponse(static_dir / "index.html")
+
     return app

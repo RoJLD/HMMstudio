@@ -177,3 +177,66 @@ def test_websocket_unknown_job(client):
     with client.websocket_connect("/ws/fit/nonexistent-id") as ws:
         msg = ws.receive_json()
         assert "error" in msg
+
+
+def test_static_mount_serves_index_when_present(client, tmp_path, monkeypatch):
+    """When src/hmm_studio/server/static/index.html exists, GET / serves it.
+
+    This test creates a fake static dir to verify the wiring; the real build
+    output is produced by scripts/build_frontend.py.
+    """
+    from pathlib import Path
+
+    # Locate the server package dir
+    import hmm_studio.server as server_pkg
+
+    server_dir = Path(server_pkg.__file__).parent
+    static_dir = server_dir / "static"
+    assets_dir = static_dir / "assets"
+
+    # Snapshot pre-test state to restore (other tests may rely on it)
+    had_index = (static_dir / "index.html").exists()
+    had_assets = assets_dir.exists()
+
+    static_dir.mkdir(parents=True, exist_ok=True)
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    index_path = static_dir / "index.html"
+    asset_path = assets_dir / "test.js"
+    index_path.write_text("<!doctype html><html><body>test-spa</body></html>", encoding="utf-8")
+    asset_path.write_text("console.log('test');", encoding="utf-8")
+
+    try:
+        # Build a fresh app picking up the new static dir.
+        from hmm_studio.server.app import create_app
+
+        app = create_app()
+        from fastapi.testclient import TestClient
+
+        with TestClient(app) as c:
+            # GET / serves the SPA index.
+            r = c.get("/")
+            assert r.status_code == 200
+            assert "test-spa" in r.text
+
+            # GET /assets/test.js serves the asset.
+            r = c.get("/assets/test.js")
+            assert r.status_code == 200
+            assert "console.log" in r.text
+
+            # /health still works.
+            r = c.get("/health")
+            assert r.status_code == 200
+            assert r.json() == {"status": "ok"}
+
+            # Unknown frontend route falls back to index.html.
+            r = c.get("/some/spa/route")
+            assert r.status_code == 200
+            assert "test-spa" in r.text
+    finally:
+        # Cleanup: only remove what we created.
+        if not had_index and index_path.exists():
+            index_path.unlink()
+        if asset_path.exists():
+            asset_path.unlink()
+        if not had_assets and assets_dir.exists() and not list(assets_dir.iterdir()):
+            assets_dir.rmdir()
