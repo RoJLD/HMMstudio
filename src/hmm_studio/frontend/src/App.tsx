@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
+import DataPage from "./pages/DataPage";
 import TopologyPage from "./pages/TopologyPage";
 import ResultsPage from "./pages/ResultsPage";
 
@@ -9,6 +10,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
+        <Route path="data" element={<DataPage />} />
         <Route path="topology" element={<TopologyPage />} />
         <Route path="results/:jobId" element={<ResultsPage />} />
       </Route>
