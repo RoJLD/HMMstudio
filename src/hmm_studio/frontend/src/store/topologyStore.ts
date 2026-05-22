@@ -28,6 +28,14 @@ export interface StateNode {
   id: string;
   name: string;
   position: { x: number; y: number };
+  // B.4.2: per-state init hints (optional). When set, overrides the global init
+  // strategy for this state. Shape depends on the global emission.type:
+  //   gaussian / gmm  → init_mean: number[] (n_features)
+  //   poisson         → init_lambda: number[] (n_features)
+  //   multinomial     → init_emissionprob: number[] (n_symbols)
+  init_mean?: number[];
+  init_lambda?: number[];
+  init_emissionprob?: number[];
 }
 
 export interface TransitionEdge {
@@ -44,6 +52,8 @@ export interface TopologyState {
   startprob: "uniform" | "first_state" | number[];
   init: InitSpec;
   fit: FitSpec;
+  // B.4.2: tracks which state node is currently selected in the canvas
+  selectedStateId: string | null;
 
   setName: (name: string) => void;
   addState: (position: { x: number; y: number }) => void;
@@ -56,8 +66,14 @@ export interface TopologyState {
   setStartprob: (sp: "uniform" | "first_state" | number[]) => void;
   setInit: (init: InitSpec) => void;
   setFit: (fit: FitSpec) => void;
-  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit">>) => void;
+  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit" | "setStateInit" | "setSelectedStateId">>) => void;
   reset: () => void;
+  setStateInit: (
+    id: string,
+    key: "init_mean" | "init_lambda" | "init_emissionprob",
+    values: number[] | undefined,
+  ) => void;
+  setSelectedStateId: (id: string | null) => void;
 }
 
 /** The serialisable data slice — everything except action functions. */
@@ -65,6 +81,7 @@ export type TopologyData = Pick<
   TopologyState,
   "name" | "states" | "transitions" | "emission" | "startprob" | "init" | "fit"
 >;
+// Note: selectedStateId is intentionally excluded from TopologyData (not in undo history)
 
 const DEFAULT_STATE = {
   name: "untitled",
@@ -80,6 +97,7 @@ const DEFAULT_STATE = {
   startprob: "uniform" as "uniform" | "first_state" | number[],
   init: { strategy: "kmeans" as const, seed: 42 } as InitSpec,
   fit: { algorithm: "baum_welch" as const, n_iter: 200, tol: 1e-4 } as FitSpec,
+  selectedStateId: null as string | null,
 };
 
 function _uid(prefix: string): string {
@@ -136,6 +154,13 @@ export const useTopologyStore = create<TopologyState>()(
       setFit: (fit) => set({ fit }),
       loadTopology: (raw) => set({ ...DEFAULT_STATE, ...raw }),
       reset: () => set(DEFAULT_STATE),
+      setStateInit: (id, key, values) =>
+        set((s) => ({
+          states: s.states.map((n) =>
+            n.id === id ? { ...n, [key]: values } : n,
+          ),
+        })),
+      setSelectedStateId: (id) => set({ selectedStateId: id }),
     }),
     {
       partialize: (state) => {
@@ -153,6 +178,9 @@ export const useTopologyStore = create<TopologyState>()(
           setFit,
           loadTopology,
           reset,
+          setStateInit,
+          setSelectedStateId,
+          selectedStateId,
           ...data
         } = state;
         return data;

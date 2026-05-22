@@ -4,6 +4,7 @@ import type {
   InitSpec,
 } from "../../store/topologyStore";
 import { useTopologyStore } from "../../store/topologyStore";
+import { PerStateEmissionPanel } from "./PerStateEmissionPanel";
 
 interface SidePanelProps {
   validationError: string | null;
@@ -11,6 +12,16 @@ interface SidePanelProps {
 }
 
 export function SidePanel({ validationError, validationSummary }: SidePanelProps) {
+  const selectedStateId = useTopologyStore((s) => s.selectedStateId);
+
+  if (selectedStateId) {
+    return <PerStateEmissionPanel stateId={selectedStateId} />;
+  }
+
+  return <GlobalPanel validationError={validationError} validationSummary={validationSummary} />;
+}
+
+function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
   const name = useTopologyStore((s) => s.name);
   const setName = useTopologyStore((s) => s.setName);
   const emission = useTopologyStore((s) => s.emission);

@@ -5,17 +5,25 @@ import type {
   TopologyState,
 } from "../store/topologyStore";
 
+interface TopologyEmissionYAML {
+  type?: string;
+  n_features?: number | null;
+  covariance_type?: string | null;
+  n_mix?: number | null;
+  n_symbols?: number | null;
+  // B.4.2: per-state init hints
+  init_mean?: number[];
+  init_lambda?: number[];
+  init_emissionprob?: number[];
+}
+
 interface TopologyYAML {
   name?: string;
   n_states?: number;
   state_names?: string[];
-  emission?: {
-    type?: string;
-    n_features?: number | null;
-    covariance_type?: string | null;
-    n_mix?: number | null;
-    n_symbols?: number | null;
-  };
+  emission?: TopologyEmissionYAML;
+  // B.4.2: per-state emissions list (one entry per state, index-aligned)
+  emissions?: TopologyEmissionYAML[];
   allowed_transitions?: string[][];
   startprob?: string | number[];
   init?: { strategy?: string; seed?: number };
@@ -49,6 +57,30 @@ export function topologyToYAML(state: TopologyState): string {
     });
   }
 
+  // B.4.2: emit per-state emissions list when any state has init hints
+  const anyPerState = state.states.some(
+    (s) => s.init_mean || s.init_lambda || s.init_emissionprob,
+  );
+  if (anyPerState) {
+    obj.emissions = state.states.map((s) => {
+      const e: Record<string, unknown> = {
+        type: state.emission.type,
+      };
+      if (state.emission.n_features !== null)
+        e.n_features = state.emission.n_features;
+      if (state.emission.covariance_type !== null)
+        e.covariance_type = state.emission.covariance_type;
+      if (state.emission.n_mix !== null) e.n_mix = state.emission.n_mix;
+      if (state.emission.n_symbols !== null)
+        e.n_symbols = state.emission.n_symbols;
+      if (s.init_mean !== undefined) e.init_mean = s.init_mean;
+      if (s.init_lambda !== undefined) e.init_lambda = s.init_lambda;
+      if (s.init_emissionprob !== undefined)
+        e.init_emissionprob = s.init_emissionprob;
+      return e;
+    });
+  }
+
   return yaml.dump(obj, { lineWidth: 100 });
 }
 
@@ -59,11 +91,21 @@ export function yamlToTopology(text: string): TopologyPartial {
   }
 
   const names = obj.state_names ?? [];
-  const states = names.map((name, i) => ({
+  const states: import("../store/topologyStore").StateNode[] = names.map((name, i) => ({
     id: `s-${i}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     position: { x: 80 + (i % 4) * 180, y: 80 + Math.floor(i / 4) * 140 },
   }));
+
+  // B.4.2: parse per-state emissions if present and length matches
+  if (Array.isArray(obj.emissions) && obj.emissions.length === states.length) {
+    obj.emissions.forEach((e: TopologyEmissionYAML, i: number) => {
+      if (e?.init_mean) states[i].init_mean = e.init_mean;
+      if (e?.init_lambda) states[i].init_lambda = e.init_lambda;
+      if (e?.init_emissionprob) states[i].init_emissionprob = e.init_emissionprob;
+    });
+  }
+
   const nameToId = new Map(states.map((s) => [s.name, s.id]));
   const transitions = (obj.allowed_transitions ?? []).map((pair, i) => ({
     id: `e-${i}-${Math.random().toString(36).slice(2, 6)}`,

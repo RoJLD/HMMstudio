@@ -21,6 +21,7 @@ export function EditorCanvas() {
   const removeState = useTopologyStore((s) => s.removeState);
   const addTransition = useTopologyStore((s) => s.addTransition);
   const removeTransition = useTopologyStore((s) => s.removeTransition);
+  const setSelectedStateId = useTopologyStore((s) => s.setSelectedStateId);
 
   const nodes: Node[] = states.map((s) => ({
     id: s.id,
@@ -74,6 +75,13 @@ export function EditorCanvas() {
     [addTransition],
   );
 
+  const onSelectionChange = useCallback(
+    ({ nodes }: { nodes: Node[]; edges: Edge[] }) => {
+      setSelectedStateId(nodes[0]?.id ?? null);
+    },
+    [setSelectedStateId],
+  );
+
   return (
     <div className="flex-1 border border-slate-200 rounded">
       <ReactFlow
@@ -83,6 +91,7 @@ export function EditorCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onSelectionChange={onSelectionChange}
         fitView
         deleteKeyCode={["Backspace", "Delete"]}
       >
