@@ -1,98 +1,150 @@
-# ADR-0010: Data warehouse scope (Phase B.10)
+# ADR-0010 : Data warehouse scope (local-only, no versioning, sidecar YAML)
 
-**Date**: 2026-05-22
-**Status**: Accepted
-**Authors**: Robin Denis
+**Status** : Accepted
+**Date** : 2026-05-22
+**Related** : [Phase B.10 spec](../specs/2026-05-22-phase-b10-data-warehouse.md), [ADR-0003 backend abstraction](0003-backend-abstraction.md)
 
-## Context
+## Contexte
 
-The studio's existing data upload (Phase B.5) is one-shot: upload a CSV,
-preview it, use it for ONE fit. For a researcher juggling multiple
-datasets across multiple topology / hyperparameter combinations, this is
-real friction — every dataset must be re-uploaded, and there is no
-memory of "what this dataset is" between sessions.
+Le tab Data livré en B.5 ne gère qu'un upload one-shot. Pour un chercheur
+qui compare plusieurs datasets à travers plusieurs topologies et veut
+conserver une trace de provenance entre sessions, c'est de la friction
+réelle. La Phase B.10 (livrée 2026-05-22, commits `6366d8e` + `68c5ef0`)
+ajoute un explorateur de datasets local adossé à des sidecars YAML.
 
-A solution exists in the data-engineering ecosystem: DVC, MLflow, lakeFS,
-Delta Lake. They are mature, well-funded, and cover much more than HMM
-needs.
+Le besoin glisse naturellement vers le territoire DVC / MLflow / lakeFS /
+Delta Lake. Il faut acter par écrit pourquoi on n'y va pas, sinon chaque
+contributeur futur re-pose les mêmes questions et la pression au
+scope-creep finit par les emporter. Cet ADR formalise les quatre limites
+posées dans la spec B.10 § 9.
 
-## Decision
+## Décision
 
-Build a **read-only directory explorer** specialised for HMM datasets.
-Specifically NOT a data versioning, lineage, or remote-storage system.
+Le warehouse de la Phase B.10 est :
 
-Scope IN:
-- Designate ONE local directory as the "warehouse" (via env var
-  `HMM_STUDIO_WAREHOUSE_PATH` for the MVP, settings UI later).
-- Auto-scan with format dispatch: CSV, TSV, Parquet, Feather, JSON, JSONL,
-  Excel (xlsx + xls).
-- Per-dataset sidecar YAML (`<dataset>.hmm.yaml`) for optional provenance
-  and column roles. Sidecars are opt-in; absent sidecars give auto-detected
-  metadata.
-- Upload endpoint to write a new dataset into the warehouse.
-- Path-traversal protection on all `rel_path` endpoints.
+- **Local-only** : un seul chemin filesystem utilisateur, pas de remote
+  storage (S3, GCS, Azure Blob).
+- **Stateless côté serveur** : pas de table SQL pour indexer les datasets.
+  Le filesystem est la source de vérité; le backend scanne à la volée
+  (cache mémoire 5 s, invalidation explicite via `/refresh`).
+- **Sidecar YAML** : un fichier `<dataset>.hmm.yaml` optionnel à côté de
+  chaque dataset porte la métadonnée éditable (nom, description, rôles de
+  colonnes, provenance, notes). Sans sidecar, seules les métadonnées
+  auto-détectées (taille, mtime, dtypes) sont exposées.
+- **Pas de versioning** : pas d'historique des datasets, pas de git-like,
+  pas de DVC intégré.
 
-Scope OUT (explicit non-goals):
-- **Versioning**: no git-like history of datasets. Users with that need
-  put `git init` or DVC in their warehouse directly.
-- **Remote storage**: no S3 / GCS / Azure Blob. The warehouse is a local
-  filesystem path. Period.
-- **Lineage / DAG**: no tracking of "this fit used dataset X version Y".
-  The fit-job DB already records `dataset_id` per job; that is the level
-  of linkage we ship.
-- **Multi-warehouse**: one path per studio instance. Users with multiple
-  projects use multiple studio instances or symlink trees.
-- **Full-text indexing / search**: list + format-filter is enough at the
-  scales we target (<100 datasets).
+## Justification
 
-## Alternatives considered
+### Local-only
 
-- **Database-backed metadata** (a dataset table in SQLite): rejected.
-  Forces a database mutation on every file added; loses the "data lives
-  in the filesystem" property; complicates Docker / volume backup. Sidecar
-  YAMLs are simpler and version-controllable alongside the data.
-- **DVC integration**: rejected for MVP. DVC is heavyweight; users who
-  want it already have it; we would inherit its semantics and edge cases.
-- **Embedding a data catalog (DataHub, OpenMetadata)**: massively
-  over-scoped; the catalog category is its own multi-year product.
+Le wedge de `hmm-studio` est la **modélisation HMM**, pas le data
+engineering ni le cloud storage (cf. mémoire `hmm-studio positioning`).
+Un remote storage réintroduit auth, erreurs réseau, gestion des
+credentials, retries — complexité orthogonale qui n'aide personne à
+entraîner des HMMs plus vite. Le local-first est aussi cohérent avec le
+reste du studio (SQLite pour les jobs, filesystem pour les artifacts).
+Un user avec des datasets en S3 peut faire `aws s3 sync` vers son
+warehouse local en amont — on ne réplique pas cette couche de sync.
 
-## Consequences
+### Pas de DB / pas de versioning
 
-### Positive
-- Friction reduced from "upload → fit → discard" to "select → fit → keep".
-- Sidecar YAMLs are diffable in git; metadata travels with the data.
-- Backend is ~200 lines + 12 tests; no new infrastructure dependencies
-  beyond `openpyxl` for Excel reading.
-- Aligns with hmm-studio's local-first philosophy (cf. ADR-0002).
+Trois raisons (cf. spec § 1) :
 
-### Negative
-- No history: if a dataset is overwritten, the old version is lost. We
-  document this explicitly in the warehouse panel UI.
-- Sidecar YAML format is opinionated; users with their own metadata
-  conventions must adapt. We keep the schema lightweight to minimise
-  this friction.
-- Path traversal must be defended at every endpoint that takes a
-  `rel_path` parameter. Tested explicitly.
+1. **Concurrence mature** : DVC, lakeFS, Delta Lake, MLflow existent,
+   sont bien financés, ont des communautés actives. On n'a aucun edge
+   pour les concurrencer sur leur terrain.
+2. **Wedge ≠ data engineering** : versionner des datasets est une
+   discipline orthogonale à l'entraînement HMM. Les utilisateurs qui en
+   ont besoin auront déjà DVC en amont du studio.
+3. **Problème de sync filesystem ↔ DB** : si on stocke la métadonnée en
+   DB, dès qu'un user déplace un fichier dans l'Explorer Windows, la DB
+   diverge — qui gagne ? Filesystem-as-source-of-truth supprime
+   complètement le problème : pas de sync à maintenir, pas de
+   réconciliation à coder.
 
-### Settings UX
+### Sidecar YAML
 
-The MVP uses an env var `HMM_STUDIO_WAREHOUSE_PATH`. A full settings UI
-(input field in a settings panel) is deferred to a follow-up (B.10.x);
-the env var is sufficient for the docker-compose deployment.
+Plutôt qu'une table `datasets` en DB, la métadonnée vit dans un fichier
+YAML co-localisé :
+
+- **Co-localisation** : copier `btc_2024.csv` + `btc_2024.csv.hmm.yaml`
+  ensemble préserve la provenance. Une métadonnée en DB se perd au move.
+- **Diffable** : git, code review, inspection visuelle marchent sur YAML.
+- **Optionnel** : un dataset sans sidecar reste utilisable (métadonnées
+  auto-détectées comme plancher).
+- **Éditable hors studio** : n'importe quel éditeur de texte.
+- **Coût** : un fichier en plus par dataset. Acceptable à < 100 datasets.
+
+### Limites anti-scope-creep
+
+La spec § 8 énumère cinq successeurs hors-scope, repris ici avec leur
+raison de rejet :
+
+- **B.10.1 Versioning git-like** (init du warehouse) → rejeté, territoire
+  DVC.
+- **B.10.2 Remote storage** (S3, GCS, Azure Blob) → rejeté sauf pivot
+  SaaS explicite.
+- **B.10.3 Lineage / DAG cross-fits** → rejeté, territoire DVC / MLflow.
+  Le lien fit ↔ dataset au niveau `dataset_id` dans la table de jobs
+  suffit.
+- **B.10.4 Multi-warehouse / workspaces** → reconsidéré seulement si un
+  besoin utilisateur validé apparaît.
+- **B.10.5 Indexation full-text / search** → overkill à l'échelle visée
+  (< 100 datasets).
+
+**Règle générale** : toute feature qui requiert d'écrire une primitive
+de data engineering (orchestrator, scheduler, lineage tracker, immutable
+storage) est **rejetée par défaut**. Cf. mémoire `hmm-studio scope
+discipline` : on refuse les pivots hors HMM-land.
+
+## Conséquences
+
+**Positives** :
+- Friction réduite de "upload → fit → discard" à "select → fit → keep".
+- Sidecars diffables en git : la métadonnée voyage avec la data.
+- Backend ~200 LOC + 12 tests, zéro nouvelle infra.
+- Filesystem comme source de vérité élimine la classe de bugs sync
+  DB ↔ disk.
+
+**Négatives / coût accepté** :
+- Pas d'historique : un dataset écrasé est perdu (documenté dans l'UI).
+- Sidecar opinionated : users avec leur propre convention doivent
+  adapter. Schéma gardé léger pour limiter la friction.
+- Path traversal à défendre à chaque endpoint `rel_path` (testé via
+  `test_path_traversal_blocked`).
+- Un fichier sidecar en plus par dataset, visuellement bruyant à l'`ls`.
+
+**Réversibilité** : si un user prouve un besoin de versioning, on peut
+ajouter une couche DVC-compatible **par-dessus** le scan/sidecar sans
+toucher au core. De même pour le remote storage : un adapter `S3Backend`
+exposant la même API peut s'ajouter sans casser le code local. La
+décision est ouverte vers l'extension, fermée vers la duplication des
+outils existants.
+
+## Alternatives rejetées
+
+| Alternative | Pourquoi rejetée |
+|---|---|
+| DB-backed dataset registry | Sync filesystem ↔ DB, perd la provenance au déplacement, complique le backup Docker |
+| Git LFS / DVC auto-init du warehouse | DVC fait mieux et ce n'est pas notre wedge; on hérite de sa sémantique pour rien |
+| Manifest centralisé (un seul `warehouse.yaml` à la racine) | Moins robuste au move de fichiers, plus de conflits git en équipe, perd la co-localisation |
+| S3 / GCS direct read | Auth + erreurs réseau + creds — complexité orthogonale à la modélisation HMM |
+| Embedding d'un catalog (DataHub, OpenMetadata) | La catégorie "data catalog" est un produit multi-an à elle seule |
 
 ## Revisit triggers
 
-- A user has a real workflow that requires versioning or remote storage
-  → consider integrating with DVC rather than building it ourselves.
-- The warehouse routinely contains >500 datasets and scan time becomes
-  perceptible → add real caching (Redis or DB-backed scan results).
-- Multi-user / SaaS pivot → reconsider local-only assumption; warehouse
-  becomes per-user with auth.
+- Un user a un workflow réel qui requiert versioning ou remote storage →
+  intégrer DVC plutôt que reconstruire.
+- Warehouse > 500 datasets et scan perceptible → vrai caching (Redis ou
+  scan persisté en DB).
+- Pivot multi-user / SaaS → reconsidérer le local-only; warehouse
+  per-user avec auth.
 
-## Pointers
+## Pointeurs
 
-- `src/hmm_studio/server/warehouse.py`
-- `src/hmm_studio/server/app.py` (the 6 endpoints under `/api/warehouse/*`)
-- `tests/studio/test_warehouse.py` (12+ tests)
-- Phase B.10 full spec: `docs/specs/2026-05-22-phase-b10-data-warehouse.md`
-- ADR-0002 (B stack — local-first principle)
+- `src/hmm_studio/server/warehouse.py`, `server/app.py` (endpoints
+  `/api/warehouse/*`), `tests/studio/test_warehouse.py`
+- Spec : [docs/specs/2026-05-22-phase-b10-data-warehouse.md](../specs/2026-05-22-phase-b10-data-warehouse.md)
+- ADR-0003 (backend abstraction) : même esprit — isoler ce qui change,
+  garder le core agnostique.
