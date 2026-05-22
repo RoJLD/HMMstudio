@@ -1,4 +1,5 @@
 import { create, useStore } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { temporal } from "zundo";
 import type { TemporalState } from "zundo";
 
@@ -105,87 +106,105 @@ function _uid(prefix: string): string {
 }
 
 export const useTopologyStore = create<TopologyState>()(
-  temporal(
-    (set) => ({
-      ...DEFAULT_STATE,
-      setName: (name) => set({ name }),
-      addState: (position) =>
-        set((s) => {
-          const id = _uid("s");
-          const newState: StateNode = {
-            id,
-            name: `s${s.states.length}`,
-            position,
-          };
-          return { states: [...s.states, newState] };
-        }),
-      renameState: (id, name) =>
-        set((s) => ({
-          states: s.states.map((n) => (n.id === id ? { ...n, name } : n)),
-        })),
-      removeState: (id) =>
-        set((s) => ({
-          states: s.states.filter((n) => n.id !== id),
-          transitions: s.transitions.filter(
-            (e) => e.source !== id && e.target !== id,
-          ),
-        })),
-      moveState: (id, position) =>
-        set((s) => ({
-          states: s.states.map((n) => (n.id === id ? { ...n, position } : n)),
-        })),
-      addTransition: (source, target) =>
-        set((s) => {
-          if (s.transitions.some((e) => e.source === source && e.target === target)) {
-            return {};
-          }
-          return {
-            transitions: [
-              ...s.transitions,
-              { id: _uid("e"), source, target },
-            ],
-          };
-        }),
-      removeTransition: (id) =>
-        set((s) => ({ transitions: s.transitions.filter((e) => e.id !== id) })),
-      setEmission: (emission) => set({ emission }),
-      setStartprob: (startprob) => set({ startprob }),
-      setInit: (init) => set({ init }),
-      setFit: (fit) => set({ fit }),
-      loadTopology: (raw) => set({ ...DEFAULT_STATE, ...raw }),
-      reset: () => set(DEFAULT_STATE),
-      setStateInit: (id, key, values) =>
-        set((s) => ({
-          states: s.states.map((n) =>
-            n.id === id ? { ...n, [key]: values } : n,
-          ),
-        })),
-      setSelectedStateId: (id) => set({ selectedStateId: id }),
-    }),
-    {
-      partialize: (state) => {
-        const {
-          setName,
-          addState,
-          renameState,
-          removeState,
-          moveState,
-          addTransition,
-          removeTransition,
-          setEmission,
-          setStartprob,
-          setInit,
-          setFit,
-          loadTopology,
-          reset,
-          setStateInit,
-          setSelectedStateId,
-          selectedStateId,
-          ...data
-        } = state;
-        return data;
+  persist(
+    temporal(
+      (set) => ({
+        ...DEFAULT_STATE,
+        setName: (name) => set({ name }),
+        addState: (position) =>
+          set((s) => {
+            const id = _uid("s");
+            const newState: StateNode = {
+              id,
+              name: `s${s.states.length}`,
+              position,
+            };
+            return { states: [...s.states, newState] };
+          }),
+        renameState: (id, name) =>
+          set((s) => ({
+            states: s.states.map((n) => (n.id === id ? { ...n, name } : n)),
+          })),
+        removeState: (id) =>
+          set((s) => ({
+            states: s.states.filter((n) => n.id !== id),
+            transitions: s.transitions.filter(
+              (e) => e.source !== id && e.target !== id,
+            ),
+          })),
+        moveState: (id, position) =>
+          set((s) => ({
+            states: s.states.map((n) => (n.id === id ? { ...n, position } : n)),
+          })),
+        addTransition: (source, target) =>
+          set((s) => {
+            if (s.transitions.some((e) => e.source === source && e.target === target)) {
+              return {};
+            }
+            return {
+              transitions: [
+                ...s.transitions,
+                { id: _uid("e"), source, target },
+              ],
+            };
+          }),
+        removeTransition: (id) =>
+          set((s) => ({ transitions: s.transitions.filter((e) => e.id !== id) })),
+        setEmission: (emission) => set({ emission }),
+        setStartprob: (startprob) => set({ startprob }),
+        setInit: (init) => set({ init }),
+        setFit: (fit) => set({ fit }),
+        loadTopology: (raw) => set({ ...DEFAULT_STATE, ...raw }),
+        reset: () => set(DEFAULT_STATE),
+        setStateInit: (id, key, values) =>
+          set((s) => ({
+            states: s.states.map((n) =>
+              n.id === id ? { ...n, [key]: values } : n,
+            ),
+          })),
+        setSelectedStateId: (id) => set({ selectedStateId: id }),
+      }),
+      {
+        partialize: (state) => {
+          const {
+            setName,
+            addState,
+            renameState,
+            removeState,
+            moveState,
+            addTransition,
+            removeTransition,
+            setEmission,
+            setStartprob,
+            setInit,
+            setFit,
+            loadTopology,
+            reset,
+            setStateInit,
+            setSelectedStateId,
+            selectedStateId,
+            ...data
+          } = state;
+          return data;
+        },
+        limit: 50,
       },
-      limit: 50,
+    ),
+    {
+      name: "hmm-studio-topology",
+      storage: createJSONStorage(() => localStorage),
+      // Only persist the data fields — not action functions, selection, or
+      // the temporal middleware's internal undo/redo history.
+      partialize: (state) => ({
+        name: state.name,
+        states: state.states,
+        transitions: state.transitions,
+        emission: state.emission,
+        startprob: state.startprob,
+        init: state.init,
+        fit: state.fit,
+      }),
+      version: 1,
     },
   ),
 );

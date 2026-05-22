@@ -4,9 +4,10 @@ interface ToolbarProps {
   onValidate: () => void;
   onExport: () => void;
   onImport: () => void;
+  onShare: () => void;
 }
 
-export function Toolbar({ onValidate, onExport, onImport }: ToolbarProps) {
+export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProps) {
   const addState = useTopologyStore((s) => s.addState);
   const undo = useTopologyTemporal((s) => s.undo);
   const redo = useTopologyTemporal((s) => s.redo);
@@ -39,6 +40,9 @@ export function Toolbar({ onValidate, onExport, onImport }: ToolbarProps) {
       </button>
       <button onClick={onExport} className={btn}>
         ↓ Export YAML
+      </button>
+      <button onClick={onShare} className={btn}>
+        ⎘ Share URL
       </button>
       <div className="w-px h-6 bg-slate-300" />
       <button onClick={onValidate} className={btn}>

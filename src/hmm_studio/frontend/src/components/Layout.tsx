@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -32,9 +33,12 @@ export default function Layout() {
             );
           })}
         </nav>
-        <div className="mt-auto text-xs text-slate-500">v0.1 · skeleton</div>
+        <div className="mt-auto">
+          <div className="mb-2"><ThemeToggle /></div>
+          <div className="text-xs text-slate-500">v0.1 · skeleton</div>
+        </div>
       </aside>
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-8 overflow-auto dark:bg-slate-900 dark:text-slate-200">
         <Outlet />
       </main>
     </div>

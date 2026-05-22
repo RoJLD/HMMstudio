@@ -1,14 +1,44 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorCanvas } from "../components/topology/EditorCanvas";
 import { Toolbar } from "../components/topology/Toolbar";
 import { SidePanel } from "../components/topology/SidePanel";
 import { useTopologyStore } from "../store/topologyStore";
 import { topologyToYAML, yamlToTopology } from "../lib/yaml";
 import { useDebouncedValidation } from "../hooks/useDebouncedValidation";
+import { buildShareUrl, clearTopologyParam, readSharedTopology } from "../lib/share";
 
 export default function TopologyPage() {
   const validation = useDebouncedValidation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  // On mount: hydrate topology from ?topology= URL param if present
+  useEffect(() => {
+    const shared = readSharedTopology();
+    if (shared) {
+      useTopologyStore.getState().loadTopology(shared);
+      clearTopologyParam();
+      setShareStatus("Loaded topology from shared URL");
+      setTimeout(() => setShareStatus(null), 3000);
+    }
+  }, []);
+
+  async function handleShare() {
+    const state = useTopologyStore.getState();
+    if (state.states.length === 0) {
+      setShareStatus("Empty topology — nothing to share");
+      setTimeout(() => setShareStatus(null), 3000);
+      return;
+    }
+    const url = buildShareUrl(state);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus("Link copied to clipboard");
+    } catch {
+      setShareStatus("Copy failed — URL: " + url);
+    }
+    setTimeout(() => setShareStatus(null), 4000);
+  }
 
   function handleExport() {
     const state = useTopologyStore.getState();
@@ -51,7 +81,13 @@ export default function TopologyPage() {
           }}
           onExport={handleExport}
           onImport={handleImportClick}
+          onShare={handleShare}
         />
+        {shareStatus && (
+          <p className="mb-2 text-xs text-brand-700 bg-brand-50 border border-brand-200 rounded px-2 py-1">
+            {shareStatus}
+          </p>
+        )}
         <input
           ref={fileInputRef}
           type="file"
