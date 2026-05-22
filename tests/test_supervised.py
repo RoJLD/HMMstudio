@@ -233,9 +233,7 @@ def test_supervised_gmm_raises_not_implemented():
         name="sup-gmm",
         n_states=2,
         state_names=["s0", "s1"],
-        emission=EmissionSpec(
-            type="gmm", covariance_type="diag", n_features=1, n_mix=2
-        ),
+        emission=EmissionSpec(type="gmm", covariance_type="diag", n_features=1, n_mix=2),
         allowed_transitions=None,
         startprob="uniform",
         init=InitSpec(strategy="uniform", seed=0),
