@@ -65,6 +65,7 @@ class HmmlearnBackend:
         emission_kwargs: dict[str, np.ndarray],
         mask: np.ndarray,
         progress_callback=None,
+        transmat_prior: np.ndarray | None = None,
     ) -> BackendFitResult:
         if topology.emission.type not in _CLASS_BY_EMISSION:
             raise ValueError(
@@ -74,7 +75,7 @@ class HmmlearnBackend:
 
         cls = _CLASS_BY_EMISSION[topology.emission.type]
         kwargs = _hmmlearn_kwargs(topology, seed=seed)
-        model = cls(transmat_mask=mask, **kwargs)
+        model = cls(transmat_mask=mask, transmat_prior=transmat_prior, **kwargs)
 
         model.startprob_ = initial_startprob
         model.transmat_ = initial_transmat

@@ -50,3 +50,47 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
     normalized = masked / safe_sums
     out = np.where(row_sums > 0, normalized, fallback)
     return out
+
+
+def _map_update(
+    transmat: np.ndarray,
+    prior: np.ndarray | None,
+    mask: np.ndarray,
+    effective_n: float = 1.0,
+) -> np.ndarray:
+    """Apply Dirichlet MAP smoothing.
+
+    Posterior ∝ likelihood * prior. For Dirichlet(prior) + multinomial
+    likelihood, MAP = (counts + prior - 1) / sum(...). hmmlearn's
+    ``_do_mstep`` gives us the row-normalized transmat (post-likelihood); we
+    blend in the prior as pseudo-counts scaled by ``effective_n``.
+
+    The choice ``Dirichlet(1)`` = uniform = no effect (pseudo-counts all 0).
+
+    Parameters
+    ----------
+    transmat
+        ``(K, K)`` row-normalized transition matrix from the EM M-step.
+    prior
+        ``(K, K)`` Dirichlet pseudo-count matrix, or None (no-op).
+    mask
+        ``(K, K)`` boolean mask of allowed transitions.
+    effective_n
+        Weight given to the observed transition probabilities relative to the
+        prior. Default 1.0 — the prior counts as one effective observation
+        per row.
+
+    Returns
+    -------
+    np.ndarray
+        MAP-smoothed, mask-re-applied, row-normalized ``(K, K)`` transmat.
+    """
+    if prior is None:
+        return transmat
+    pseudo = np.maximum(prior - 1.0, 0.0)
+    numerator = transmat * effective_n + pseudo
+    numerator = numerator * mask
+    row_sums = numerator.sum(axis=1, keepdims=True)
+    safe_sums = np.where(row_sums > 0, row_sums, 1.0)
+    out = np.where(row_sums > 0, numerator / safe_sums, transmat)
+    return out

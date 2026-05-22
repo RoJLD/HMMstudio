@@ -87,6 +87,9 @@ def load_topology(path: str | Path) -> Topology:
                     )
                 )
 
+        prior_alpha = raw.get("transmat_prior_alpha")
+        prior_matrix = raw.get("transmat_prior_matrix")
+
         topo = Topology(
             name=raw["name"],
             n_states=int(raw["n_states"]),
@@ -97,6 +100,8 @@ def load_topology(path: str | Path) -> Topology:
             init=init,
             fit=fit,
             emissions=emissions,
+            transmat_prior_alpha=float(prior_alpha) if prior_alpha is not None else None,
+            transmat_prior_matrix=prior_matrix,
         )
     except KeyError as exc:
         raise TopologyError(f"missing required field: {exc}") from exc

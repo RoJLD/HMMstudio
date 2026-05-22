@@ -149,8 +149,10 @@ def fit(
         initial_pi = init_mod.startprob(topology, seed=actual_seed)
         emission_kwargs = init_mod.emission_params(topology, X=X, seed=actual_seed)
 
+        transmat_prior = topology.transmat_prior()
+
         t0 = time.perf_counter()
-        # Only pass progress_callback to backends that declare the parameter,
+        # Only pass optional kwargs to backends that declare the parameter,
         # so third-party backends implementing the original protocol still work.
         _backend_fit_params = inspect.signature(backend_impl.fit).parameters
         _extra = (
@@ -158,6 +160,8 @@ def fit(
             if progress_callback is not None and "progress_callback" in _backend_fit_params
             else {}
         )
+        if transmat_prior is not None and "transmat_prior" in _backend_fit_params:
+            _extra["transmat_prior"] = transmat_prior
         result = backend_impl.fit(
             topology,
             X,

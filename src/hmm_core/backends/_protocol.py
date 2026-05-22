@@ -74,6 +74,7 @@ class HMMBackend(Protocol):
         emission_kwargs: dict[str, np.ndarray],
         mask: np.ndarray,
         progress_callback: Callable[[list[float]], None] | None = None,
+        transmat_prior: np.ndarray | None = None,
     ) -> BackendFitResult:
         """Run constrained Baum-Welch and return the fit result.
 
@@ -103,6 +104,10 @@ class HMMBackend(Protocol):
             Backends that do not support live progress should ignore this
             argument. Used by the web UI (Phase B) to stream Baum-Welch
             convergence to clients via WebSocket.
+        transmat_prior
+            Optional (K, K) Dirichlet prior pseudo-count matrix. When provided,
+            the backend should apply MAP smoothing in addition to mask
+            enforcement during the M-step. None = no prior (MLE / current).
 
         Returns
         -------

@@ -56,6 +56,14 @@ class Topology:
     # and every entry must share the same hyperparams (type, n_features, etc.)
     # as Topology.emission.  Used to seed per-state init hints.
     emissions: list[EmissionSpec] | None = None
+    # A.9: optional Dirichlet prior on transitions.
+    # - transmat_prior_alpha: scalar symmetric Dirichlet(alpha). Same alpha
+    #   on every allowed edge. Equivalent to a full matrix of value `alpha`.
+    # - transmat_prior_matrix: explicit (K, K) pseudo-counts. Overrides
+    #   `transmat_prior_alpha` when provided. Forbidden edges should have
+    #   value 0 (enforced by re-masking).
+    transmat_prior_alpha: float | None = None
+    transmat_prior_matrix: list[list[float]] | None = None
 
     def validate(self) -> None:
         if len(self.state_names) != self.n_states:
@@ -126,6 +134,19 @@ class Topology:
                             "heterogeneous hyperparams per state are not yet supported (planned A.8.x)"
                         )
 
+        if self.transmat_prior_matrix is not None:
+            arr = self.transmat_prior_matrix
+            if len(arr) != self.n_states or any(len(row) != self.n_states for row in arr):
+                raise TopologyError(
+                    f"transmat_prior_matrix must be {self.n_states}×{self.n_states}"
+                )
+            if any(v < 0 for row in arr for v in row):
+                raise TopologyError("transmat_prior_matrix values must be >= 0")
+        if self.transmat_prior_alpha is not None and self.transmat_prior_alpha < 0:
+            raise TopologyError(
+                f"transmat_prior_alpha must be >= 0, got {self.transmat_prior_alpha}"
+            )
+
     def transition_mask(self) -> np.ndarray:
         K = self.n_states
         if self.allowed_transitions is None:
@@ -135,3 +156,20 @@ class Topology:
         for src, dst in self.allowed_transitions:
             mask[index[src], index[dst]] = True
         return mask
+
+    def transmat_prior(self) -> np.ndarray | None:
+        """Return the K x K prior pseudo-count matrix, or None if no prior set.
+
+        - If ``transmat_prior_matrix`` is set: returns it as ndarray, masked
+          (forbidden edges forced to 0).
+        - Else if ``transmat_prior_alpha`` is set: returns alpha * mask
+          (uniform prior on allowed edges, 0 on forbidden).
+        - Else: None.
+        """
+        mask = self.transition_mask()
+        if self.transmat_prior_matrix is not None:
+            arr = np.asarray(self.transmat_prior_matrix, dtype=float)
+            return arr * mask  # zero forbidden edges
+        if self.transmat_prior_alpha is not None:
+            return self.transmat_prior_alpha * mask.astype(float)
+        return None
