@@ -89,19 +89,20 @@ def create_app() -> FastAPI:
             ),
         )
 
-    @app.post("/api/data/upload", response_model=DatasetPreview)
-    def upload_dataset(file: UploadFile = File(...)):
-        contents = file.file.read()
-        if len(contents) > 50 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail="file too large (max 50MB)")
+    def _store_dataframe_as_dataset(df: pd.DataFrame, filename: str) -> DatasetPreview:
+        """Persist a DataFrame as a Dataset row + CSV file in uploads_dir.
+
+        Used by both ``/api/data/upload`` (raw upload) and
+        ``/api/warehouse/{rel_path}/promote`` (warehouse-sourced) so the
+        downstream fit pipeline can consume either by ``dataset_id``.
+        """
         dataset_id = str(uuid.uuid4())
         path = uploads_dir / f"{dataset_id}.csv"
-        path.write_bytes(contents)
-        df = pd.read_csv(path)
+        df.to_csv(path, index=False)
         dtypes_map = {c: str(df[c].dtype) for c in df.columns}
         ds = Dataset(
             id=dataset_id,
-            filename=file.filename or "uploaded.csv",
+            filename=filename,
             n_rows=len(df),
             n_cols=len(df.columns),
             dtypes=json.dumps(dtypes_map),
@@ -111,11 +112,11 @@ def create_app() -> FastAPI:
             session.add(ds)
             session.commit()
             session.refresh(ds)
-            # Capture all attributes inside the session to avoid DetachedInstanceError
             ds_id = ds.id
             ds_filename = ds.filename
             ds_n_rows = ds.n_rows
             ds_n_cols = ds.n_cols
+        head = df.head(10)
         return DatasetPreview(
             id=ds_id,
             filename=ds_filename,
@@ -123,8 +124,20 @@ def create_app() -> FastAPI:
             n_cols=ds_n_cols,
             columns=list(df.columns),
             dtypes=dtypes_map,
-            head=df.head(10).to_dict(orient="records"),
+            head=head.where(head.notna(), None).to_dict(orient="records"),
         )
+
+    @app.post("/api/data/upload", response_model=DatasetPreview)
+    def upload_dataset(file: UploadFile = File(...)):
+        contents = file.file.read()
+        if len(contents) > 50 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="file too large (max 50MB)")
+        # Stage incoming bytes via a temp path so pandas can parse them; then
+        # delegate to the shared helper which (re-)writes the canonical CSV.
+        import io
+
+        df = pd.read_csv(io.BytesIO(contents))
+        return _store_dataframe_as_dataset(df, file.filename or "uploaded.csv")
 
     @app.get("/api/data/{dataset_id}/preview", response_model=DatasetPreview)
     def get_dataset_preview(dataset_id: str):
@@ -691,6 +704,32 @@ def create_app() -> FastAPI:
             "rel_path": str(target.relative_to(warehouse_path)).replace("\\", "/"),
             "size_bytes": len(contents),
         }
+
+    @app.post(
+        "/api/warehouse/{rel_path:path}/promote",
+        response_model=DatasetPreview,
+    )
+    def promote_warehouse_dataset(rel_path: str):
+        """Load a warehouse file into the studio's Dataset table.
+
+        After promotion, the returned ``dataset_id`` can be passed to
+        ``/api/fit/start`` like any uploaded dataset. The original
+        warehouse file is left untouched; we copy the parsed frame into
+        ``uploads_dir`` as a canonical CSV.
+        """
+        if warehouse_path is None:
+            raise HTTPException(status_code=400, detail="warehouse_path not configured")
+        try:
+            full = safe_resolve(warehouse_path, rel_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if not full.exists() or not full.is_file():
+            raise HTTPException(status_code=404, detail="dataset not found")
+        try:
+            df = read_dataset(full)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"failed to read dataset: {exc}")
+        return _store_dataframe_as_dataset(df, full.name)
 
     # Mount the React frontend build at /, if available. The catch-all route
     # serves index.html for any path not handled by /api/* or /ws/* so React

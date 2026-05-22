@@ -251,3 +251,113 @@ export async function deleteAnnotation(
   });
   if (!r.ok) throw new Error(`delete failed: ${r.status}`);
 }
+
+// ---------------------------------------------------------------------------
+// Warehouse (Phase B.10)
+// ---------------------------------------------------------------------------
+
+export interface WarehouseEntry {
+  rel_path: string;
+  size_bytes: number;
+  modified_at: string; // ISO 8601
+  format: string;
+  has_sidecar: boolean;
+}
+
+export interface WarehouseList {
+  warehouse_path: string;
+  entries: WarehouseEntry[];
+}
+
+export interface WarehousePreview {
+  rel_path: string;
+  n_rows_total: number;
+  n_cols: number;
+  columns: string[];
+  dtypes: Record<string, string>;
+  head: Array<Record<string, unknown>>;
+}
+
+export interface WarehouseSidecarMeta {
+  schema_version?: number;
+  name?: string;
+  description?: string;
+  notes?: string;
+  provenance?: Record<string, unknown>;
+  columns?: Array<Record<string, unknown>>;
+  extra?: Record<string, unknown>;
+}
+
+/**
+ * Encode each segment of a relative path with encodeURIComponent while
+ * preserving the `/` separators. Required so rel_paths like
+ * ``archive/btc 2024.csv`` survive a round-trip through the URL.
+ */
+function encodeRelPath(relPath: string): string {
+  return relPath.split("/").map(encodeURIComponent).join("/");
+}
+
+export async function listWarehouse(): Promise<WarehouseList> {
+  return jsonFetch<WarehouseList>("/api/warehouse");
+}
+
+export async function refreshWarehouse(): Promise<WarehouseList> {
+  return jsonFetch<WarehouseList>("/api/warehouse/refresh", { method: "POST" });
+}
+
+export async function getWarehousePreview(
+  relPath: string,
+  n = 10,
+): Promise<WarehousePreview> {
+  return jsonFetch<WarehousePreview>(
+    `/api/warehouse/${encodeRelPath(relPath)}/preview?n=${n}`,
+  );
+}
+
+export async function getWarehouseMeta(
+  relPath: string,
+): Promise<{ rel_path: string; sidecar: WarehouseSidecarMeta | null }> {
+  return jsonFetch<{ rel_path: string; sidecar: WarehouseSidecarMeta | null }>(
+    `/api/warehouse/${encodeRelPath(relPath)}/meta`,
+  );
+}
+
+export async function putWarehouseMeta(
+  relPath: string,
+  meta: WarehouseSidecarMeta,
+): Promise<{ rel_path: string; sidecar_written: boolean }> {
+  return jsonFetch<{ rel_path: string; sidecar_written: boolean }>(
+    `/api/warehouse/${encodeRelPath(relPath)}/meta`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(meta),
+    },
+  );
+}
+
+export async function uploadToWarehouse(
+  file: File,
+  subdir?: string,
+): Promise<{ rel_path: string; size_bytes: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  if (subdir) form.append("subdir", subdir);
+  const r = await fetch(BASE + "/api/warehouse/upload", {
+    method: "POST",
+    body: form,
+  });
+  if (!r.ok) {
+    throw new Error(`upload to warehouse failed: ${r.status} ${await r.text()}`);
+  }
+  return (await r.json()) as { rel_path: string; size_bytes: number };
+}
+
+export async function promoteWarehouseDataset(
+  relPath: string,
+): Promise<DatasetPreview> {
+  return jsonFetch<DatasetPreview>(
+    `/api/warehouse/${encodeRelPath(relPath)}/promote`,
+    { method: "POST" },
+  );
+}

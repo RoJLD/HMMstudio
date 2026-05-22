@@ -252,3 +252,60 @@ def test_warehouse_endpoints_with_configured_path(tmp_path, monkeypatch):
         assert r.status_code == 200
         rel_paths = {e["rel_path"] for e in r.json()["entries"]}
         assert "new.csv" in rel_paths
+
+
+def test_promote_warehouse_dataset_csv(tmp_path, monkeypatch):
+    """POST /api/warehouse/{rel_path}/promote loads file into Dataset table."""
+    warehouse = tmp_path / "wh"
+    warehouse.mkdir()
+    df = pd.DataFrame(
+        {
+            "f0": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "f1": [0.1, 0.2, 0.3, 0.4, 0.5],
+        }
+    )
+    df.to_csv(warehouse / "demo.csv", index=False)
+
+    monkeypatch.setenv("HMM_STUDIO_DB_PATH", str(tmp_path / "studio.db"))
+    monkeypatch.setenv("HMM_STUDIO_RESULTS_DIR", str(tmp_path / "results"))
+    monkeypatch.setenv("HMM_STUDIO_UPLOADS_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setenv("HMM_STUDIO_WAREHOUSE_PATH", str(warehouse))
+
+    app = create_app()
+    with TestClient(app) as c:
+        r = c.post("/api/warehouse/demo.csv/promote")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["n_rows"] == 5
+        assert body["n_cols"] == 2
+        assert body["columns"] == ["f0", "f1"]
+        assert body["filename"] == "demo.csv"
+        dataset_id = body["id"]
+        assert dataset_id  # uuid issued
+
+        # Dataset should now be queryable via the existing per-id preview endpoint
+        r2 = c.get(f"/api/data/{dataset_id}/preview")
+        assert r2.status_code == 200
+        prev = r2.json()
+        assert prev["id"] == dataset_id
+        assert prev["n_rows"] == 5
+        assert prev["columns"] == ["f0", "f1"]
+
+
+def test_promote_warehouse_blocks_traversal(tmp_path, monkeypatch):
+    """promote endpoint must refuse rel_paths that escape the warehouse root."""
+    warehouse = tmp_path / "wh"
+    warehouse.mkdir()
+    (warehouse / "inside.csv").write_text("x\n1\n")
+
+    monkeypatch.setenv("HMM_STUDIO_DB_PATH", str(tmp_path / "studio.db"))
+    monkeypatch.setenv("HMM_STUDIO_RESULTS_DIR", str(tmp_path / "results"))
+    monkeypatch.setenv("HMM_STUDIO_UPLOADS_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setenv("HMM_STUDIO_WAREHOUSE_PATH", str(warehouse))
+
+    app = create_app()
+    with TestClient(app) as c:
+        # URL-encoded ../ traversal
+        r = c.post("/api/warehouse/..%2F..%2Fetc%2Fpasswd/promote")
+        # FastAPI decodes the path; the resolver detects escape and rejects.
+        assert r.status_code in (400, 404)
