@@ -426,8 +426,8 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 - ADR-0001 backend : [docs/decisions/0001-backend-hmmlearn-patch.md](decisions/0001-backend-hmmlearn-patch.md)
 - **Spec DRAFT sous-projet B** (à brainstormer) : [docs/specs/2026-05-21-hmm-studio-web-design.md](specs/2026-05-21-hmm-studio-web-design.md)
 - **Spec DRAFT sous-projet C** (à brainstormer) : [docs/specs/2026-05-21-hmm-viz-advanced-design.md](specs/2026-05-21-hmm-viz-advanced-design.md)
-- CI workflow : [.github/workflows/ci.yml](../.github/workflows/ci.yml)
-- Pre-commit config : [.pre-commit-config.yaml](../.pre-commit-config.yaml)
-- README utilisateur : [../README.md](../README.md)
+- CI workflow : `.github/workflows/ci.yml`
+- Pre-commit config : `.pre-commit-config.yaml`
+- README utilisateur : see [Home](index.md)
 - Dashboard HMM existant (validation D faite, swap futur) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\src\cmex_crypto\viz\hmm_dashboard\`
 - ADR de migration côté crypto (uncommitée pour relecture) : `C:\Users\rdenis\VScode\Experiment.Crypto.2026S1.RobinDenis\notes\decisions.md` (entrée 2026-05-21)
