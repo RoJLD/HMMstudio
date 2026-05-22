@@ -50,6 +50,41 @@ These deliberately do NOT cover:
 - WebSocket streaming (covered by Python unit tests).
 - Dark mode toggle (visual regression — needs screenshots, future work).
 
+## Accessibility audit
+
+`accessibility.spec.ts` runs axe-core against the main pages and reports
+violations.
+
+**Default mode** (the one that runs in CI) — warns and only fails on
+catastrophic regressions (>5 critical violations on a page):
+
+```bash
+npx playwright test accessibility.spec.ts
+```
+
+**Strict mode** — fails on any critical or serious violation. Use this when
+working on a11y improvements:
+
+```bash
+STRICT_A11Y=1 npx playwright test accessibility.spec.ts
+```
+
+Pages audited:
+- `/` (Home)
+- `/data` (Data upload)
+- `/topology` (Topology editor — known SVG-heavy, expect some violations)
+- `/fit` (Fit launcher)
+- `/academy` (Academy index)
+- `/academy/lesson-1-what-is-an-hmm` (lesson with D3 demo)
+- `/academy/lesson-2-markov-chains` (lesson with D3 demo)
+
+Severity policy:
+- **Critical**: page is unusable for some users (e.g., button with no accessible name). Always fail above 5.
+- **Serious**: significant barrier (e.g., low contrast). Logged; fails in strict mode.
+- **Moderate / Minor**: opportunistic fixes; not in CI.
+
+If the dark-mode broad CSS overrides cause contrast violations, they appear in this audit. They are tracked in the README "known issues" section.
+
 ## CI
 
 `.github/workflows/e2e.yml` runs these tests in headless Chromium on each
