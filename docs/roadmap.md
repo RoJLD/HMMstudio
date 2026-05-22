@@ -98,6 +98,37 @@ topologie, (b) du **Baum-Welch contraint** (left-right, branching, lifecycle)
 out-of-the-box, et (c) un livrable utilisable **sans écrire de Python**.
 C'est notre wedge.
 
+### Phrase de positionnement officielle (révisée 2026-05-22 PM via ADR-0012)
+
+> *"hmm-studio is the deepest HMM library in the Python scientific stack —
+> pip-installable, sklearn-compatible, Jupyter-native, with optional
+> standalone GUI for non-Python users. We don't replace your research
+> environment ; we slot in as the HMM specialist."*
+
+### Stratégie de distribution : hybride (HMM specialist + integration surface)
+
+Décision tranchée le 2026-05-22 PM ([ADR-0012](decisions/0012-distribution-strategy-hybrid.md)) :
+`hmm-studio` reste **spécialiste HMM dans son core**, ET investit dans des
+**surfaces de distribution** vers les plateformes matures qui distribuent
+déjà l'écosystème scientifique Python.
+
+**Surfaces de distribution prioritaires** :
+1. **I.1 Jupyter rich displays + notebook gallery** (~2-3 j) — chaque
+   chercheur utilise un notebook ; on devient native dedans
+2. **I.2 scikit-learn-compatible API** (~3-5 j) — entre dans les
+   pipelines sklearn existants automatiquement
+3. **I.3 PyMC / NumPyro bridge** (gated sur A.6) — audience bayésienne
+   académique
+
+**Précédents stratégiques qui ont survécu** : Stan (PyStan / brms), HMMER
+(intègre Pfam), scikit-learn (foundation pour pandas / xgboost / etc.),
+NumPy (foundation pour la stack scientifique).
+
+**Test de validation pour toute nouvelle feature** :
+> Le matin où un chercheur en éco découvre hmm-studio, comment l'utilise-t-il ?
+> - ✅ `pip install hmm-studio` → ouvre un notebook → productif en 5 min
+> - ❌ Doit installer une app web séparée et apprendre un nouvel environnement
+
 ### Stratégie : la pince à trois mâchoires
 
 Plutôt que viser large, `hmm-studio` cible explicitement trois segments où
@@ -170,6 +201,14 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
                                                                      pas dans wedge actuel
    B.10  Data warehouse local + multi-fmt PLANNED        B           ~3-4 jours
          (CSV/parquet/JSON/Excel/feather)                            use case Robin direct
+   B.11  Data prep layer (recipes engine  SHIPPED        —           livré 2026-05-22
+         + 21 ops + 8 bundled recipes)                               42 tests verts
+   I.1   Jupyter rich displays + notebook PLANNED        —           ~2-3 jours
+         gallery (priority post-ADR-0012)                            PRIORITAIRE
+   I.2   scikit-learn-compatible API       PLANNED        A.5         ~3-5 jours
+         (HMMClassifier/HMMRegressor)                                PRIORITAIRE
+   I.3   PyMC / NumPyro bridge             OPTION         A.6         conditionnel
+         (gated on A.6 ship)                                         (gated comme A.6)
    A.6   BayesianHMMBackend (PyMC/NumPyro) OPTION         A.5, B,     conditionnel
          — option défendue, pas engagement                signal ext. (voir gating)
    D     Migration dashboard crypto        VALIDATED      A           regression test
@@ -815,6 +854,123 @@ concurrence pas.
 - [ ] Multi-format read : CSV, parquet, JSON/JSONL, Excel, feather
 - [ ] Sidecar `.hmm.yaml` détecté et exposé en metadata
 - [ ] Tests E2E : upload, browse, select, fit avec dataset warehouse
+
+---
+
+## Phase I — Integrations (distribution surfaces vers plateformes matures)
+
+**Status** : PLANNED · PRIORITAIRE post-ADR-0012
+**Dépend de** : A.5 (backend abstraction, livré) pour I.2
+**Effort total** : ~5-8 jours (I.1 + I.2) ; I.3 gated sur A.6
+
+> Voir [ADR-0012 — Distribution strategy hybrid](decisions/0012-distribution-strategy-hybrid.md)
+> pour la décision stratégique qui a créé cette phase.
+
+### Pourquoi Phase I existe
+
+Suite à l'analyse stratégique 2026-05-22 PM : `hmm-studio` reste spécialiste
+HMM dans son core, mais investit en parallèle dans des **surfaces de
+distribution** vers les plateformes matures qui distribuent déjà
+l'écosystème scientifique Python (Jupyter, scikit-learn, PyMC).
+
+### Phrase de positionnement officielle
+
+> *"hmm-studio is the deepest HMM library in the Python scientific stack —
+> pip-installable, sklearn-compatible, Jupyter-native, with optional
+> standalone GUI for non-Python users. We don't replace your research
+> environment ; we slot in as the HMM specialist."*
+
+### I.1 — Jupyter rich displays + notebook gallery (~2-3 jours)
+
+**Status** : PLANNED · PRIORITAIRE
+
+**Surface livrable** :
+- `Topology.__repr_html__()` — graphe interactif inline (D3 ou Mermaid)
+- `FittedModel._repr_html_()` — heatmap transmat + Viterbi
+- `NHMMFittedModel._repr_html_()` — A(t) animé inline
+- `GMMNHMMFittedModel._repr_html_()` — heatmap + sub-modes per regime
+- `FactorialNHMMFittedModel._repr_html_()` — per-chain breakdown
+- `BenchmarkResult._repr_html_()` (quand B.12 ship) — table comparative
+- `Pipeline._repr_html_()` — chaîne des steps avec preview
+- **Notebook gallery officielle** sur GitHub : 5-10 notebooks canoniques
+  couvrant :
+  - Quickstart 30-secondes
+  - Crypto regime modeling (Robin's use case)
+  - Bioinfo style profile-HMM avec contraintes
+  - Comparing HMM vs threshold baseline
+  - GMM-NHMM submodes detection
+  - Factorial NHMM multi-factor regimes
+
+**Définition de "done"** :
+- [ ] 5-7 méthodes `_repr_html_` ajoutées et stylées
+- [ ] 5+ notebooks dans `notebooks/` + binder config
+- [ ] Section README "Quickstart in Jupyter" en première position
+- [ ] Test : `from hmm_studio import Topology ; topo` produit HTML riche
+
+### I.2 — scikit-learn-compatible API (~3-5 jours)
+
+**Status** : PLANNED · PRIORITAIRE
+
+**Surface livrable** :
+- `hmm_studio.sklearn.HMMClassifier(n_states, topology=..., emission=..., ...)`
+  — implements `BaseEstimator`, `ClassifierMixin`
+  - `fit(X, y=None)` : si `y` fourni → supervised, sinon → unsupervised
+  - `predict(X)` : Viterbi state labels
+  - `predict_proba(X)` : forward-backward posteriors
+  - `score(X, y)` : log-likelihood or classification accuracy
+- `hmm_studio.sklearn.HMMRegressor` : prédit l'observation suivante
+- `get_params()` / `set_params()` pour grid search compatibility
+- Tests : intégration dans `Pipeline`, `cross_val_score`, `GridSearchCV`
+- Documentation : section "Use with scikit-learn pipelines" avec exemple
+
+**Définition de "done"** :
+- [ ] `HMMClassifier` passe `sklearn.utils.estimator_checks.check_estimator`
+- [ ] Exemple notebook : grid search sur K + topology via sklearn
+- [ ] Section README "Drop-in with scikit-learn"
+- [ ] Tests dans `tests/test_sklearn_compat.py`
+
+### I.3 — PyMC / NumPyro bridge (gated sur A.6)
+
+**Status** : OPTION · gated sur A.6 ship
+
+**Surface livrable** :
+- `hmm_studio.pymc_bridge.HMMTopologyPyMC.from_yaml(path)` — génère le
+  modèle PyMC équivalent
+- `hmm_studio.pymc_bridge.fit_bayesian(topo, X, n_samples=2000)` — fit
+  bayésien via PyMC + retour `FittedModel` enrichi avec `posterior_samples`
+- Convertit `arviz.InferenceData` → notre format
+- Documentation et exemple sur la communauté bayésienne
+
+**Effort** : 1-2 semaines, **gated sur A.6 (BayesianHMMBackend) shippé**.
+
+### I.4+ — Deferred (gated sur signal externe)
+
+| Extension | Pourquoi deferred |
+|---|---|
+| MLflow model flavor | Effort modéré, signal demandé si ML pratici­ens demandent |
+| VS Code extension (YAML autocomplete topology) | Cool, mais ROI faible vs Jupyter |
+| Streamlit components | Si demande pour dashboards rapides |
+| Hugging Face hub | Probablement N/A — HF = transformer/generation |
+| KNIME nodes | N/A — KNIME audience pas notre wedge |
+
+### Critères de succès Phase I (à M+3 post-ship)
+
+| Métrique | Cible |
+|---|---|
+| Visites uniques /mois sur notebook gallery (GitHub stars/clones binder) | ≥ 50 |
+| Mentions dans notebooks tiers (Kaggle, GitHub search) | ≥ 3 |
+| Issues / PRs externes liées à sklearn compat | ≥ 1 |
+| Citations / utilisations en papier académique | ≥ 1 (signal fort) |
+
+### Anti-scope-creep guardrails
+
+- I.1, I.2, I.3 sont les surfaces concrètes. I.4+ reste gated.
+- **Pas de re-build d'un IDE / notebook environnement** (Hex / Deepnote
+  territory). On enrichit Jupyter existant, pas plus.
+- **Pas de fork de sklearn**. On expose une API conforme à la leur, pas
+  une nouvelle.
+- **Pas de wrapper de PyMC complet**. On expose le pont topology → PyMC
+  model, point.
 
 ---
 

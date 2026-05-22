@@ -1,0 +1,13 @@
+name: volatility_features
+description: |
+  Compute rolling-window volatility features on a returns column. Adds a
+  realized volatility estimator (rolling std) commonly used as a regime
+  covariate in financial HMM modeling.
+
+  Default : column='log_return', window=20 → 'realized_vol_20'.
+version: 1
+steps:
+  - op: rolling_std
+    column: log_return
+    window: 20
+    new_name: realized_vol_20

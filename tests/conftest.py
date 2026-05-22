@@ -130,3 +130,47 @@ def synthetic_nhmm_data():
             # Mostly stay
             state = 2 if rng.random() < 0.9 else 1
     return {"X": X, "Z": Z}
+
+
+@pytest.fixture
+def synthetic_gmm_nhmm_data():
+    """K=3 GMM-NHMM with covariate-driven transitions.
+
+    Each state hosts a 2-component GMM. Transitions depend on a single
+    scalar covariate Z[t]: when Z>0, prefer state 1 (volatile); when Z<0,
+    prefer state 0 (calm).
+    """
+    rng = np.random.default_rng(123)
+    n = 1500
+    Z = rng.normal(size=(n, 1))
+    # Per-state means: 2 mixture components each
+    means = np.array(
+        [
+            [[-3.0, -3.0], [-2.0, -4.0]],  # state 0
+            [[0.0, 0.0], [1.0, 1.0]],  # state 1
+            [[3.0, 3.0], [4.0, 2.0]],  # state 2
+        ]
+    )
+    cov = 0.4 * np.eye(2)
+    state = 0
+    X = np.zeros((n, 2))
+    for t in range(n):
+        m_idx = rng.integers(0, 2)
+        X[t] = rng.multivariate_normal(means[state, m_idx], cov)
+        # Covariate-dependent transition
+        z = Z[t, 0]
+        if state == 0:
+            p_stay = 0.9 if z < 0 else 0.5
+            state = 0 if rng.random() < p_stay else 1
+        elif state == 1:
+            p_to_2 = 0.05 + 0.15 * (z > 0)
+            r = rng.random()
+            if r < p_to_2:
+                state = 2
+            elif r < p_to_2 + 0.85:
+                state = 1
+            else:
+                state = 0
+        else:
+            state = 2 if rng.random() < 0.9 else 1
+    return {"X": X, "Z": Z}

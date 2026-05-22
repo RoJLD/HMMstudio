@@ -1,0 +1,32 @@
+name: financial_full_features
+description: |
+  Comprehensive financial features : log returns, multi-window vol (5, 20, 60),
+  winsorize-then-zscore, dropna. Compose-friendly demo of the recipe library.
+
+  Assumes input has a 'close' price column.
+version: 1
+includes:
+  - recipe: financial_log_returns
+steps:
+  - op: rolling_std
+    column: log_return
+    window: 5
+    new_name: realized_vol_5
+  - op: rolling_std
+    column: log_return
+    window: 20
+    new_name: realized_vol_20
+  - op: rolling_std
+    column: log_return
+    window: 60
+    new_name: realized_vol_60
+  - op: winsorize
+    columns: [log_return, realized_vol_5, realized_vol_20, realized_vol_60]
+    lower: 0.01
+    upper: 0.99
+  - op: zscore
+    columns: [log_return, realized_vol_5, realized_vol_20, realized_vol_60]
+  - op: dropna
+output:
+  observations: [log_return]
+  covariates: [realized_vol_5, realized_vol_20, realized_vol_60]

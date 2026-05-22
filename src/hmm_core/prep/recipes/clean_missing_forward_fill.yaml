@@ -1,0 +1,6 @@
+name: clean_missing_forward_fill
+description: Forward-fill missing values, then drop any remaining NaN rows.
+version: 1
+steps:
+  - op: fillna_forward
+  - op: dropna

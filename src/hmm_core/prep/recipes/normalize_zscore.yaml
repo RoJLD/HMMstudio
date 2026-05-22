@@ -1,0 +1,6 @@
+name: normalize_zscore
+description: Z-score normalize the named columns (mean=0, std=1).
+version: 1
+steps:
+  - op: zscore
+    columns: []     # USER MUST OVERRIDE via composition `params:` or pass as Python parameter

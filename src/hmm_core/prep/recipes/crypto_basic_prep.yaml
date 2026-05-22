@@ -1,0 +1,17 @@
+name: crypto_basic_prep
+description: |
+  Standard crypto regime-modeling pipeline : log returns + 20-day realized
+  volatility + z-score normalization + dropna. Composes existing recipes.
+
+  Assumes input has a 'close' price column.
+version: 1
+includes:
+  - recipe: financial_log_returns
+  - recipe: volatility_features
+steps:
+  - op: zscore
+    columns: [log_return, realized_vol_20]
+  - op: dropna
+output:
+  observations: [log_return]
+  covariates: [realized_vol_20]

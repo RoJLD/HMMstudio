@@ -1,0 +1,12 @@
+name: align_to_grid_daily
+description: |
+  Resample to a daily frequency using mean aggregation. Use when observations
+  and covariates are at irregular timestamps and you need them aligned to a
+  uniform grid (HMM assumes a consistent timestep).
+
+  Requires df.index to be a DatetimeIndex (or pass index_col via Python API).
+version: 1
+steps:
+  - op: resample
+    freq: D
+    agg: mean

@@ -1,0 +1,14 @@
+name: financial_log_returns
+description: |
+  Compute log returns from a price column. Standard preprocessing for financial
+  time series (returns are approximately stationary, log-diff is symmetric in
+  up/down moves).
+
+  Default : column='close', new_name='log_return'.
+version: 1
+steps:
+  - op: log_diff
+    column: close
+    new_name: log_return
+  - op: dropna
+    columns: [log_return]

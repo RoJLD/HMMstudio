@@ -1,0 +1,10 @@
+name: outlier_robust_winsorize
+description: Winsorize at the 1st/99th percentiles to clip outliers, then z-score.
+version: 1
+steps:
+  - op: winsorize
+    columns: []   # USER MUST OVERRIDE
+    lower: 0.01
+    upper: 0.99
+  - op: zscore
+    columns: []   # USER MUST OVERRIDE
