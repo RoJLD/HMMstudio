@@ -22,6 +22,7 @@ export function EditorCanvas() {
   const addTransition = useTopologyStore((s) => s.addTransition);
   const removeTransition = useTopologyStore((s) => s.removeTransition);
   const setSelectedStateId = useTopologyStore((s) => s.setSelectedStateId);
+  const setSelectedEdgeId = useTopologyStore((s) => s.setSelectedEdgeId);
 
   const nodes: Node[] = states.map((s) => ({
     id: s.id,
@@ -35,7 +36,16 @@ export function EditorCanvas() {
     source: t.source,
     target: t.target,
     type: "default",
-    style: { strokeWidth: 2 },
+    style: {
+      strokeWidth: t.prior_weight !== undefined ? 3 : 2,
+      stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
+    },
+    label:
+      t.prior_weight !== undefined ? `α=${t.prior_weight.toFixed(1)}` : undefined,
+    labelStyle: { fontSize: 10, fontFamily: "monospace" },
+    labelBgPadding: [2, 4] as [number, number],
+    labelBgBorderRadius: 4,
+    labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
   }));
 
   const onNodesChange = useCallback(
@@ -76,10 +86,11 @@ export function EditorCanvas() {
   );
 
   const onSelectionChange = useCallback(
-    ({ nodes }: { nodes: Node[]; edges: Edge[] }) => {
+    ({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
       setSelectedStateId(nodes[0]?.id ?? null);
+      setSelectedEdgeId(nodes[0] ? null : edges[0]?.id ?? null);
     },
-    [setSelectedStateId],
+    [setSelectedStateId, setSelectedEdgeId],
   );
 
   return (

@@ -5,6 +5,7 @@ import type {
 } from "../../store/topologyStore";
 import { useTopologyStore } from "../../store/topologyStore";
 import { PerStateEmissionPanel } from "./PerStateEmissionPanel";
+import { PerEdgePriorPanel } from "./PerEdgePriorPanel";
 
 interface SidePanelProps {
   validationError: string | null;
@@ -13,9 +14,13 @@ interface SidePanelProps {
 
 export function SidePanel({ validationError, validationSummary }: SidePanelProps) {
   const selectedStateId = useTopologyStore((s) => s.selectedStateId);
+  const selectedEdgeId = useTopologyStore((s) => s.selectedEdgeId);
 
   if (selectedStateId) {
     return <PerStateEmissionPanel stateId={selectedStateId} />;
+  }
+  if (selectedEdgeId) {
+    return <PerEdgePriorPanel edgeId={selectedEdgeId} />;
   }
 
   return <GlobalPanel validationError={validationError} validationSummary={validationSummary} />;
@@ -30,6 +35,8 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
   const setInit = useTopologyStore((s) => s.setInit);
   const fit = useTopologyStore((s) => s.fit);
   const setFit = useTopologyStore((s) => s.setFit);
+  const transmat_prior_alpha = useTopologyStore((s) => s.transmat_prior_alpha);
+  const setPriorAlpha = useTopologyStore((s) => s.setPriorAlpha);
 
   const Section = ({
     title,
@@ -216,6 +223,27 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
             className={inputCls}
           />
         </Row>
+      </Section>
+
+      <Section title="Priors (A.9)">
+        <Row label="α (Dirichlet)">
+          <input
+            type="number"
+            step={0.1}
+            min={0}
+            value={transmat_prior_alpha ?? ""}
+            placeholder="(MLE)"
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setPriorAlpha(Number.isFinite(v) ? v : null);
+            }}
+            className={inputCls}
+          />
+        </Row>
+        <p className="text-xs text-slate-500">
+          α &gt; 1 smooths toward uniform; α = 1 (or empty) = MLE. Select an
+          individual transition for per-edge override.
+        </p>
       </Section>
 
       <Section title="Validation">

@@ -28,6 +28,9 @@ interface TopologyYAML {
   startprob?: string | number[];
   init?: { strategy?: string; seed?: number };
   fit?: { algorithm?: string; n_iter?: number; tol?: number };
+  // B.4.3 / A.9: transmat Dirichlet priors
+  transmat_prior_alpha?: number;
+  transmat_prior_matrix?: number[][];
 }
 
 type TopologyPartial = Parameters<TopologyState["loadTopology"]>[0];
@@ -81,6 +84,30 @@ export function topologyToYAML(state: TopologyState): string {
     });
   }
 
+  // B.4.3 / A.9: serialize transmat priors
+  if (state.transmat_prior_alpha !== null) {
+    obj.transmat_prior_alpha = state.transmat_prior_alpha;
+  }
+
+  // Per-edge overrides → build a K×K matrix
+  const anyEdgeOverride = state.transitions.some(
+    (t) => t.prior_weight !== undefined,
+  );
+  if (anyEdgeOverride) {
+    const K = state.states.length;
+    const baseAlpha = state.transmat_prior_alpha ?? 1.0;
+    const stateIdToIdx = new Map(state.states.map((s, i) => [s.id, i]));
+    // Initialize matrix: 0 on forbidden edges (no transition), baseAlpha on allowed
+    const matrix: number[][] = Array.from({ length: K }, () => Array(K).fill(0));
+    state.transitions.forEach((t) => {
+      const i = stateIdToIdx.get(t.source);
+      const j = stateIdToIdx.get(t.target);
+      if (i === undefined || j === undefined) return;
+      matrix[i][j] = t.prior_weight ?? baseAlpha;
+    });
+    obj.transmat_prior_matrix = matrix;
+  }
+
   return yaml.dump(obj, { lineWidth: 100 });
 }
 
@@ -113,6 +140,45 @@ export function yamlToTopology(text: string): TopologyPartial {
     target: nameToId.get(pair[1]) ?? pair[1],
   }));
 
+  // B.4.3 / A.9: parse transmat priors
+  const transmat_prior_alpha =
+    typeof obj.transmat_prior_alpha === "number"
+      ? obj.transmat_prior_alpha
+      : null;
+
+  // If a matrix is present, distribute the per-edge overrides back onto
+  // the transitions list (matching by (src,tgt) name pair via state_names).
+  if (Array.isArray(obj.transmat_prior_matrix) && transitions.length > 0) {
+    const matrix = obj.transmat_prior_matrix;
+    // We need to map matrix[i][j] back to a transition by index — use
+    // the state_names order (i = index of source name).
+    const nameToIdx = new Map(
+      (obj.state_names ?? []).map((n, i) => [n, i]),
+    );
+    transitions.forEach((t) => {
+      const srcName = states.find((s) => s.id === t.source)?.name;
+      const tgtName = states.find((s) => s.id === t.target)?.name;
+      if (srcName === undefined || tgtName === undefined) return;
+      const i = nameToIdx.get(srcName);
+      const j = nameToIdx.get(tgtName);
+      if (i === undefined || j === undefined) return;
+      const w = matrix[i]?.[j];
+      if (
+        typeof w === "number" &&
+        transmat_prior_alpha !== null &&
+        w !== transmat_prior_alpha
+      ) {
+        (t as import("../store/topologyStore").TransitionEdge).prior_weight = w;
+      } else if (
+        typeof w === "number" &&
+        transmat_prior_alpha === null &&
+        w !== 1.0  // default alpha = 1 = MLE
+      ) {
+        (t as import("../store/topologyStore").TransitionEdge).prior_weight = w;
+      }
+    });
+  }
+
   return {
     name: obj.name ?? "untitled",
     states,
@@ -137,5 +203,6 @@ export function yamlToTopology(text: string): TopologyPartial {
       n_iter: obj.fit?.n_iter ?? 200,
       tol: obj.fit?.tol ?? 1e-4,
     },
+    transmat_prior_alpha,  // B.4.3
   };
 }

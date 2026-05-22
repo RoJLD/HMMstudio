@@ -43,6 +43,7 @@ export interface TransitionEdge {
   id: string;
   source: string;
   target: string;
+  prior_weight?: number;  // B.4.3: optional per-edge Dirichlet pseudo-count override
 }
 
 export interface TopologyState {
@@ -55,6 +56,10 @@ export interface TopologyState {
   fit: FitSpec;
   // B.4.2: tracks which state node is currently selected in the canvas
   selectedStateId: string | null;
+  // B.4.3: global Dirichlet prior alpha and per-edge overrides
+  transmat_prior_alpha: number | null;
+  // B.4.3: tracks which transition edge is currently selected in the canvas
+  selectedEdgeId: string | null;
 
   setName: (name: string) => void;
   addState: (position: { x: number; y: number }) => void;
@@ -67,7 +72,7 @@ export interface TopologyState {
   setStartprob: (sp: "uniform" | "first_state" | number[]) => void;
   setInit: (init: InitSpec) => void;
   setFit: (fit: FitSpec) => void;
-  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit" | "setStateInit" | "setSelectedStateId">>) => void;
+  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit" | "setStateInit" | "setSelectedStateId" | "setPriorAlpha" | "setEdgePriorWeight" | "setSelectedEdgeId">>) => void;
   reset: () => void;
   setStateInit: (
     id: string,
@@ -75,14 +80,17 @@ export interface TopologyState {
     values: number[] | undefined,
   ) => void;
   setSelectedStateId: (id: string | null) => void;
+  setPriorAlpha: (alpha: number | null) => void;
+  setEdgePriorWeight: (transitionId: string, weight: number | undefined) => void;
+  setSelectedEdgeId: (id: string | null) => void;
 }
 
 /** The serialisable data slice — everything except action functions. */
 export type TopologyData = Pick<
   TopologyState,
-  "name" | "states" | "transitions" | "emission" | "startprob" | "init" | "fit"
+  "name" | "states" | "transitions" | "emission" | "startprob" | "init" | "fit" | "transmat_prior_alpha"
 >;
-// Note: selectedStateId is intentionally excluded from TopologyData (not in undo history)
+// Note: selectedStateId and selectedEdgeId are intentionally excluded from TopologyData (not in undo history)
 
 const DEFAULT_STATE = {
   name: "untitled",
@@ -99,6 +107,8 @@ const DEFAULT_STATE = {
   init: { strategy: "kmeans" as const, seed: 42 } as InitSpec,
   fit: { algorithm: "baum_welch" as const, n_iter: 200, tol: 1e-4 } as FitSpec,
   selectedStateId: null as string | null,
+  transmat_prior_alpha: null as number | null,
+  selectedEdgeId: null as string | null,
 };
 
 function _uid(prefix: string): string {
@@ -163,6 +173,14 @@ export const useTopologyStore = create<TopologyState>()(
             ),
           })),
         setSelectedStateId: (id) => set({ selectedStateId: id }),
+        setPriorAlpha: (alpha) => set({ transmat_prior_alpha: alpha }),
+        setEdgePriorWeight: (transitionId, weight) =>
+          set((s) => ({
+            transitions: s.transitions.map((e) =>
+              e.id === transitionId ? { ...e, prior_weight: weight } : e,
+            ),
+          })),
+        setSelectedEdgeId: (id) => set({ selectedEdgeId: id }),
       }),
       {
         partialize: (state) => {
@@ -183,6 +201,10 @@ export const useTopologyStore = create<TopologyState>()(
             setStateInit,
             setSelectedStateId,
             selectedStateId,
+            setPriorAlpha,
+            setEdgePriorWeight,
+            setSelectedEdgeId,
+            selectedEdgeId,
             ...data
           } = state;
           return data;
@@ -203,6 +225,7 @@ export const useTopologyStore = create<TopologyState>()(
         startprob: state.startprob,
         init: state.init,
         fit: state.fit,
+        transmat_prior_alpha: state.transmat_prior_alpha,  // B.4.3
       }),
       version: 1,
     },
