@@ -12,7 +12,7 @@ rest of ``hmm_core``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -73,6 +73,7 @@ class HMMBackend(Protocol):
         initial_startprob: np.ndarray,
         emission_kwargs: dict[str, np.ndarray],
         mask: np.ndarray,
+        progress_callback: Callable[[list[float]], None] | None = None,
     ) -> BackendFitResult:
         """Run constrained Baum-Welch and return the fit result.
 
@@ -96,6 +97,12 @@ class HMMBackend(Protocol):
         mask
             Boolean (K, K) array. The backend must enforce ``transmat[i,j]==0``
             wherever ``mask[i,j]`` is False, at every M-step.
+        progress_callback
+            Optional callable invoked with the running log-likelihood history
+            (``list[float]``) at sub-iteration intervals during the EM run.
+            Backends that do not support live progress should ignore this
+            argument. Used by the web UI (Phase B) to stream Baum-Welch
+            convergence to clients via WebSocket.
 
         Returns
         -------

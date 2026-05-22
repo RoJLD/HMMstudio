@@ -100,6 +100,7 @@ def test_register_custom_backend_and_use_via_fit():
             initial_startprob,
             emission_kwargs,
             mask,
+            **kwargs,  # forward-compat: accept future protocol kwargs (progress_callback, etc.)
         ):
             calls["fit"] += 1
             return BackendFitResult(
