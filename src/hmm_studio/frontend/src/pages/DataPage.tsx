@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Link } from "react-router-dom";
 import { uploadDataset, type WarehouseList } from "../api/client";
 import { useDatasetStore } from "../store/datasetStore";
 import { DataDropZone } from "../components/data/DataDropZone";
@@ -113,11 +114,18 @@ export default function DataPage() {
         <div className="mb-4 flex items-start justify-between gap-3 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded px-3 py-2">
           <span>
             <span className="font-mono text-slate-500 mr-1">[?]</span>
-            Configure a data warehouse: set{" "}
+            No warehouse configured.{" "}
+            <Link
+              to="/settings"
+              className="text-brand-700 underline hover:text-brand-800"
+            >
+              Open settings
+            </Link>{" "}
+            to set one and enable directory-based dataset browsing. (The{" "}
             <code className="font-mono bg-white px-1 rounded">
-              HMM_STUDIO_WAREHOUSE_PATH=…
+              HMM_STUDIO_WAREHOUSE_PATH
             </code>{" "}
-            to enable directory-based dataset browsing.
+            environment variable still works as the initial default.)
           </span>
           <button
             type="button"

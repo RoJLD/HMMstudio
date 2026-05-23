@@ -128,6 +128,30 @@ class WarehousePreviewResponse(BaseModel):
     head: list[dict[str, Any]]
 
 
+class SettingsResponse(BaseModel):
+    """Current user settings, with resolved warehouse_path + provenance.
+
+    ``warehouse_path`` is the *resolved* value (DB override > env var > None).
+    ``warehouse_path_source`` is ``"db"`` | ``"env"`` | ``"unset"``.
+    ``warehouse_path_env`` is the raw env value (for transparency in the UI).
+    """
+
+    warehouse_path: str | None
+    warehouse_path_source: str
+    warehouse_path_env: str | None
+    updated_at: str | None
+
+
+class SettingsUpdate(BaseModel):
+    """Partial update payload for ``PUT /api/settings``.
+
+    An empty string or ``None`` for ``warehouse_path`` clears the DB override
+    (so the value falls back to the env var or unset).
+    """
+
+    warehouse_path: str | None = None
+
+
 class WarehouseSidecarMeta(BaseModel):
     """Free-form sidecar YAML, lightly validated.
 

@@ -12,6 +12,10 @@ const NAV_LEARN = [
   { to: "/academy", label: "Academy" },
 ] as const;
 
+const NAV_SYSTEM = [
+  { to: "/settings", label: "Settings" },
+] as const;
+
 export default function Layout() {
   const location = useLocation();
 
@@ -45,6 +49,8 @@ export default function Layout() {
           {NAV_MAIN.map((item) => navLink(item.to, item.label))}
           <hr className="border-slate-700 my-2" />
           {NAV_LEARN.map((item) => navLink(item.to, item.label))}
+          <hr className="border-slate-700 my-2" />
+          {NAV_SYSTEM.map((item) => navLink(item.to, item.label))}
         </nav>
         <div className="mt-auto">
           <div className="mb-2"><ThemeToggle /></div>

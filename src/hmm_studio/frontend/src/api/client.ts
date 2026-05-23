@@ -361,3 +361,34 @@ export async function promoteWarehouseDataset(
     { method: "POST" },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Settings (Phase B.10 §7)
+// ---------------------------------------------------------------------------
+
+export type SettingsSource = "db" | "env" | "unset";
+
+export interface Settings {
+  warehouse_path: string | null;
+  warehouse_path_source: SettingsSource;
+  warehouse_path_env: string | null;
+  updated_at: string | null;
+}
+
+export async function getSettings(): Promise<Settings> {
+  return jsonFetch<Settings>("/api/settings");
+}
+
+/**
+ * Update user settings. Pass ``warehouse_path: ""`` or ``null`` to clear
+ * the DB override (falls back to env / unset).
+ */
+export async function updateSettings(payload: {
+  warehouse_path?: string | null;
+}): Promise<Settings> {
+  return jsonFetch<Settings>("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}

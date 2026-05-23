@@ -66,3 +66,15 @@ class Annotation(SQLModel, table=True):
     label: str
     color: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SettingsRow(SQLModel, table=True):
+    """Single-row user settings table.
+
+    Always use ``id='global'`` as the only key. The DB stores user-editable
+    overrides for values that otherwise come from env vars / defaults.
+    """
+
+    id: str = Field(default="global", primary_key=True)
+    warehouse_path: str | None = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

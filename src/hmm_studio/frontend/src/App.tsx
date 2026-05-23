@@ -8,6 +8,7 @@ import ResultsPage from "./pages/ResultsPage";
 import ScanPage from "./pages/ScanPage";
 import AcademyPage from "./pages/AcademyPage";
 import LessonPage from "./pages/LessonPage";
+import SettingsPage from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="scan/:parentId" element={<ScanPage />} />
         <Route path="academy" element={<AcademyPage />} />
         <Route path="academy/:lessonId" element={<LessonPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

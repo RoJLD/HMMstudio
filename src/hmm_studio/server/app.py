@@ -15,7 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSock
 
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
-from hmm_studio.server.models import Annotation, Dataset, FitJob, FitJobStatus
+from hmm_studio.server.models import Annotation, Dataset, FitJob, FitJobStatus, SettingsRow
 from hmm_studio.server.schemas import (
     AnnotationOut,
     AnnotationsResponse,
@@ -25,6 +25,8 @@ from hmm_studio.server.schemas import (
     FitJobScanCreate,
     ScanChildStatus,
     ScanResult,
+    SettingsResponse,
+    SettingsUpdate,
     TopologyValidateRequest,
     TopologyValidateResponse,
     WarehouseEntryOut,
@@ -61,8 +63,24 @@ def create_app() -> FastAPI:
     engine = create_db_engine(db_path)
     runner = JobRunner(engine=engine, results_dir=results_dir)
 
-    warehouse_path_str = os.environ.get("HMM_STUDIO_WAREHOUSE_PATH", "")
-    warehouse_path: Path | None = Path(warehouse_path_str).resolve() if warehouse_path_str else None
+    def _resolve_warehouse_path() -> Path | None:
+        """Resolve the active warehouse_path: DB override > env var > None.
+
+        Read on each request so settings updates take effect without a server
+        restart. The DB value (if non-empty) wins; otherwise fall back to
+        ``HMM_STUDIO_WAREHOUSE_PATH``; otherwise return ``None``.
+        """
+        db_value: str | None = None
+        with get_session(engine) as session:
+            row = session.get(SettingsRow, "global")
+            if row is not None:
+                db_value = row.warehouse_path
+        if db_value:
+            return Path(db_value).expanduser().resolve()
+        env_value = os.environ.get("HMM_STUDIO_WAREHOUSE_PATH", "")
+        if env_value:
+            return Path(env_value).expanduser().resolve()
+        return None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -603,11 +621,95 @@ def create_app() -> FastAPI:
         return {"deleted": annotation_id}
 
     # -----------------------------------------------------------------------
+    # Settings endpoints
+    # -----------------------------------------------------------------------
+
+    def _settings_response() -> SettingsResponse:
+        """Build a SettingsResponse from the current DB row + env var.
+
+        Source precedence: DB (non-empty) > env (non-empty) > unset.
+        """
+        with get_session(engine) as session:
+            row = session.get(SettingsRow, "global")
+            db_value = row.warehouse_path if row is not None else None
+            updated_at = row.updated_at.isoformat() if row is not None else None
+        env_value = os.environ.get("HMM_STUDIO_WAREHOUSE_PATH", "") or None
+        if db_value:
+            resolved = str(Path(db_value).expanduser().resolve())
+            source = "db"
+        elif env_value:
+            resolved = str(Path(env_value).expanduser().resolve())
+            source = "env"
+        else:
+            resolved = None
+            source = "unset"
+        return SettingsResponse(
+            warehouse_path=resolved,
+            warehouse_path_source=source,
+            warehouse_path_env=env_value,
+            updated_at=updated_at,
+        )
+
+    @app.get("/api/settings", response_model=SettingsResponse)
+    def get_settings():
+        """Return current settings; resolves warehouse_path from DB > env > None."""
+        return _settings_response()
+
+    @app.put("/api/settings", response_model=SettingsResponse)
+    def update_settings(payload: SettingsUpdate):
+        """Update user settings.
+
+        Validation: if ``warehouse_path`` is a non-empty string, it must exist
+        and be a directory. An empty string or ``None`` clears the DB override
+        (settings then fall back to the env var or unset).
+        """
+        new_value: str | None
+        raw = payload.warehouse_path
+        if raw is None or raw == "":
+            new_value = None
+        else:
+            try:
+                candidate = Path(raw).expanduser().resolve()
+            except (OSError, RuntimeError) as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"warehouse_path is not a valid path: {raw} ({exc})",
+                )
+            if not candidate.exists():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"warehouse_path does not exist: {candidate}",
+                )
+            if not candidate.is_dir():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"warehouse_path is not a directory: {candidate}",
+                )
+            new_value = str(candidate)
+
+        from datetime import datetime as _dt
+
+        with get_session(engine) as session:
+            row = session.get(SettingsRow, "global")
+            if row is None:
+                row = SettingsRow(id="global", warehouse_path=new_value, updated_at=_dt.utcnow())
+                session.add(row)
+            else:
+                row.warehouse_path = new_value
+                row.updated_at = _dt.utcnow()
+                session.add(row)
+
+        # Invalidate the warehouse scan cache so a new path takes effect immediately.
+        get_scan_cache().invalidate()
+        return _settings_response()
+
+    # -----------------------------------------------------------------------
     # Warehouse endpoints
     # -----------------------------------------------------------------------
 
     @app.get("/api/warehouse", response_model=WarehouseListResponse)
     def list_warehouse():
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None or not warehouse_path.exists():
             return WarehouseListResponse(warehouse_path="", entries=[])
         cache = get_scan_cache()
@@ -625,6 +727,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/warehouse/{rel_path:path}/preview", response_model=WarehousePreviewResponse)
     def get_warehouse_preview(rel_path: str, n: int = 10):
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None:
             raise HTTPException(status_code=400, detail="warehouse_path not configured")
         try:
@@ -649,6 +752,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/warehouse/{rel_path:path}/meta")
     def get_warehouse_meta(rel_path: str):
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None:
             raise HTTPException(status_code=400, detail="warehouse_path not configured")
         try:
@@ -662,6 +766,7 @@ def create_app() -> FastAPI:
 
     @app.put("/api/warehouse/{rel_path:path}/meta")
     def put_warehouse_meta(rel_path: str, meta: WarehouseSidecarMeta):
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None:
             raise HTTPException(status_code=400, detail="warehouse_path not configured")
         try:
@@ -681,6 +786,7 @@ def create_app() -> FastAPI:
         - The file name is preserved.
         - Refuses if no warehouse configured or path-traversal in subdir.
         """
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None:
             raise HTTPException(status_code=400, detail="warehouse_path not configured")
         try:
@@ -717,6 +823,7 @@ def create_app() -> FastAPI:
         warehouse file is left untouched; we copy the parsed frame into
         ``uploads_dir`` as a canonical CSV.
         """
+        warehouse_path = _resolve_warehouse_path()
         if warehouse_path is None:
             raise HTTPException(status_code=400, detail="warehouse_path not configured")
         try:
