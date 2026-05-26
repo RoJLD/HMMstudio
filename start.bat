@@ -3,6 +3,11 @@ REM hmm-studio launcher (idempotent). Builds the image if needed, starts the
 REM container via Rancher Desktop's Docker engine, waits for the API to be
 REM healthy, then opens the UI in the default browser.
 REM
+REM Stale-detection strategy : always run `docker compose build` (Docker layer
+REM cache makes it fast if nothing changed), then compare the image SHA before
+REM and after. If the SHA changed, the running container is on the old image
+REM and gets recreated. If unchanged AND container is up, just open the browser.
+REM
 REM To create a desktop shortcut: right-click this file, "Send to" -> "Desktop
 REM (create shortcut)". Rename to "hmm-studio" if you like.
 
@@ -49,40 +54,58 @@ goto waitdocker
 echo Docker is up.
 :docker_ok
 
-REM --- 2. Frontend stale-check (React tweak triggers a rebuild even if ---
-REM --- the container is already up). Exit 1 from the helper = needs rebuild. ---
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\check_frontend_stale.ps1"
-set "FRONTEND_STALE=%errorlevel%"
-
-REM --- 3. Already up? Open the browser unless the frontend is stale. ---
-set "ALREADY_RUNNING="
-for /f %%i in ('docker ps -q --filter "name=^hmm-studio$" --filter "status=running" 2^>nul') do set "ALREADY_RUNNING=1"
-
-if defined ALREADY_RUNNING (
-    if "%FRONTEND_STALE%"=="0" (
-        echo hmm-studio is already running. Opening UI...
-        start "" "http://localhost:8000"
-        exit /b 0
-    ) else (
-        echo Stopping running container to apply frontend rebuild...
-        docker compose down >nul 2>&1
-    )
-)
-
-REM --- 4. Release stale container name from a previous compose project ---
+REM --- 2. Release stale container name from a previous compose project ---
 docker rm -f hmm-studio >nul 2>&1
 
-REM --- 5. Build (no-op if cached) and start ---
-echo Starting (first run takes ~2-3 min on a cold image)...
-docker compose up -d --build
+REM --- 3. Capture image SHA before build, refresh, then re-capture ---
+echo Checking image freshness...
+for /f "delims=" %%i in ('docker images -q hmm-studio:latest 2^>nul') do set "BEFORE_ID=%%i"
+
+docker compose build >nul 2>&1
 if errorlevel 1 (
-    echo.
+    echo docker compose build failed. Try 'docker compose build' for details.
+    pause
+    exit /b 1
+)
+
+for /f "delims=" %%i in ('docker images -q hmm-studio:latest 2^>nul') do set "AFTER_ID=%%i"
+
+set "IMAGE_CHANGED=0"
+if not "%BEFORE_ID%"=="%AFTER_ID%" set "IMAGE_CHANGED=1"
+
+if "%BEFORE_ID%"=="" (
+    echo Built image hmm-studio:latest %AFTER_ID% for the first time.
+) else if "%IMAGE_CHANGED%"=="1" (
+    echo Image rebuilt: was %BEFORE_ID% -^> now %AFTER_ID%.
+) else (
+    echo Image unchanged: %AFTER_ID%.
+)
+
+REM --- 4. Already running with the current image? Just open the browser. ---
+set "ALREADY_RUNNING=0"
+for /f %%i in ('docker ps -q --filter "name=^hmm-studio$" --filter "status=running" 2^>nul') do set "ALREADY_RUNNING=1"
+
+if "%ALREADY_RUNNING%"=="1" if "%IMAGE_CHANGED%"=="0" (
+    echo hmm-studio is already running on the current image. Opening UI...
+    start "" "http://localhost:8000"
+    exit /b 0
+)
+
+if "%ALREADY_RUNNING%"=="1" if "%IMAGE_CHANGED%"=="1" (
+    echo Recreating container on the new image...
+    docker compose down >nul 2>&1
+)
+
+REM --- 5. Start services ---
+echo Starting services...
+docker compose up -d
+if errorlevel 1 (
     echo docker compose up failed. Try 'docker compose logs' in this folder.
     pause
     exit /b 1
 )
 
-REM --- 5. Wait for API health (60s max) ---
+REM --- 6. Wait for API health (60s max) ---
 echo Waiting for API on :8000 ...
 set /a count=0
 :wait

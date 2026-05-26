@@ -114,17 +114,28 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Changed — launcher scripts
 
-- **Frontend stale-check at launch**: `start.ps1` / `start.bat` now compare
-  the mtime of `src/hmm_studio/frontend/src/**` (plus key configs) against
-  `src/hmm_studio/server/static/index.html` before opening the browser.
-  If the React source is newer than the last build, the launcher stops
-  the running container (if any) and rebuilds — fixes the "I tweaked a
-  `.tsx` file but the browser still shows the old UI because the
-  launcher's `already running ?` short-circuit kicked in first" workflow.
-- New shared helper `scripts/check_frontend_stale.ps1`: exit 0 = up to
-  date, exit 1 = stale. Both launchers call it (start.ps1 directly,
-  start.bat via `powershell -ExecutionPolicy Bypass -File`). Can also
-  be run standalone for "should I rebuild before pushing ?" checks.
+- **Docker image-SHA stale check** (replaces the host-mtime check from
+  the earlier `bec5bbe` attempt): `start.ps1` / `start.bat` now ALWAYS
+  run `docker compose build` (Docker layer cache makes it fast when
+  nothing changed) and compare the `hmm-studio:latest` image SHA before
+  and after. If the SHA changed, the running container is recreated on
+  the new image. If unchanged AND container is up, just open the
+  browser. This is Docker-aware — the previous host-mtime check
+  compared `src/hmm_studio/server/static/` which is NOT mounted into
+  the Docker container (the Dockerfile copies the built bundle in at
+  image-build time), so it never actually triggered for the Docker
+  launch path. Net effect: editing a `.tsx` file then clicking
+  `start.bat` now reliably rebuilds the image, recreates the container,
+  and serves the new UI instead of the cached one.
+- **Removed global `$ErrorActionPreference = "Stop"`** from `start.ps1`
+  because under Windows PowerShell it converts native-command stderr
+  writes into `NativeCommandError` (e.g. `docker info` emits "WARNING:
+  No swap limit support" on Linux Docker daemons → script aborts).
+  Each step still checks `$LASTEXITCODE` explicitly.
+- The earlier `scripts/check_frontend_stale.ps1` helper stays in the
+  tree as a dev-mode tool (useful for non-Docker workflows like
+  `hmm-studio` CLI from a local venv, or "should I rebuild before
+  pushing ?" checks) — just no longer called by the Docker launchers.
 
 ---
 
