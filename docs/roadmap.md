@@ -199,33 +199,38 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
                                                                      (prof/chercheur explicite)
    A.12  Profile-HMM (bioinfo)            DEFERRED       —           reconsider post-M3+6mois
                                                                      pas dans wedge actuel
-   B.10  Data warehouse local + multi-fmt PLANNED        B           ~3-4 jours
-         (CSV/parquet/JSON/Excel/feather)                            use case Robin direct
+   B.10  Data warehouse local + multi-fmt SHIPPED        B           livré 2026-05-25
+         (CSV/parquet/JSON/Excel/feather                              6 REST endpoints +
+         + sidecar yaml + settings page)                              path-traversal guard
    B.11  Data prep layer (recipes engine  SHIPPED        —           livré 2026-05-22
          + 21 ops + 8 bundled recipes)                               42 tests verts
-   I.1   Jupyter rich displays + notebook PLANNED        —           ~2-3 jours
-         gallery (priority post-ADR-0012)                            PRIORITAIRE
-   I.2   scikit-learn-compatible API       PLANNED        A.5         ~3-5 jours
-         (HMMClassifier/HMMRegressor)                                PRIORITAIRE
-   I.3   PyMC / NumPyro bridge             OPTION         A.6         conditionnel
-         (gated on A.6 ship)                                         (gated comme A.6)
-   A.6   BayesianHMMBackend (PyMC/NumPyro) OPTION         A.5, B,     conditionnel
-         — option défendue, pas engagement                signal ext. (voir gating)
+   I.1   Jupyter rich displays + notebook SHIPPED        —           livré 2026-05-26
+         gallery (8 notebooks)                                        7 _repr_html_ + Binder
+   I.2   scikit-learn-compatible API       SHIPPED        A.5         livré 2026-05-26
+         (HMMClassifier)                                              20 tests + estimator_checks
+   I.3   PyMC bridge                       SHIPPED        A.6         livré 2026-05-26 PM
+         (Bayesian backend = bridge)                                 notebook 09 + doc
+   A.6   BayesianHMMBackend (PyMC, MVP)    SHIPPED        A.5         livré 2026-05-26 PM
+         Gaussian diag ergodic                                       12 tests verts (NUTS)
+         priors + NUTS sampling                                       pymc optional dep
    D     Migration dashboard crypto        SHIPPED        A, A.1      livré 2026-05-22 PM
          (fit_hmm + fit_nhmm délégués)                                 9 tests régression verts
    Z.1   GitHub Actions CI + pre-commit    SHIPPED        —           livré 2026-05-22
    Z.5   Licence MIT + CITATION.cff        SHIPPED        —           livré 2026-05-22
-   B     hmm-studio web UI                 SPEC DRAFTED   A, A.1      ~6-8 semaines
-                                                                     spec à brainstormer
-   V     Scientific validation suite       SPEC DRAFTED   A           ~3-5 jours
-         (textbook + recovery + stability)                            prioritaire avant E
-                                                                     et toute adoption externe
-   E     Academy (notebook gallery)        SHIPPED        I.1, V      livré 2026-05-26
-         8 notebooks runnables + Binder                              reframe via ADR-0012 :
-         + Colab badges + suggested path                             notebook = academy
-   C     Visualisations avancées + viz NHMM SPEC DRAFTED  B           ~4-6 semaines
-                                                                     spec à brainstormer
-   Z.2+  Doc site, release, packaging      NOT STARTED    B, C        continu
+   B     hmm-studio web UI                 SHIPPED        A, A.1      MVP livré
+         (FastAPI + React + topology                                 B.1-B.8 + B.4.x +
+         editor + fit + results)                                     settings + warehouse
+   V     Scientific validation suite       SHIPPED        A           livré 2026-05-22
+         (V.1-V.6 + V.perf)                                          36+ tests verts
+   E     Academy (web + notebook gallery)  SHIPPED        I.1, V      livré 2026-05-26
+         7 web lessons (D3) + 8 notebooks                            web academy + Binder
+         + Try-in-editor bridge                                       gallery
+   C     Visualisations avancées           SHIPPED        B           C.1-C.6 livrés
+         (NHMM breathing, replay, K-scan,                            par session B
+         export SVG, annotations CSV,                                 (5ec533e..0172f57)
+         multi-séquences)
+   Z.2   Doc site (mkdocs) + 5 user guides SHIPPED        —           livré 2026-05-26
+         + CHANGELOG                                                  568b432 + bcd6eca
 ```
 
 ### Graphe de dépendances

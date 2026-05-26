@@ -62,6 +62,13 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
 ]
+bayesian = [
+    # Phase A.6 — BayesianHMMBackend via NUTS sampling.
+    # Heavy ~150 MB install ; opt-in. Required only if you import
+    # hmm_core.backends.bayesian_backend.BayesianHMMBackend.
+    "pymc>=6.0",
+    "arviz>=1.0",
+]
 
 [project.urls]
 # Placeholders — update when the GitHub remote is set up
@@ -85,6 +92,9 @@ hmm_studio = ["server/static/**/*"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
+markers = [
+    "slow: tests that take >10s (Bayesian NUTS sampling, recovery tests, etc.). Skip with -m 'not slow'.",
+]
 
 [tool.ruff]
 line-length = 100

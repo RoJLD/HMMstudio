@@ -20,8 +20,20 @@ from hmm_core.backends.hmmlearn_backend import HmmlearnBackend
 # ``get_backend("hmmlearn")`` or ``get_backend()`` for the default.
 register_backend("hmmlearn", HmmlearnBackend, default=True)
 
+# Bayesian backend (Phase A.6) is optional — pymc is a heavy soft dependency.
+# Register it lazily so users who don't have pymc installed pay no import cost.
+try:
+    from hmm_core.backends.bayesian_backend import BayesianHMMBackend
+
+    register_backend("bayesian", BayesianHMMBackend, default=False)
+except ImportError:
+    # pymc not installed — silently skip registration. The user gets a clear
+    # error from get_backend("bayesian") if they try to use it without pymc.
+    BayesianHMMBackend = None  # type: ignore[assignment]
+
 __all__ = [
     "BackendFitResult",
+    "BayesianHMMBackend",
     "HMMBackend",
     "HmmlearnBackend",
     "get_backend",

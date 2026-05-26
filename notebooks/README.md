@@ -42,6 +42,7 @@ The notebooks have no GPU requirements and run in seconds. They work in :
 | 06 | [Factorial NHMM multi-factor](06_factorial_nhmm_multifactor.ipynb) | Independent regime dimensions (trend × vol), per-chain covariates, parameter savings vs joint HMM. | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RoJLD/HMMstudio/main?urlpath=lab/tree/notebooks/06_factorial_nhmm_multifactor.ipynb) |
 | 07 | [Textbook : AIMA umbrella world](07_textbook_aima_umbrella.ipynb) | Reproduce Russell & Norvig Chap. 14 smoothing + filtering values on the canonical 5-step sequence. | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RoJLD/HMMstudio/main?urlpath=lab/tree/notebooks/07_textbook_aima_umbrella.ipynb) |
 | 08 | [Textbook : Durbin dishonest casino](08_textbook_dishonest_casino.ipynb) | Reproduce the Viterbi recovery accuracy from Durbin et al. *Biological Sequence Analysis* Chap. 3. | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RoJLD/HMMstudio/main?urlpath=lab/tree/notebooks/08_textbook_dishonest_casino.ipynb) |
+| 09 | [Bayesian HMM via PyMC](09_bayesian_hmm.ipynb) | Phase A.6 / I.3 — full Bayesian inference of every parameter via NUTS sampling. Credible intervals, posterior predictive checks, hybrid frequentist + Bayesian workflows. Requires `pip install "hmm-studio[bayesian]"`. | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RoJLD/HMMstudio/main?urlpath=lab/tree/notebooks/09_bayesian_hmm.ipynb) |
 
 ## Suggested learning path
 
