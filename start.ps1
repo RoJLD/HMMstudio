@@ -47,12 +47,21 @@ if (-not (Test-Docker)) {
     Write-Host "Docker is up." -ForegroundColor Green
 }
 
-# --- 2. Already running? Just open the browser. ---
+# --- 2. Frontend stale-check (so a React tweak triggers a rebuild even when ---
+# --- the container is already up). Exit 1 from the helper = needs rebuild. ---
+& "$PSScriptRoot\scripts\check_frontend_stale.ps1"
+$frontendStale = ($LASTEXITCODE -ne 0)
+
+# --- 3. Already running? Open the browser unless the frontend is stale. ---
 $running = docker ps -q --filter "name=^hmm-studio$" --filter "status=running" 2>$null
-if ($running) {
+if ($running -and -not $frontendStale) {
     Write-Host "hmm-studio is already running. Opening UI..." -ForegroundColor Green
     Start-Process "http://localhost:8000"
     exit 0
+}
+if ($running -and $frontendStale) {
+    Write-Host "Stopping running container to apply frontend rebuild..." -ForegroundColor Yellow
+    docker compose down 2>&1 | Out-Null
 }
 
 # --- 3. Release stale container from a previous compose project, if any ---

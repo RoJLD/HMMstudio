@@ -112,6 +112,20 @@ All notable changes to `hmm-studio` are documented here. This project follows
 - `tests/test_regression_helpers.py`: 14 unit tests for the helper itself
   (env-var lookup, tolerance modes, error paths).
 
+### Changed — launcher scripts
+
+- **Frontend stale-check at launch**: `start.ps1` / `start.bat` now compare
+  the mtime of `src/hmm_studio/frontend/src/**` (plus key configs) against
+  `src/hmm_studio/server/static/index.html` before opening the browser.
+  If the React source is newer than the last build, the launcher stops
+  the running container (if any) and rebuilds — fixes the "I tweaked a
+  `.tsx` file but the browser still shows the old UI because the
+  launcher's `already running ?` short-circuit kicked in first" workflow.
+- New shared helper `scripts/check_frontend_stale.ps1`: exit 0 = up to
+  date, exit 1 = stale. Both launchers call it (start.ps1 directly,
+  start.bat via `powershell -ExecutionPolicy Bypass -File`). Can also
+  be run standalone for "should I rebuild before pushing ?" checks.
+
 ---
 
 ## [1.1.0] — 2026-05-23

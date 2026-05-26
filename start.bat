@@ -49,17 +49,30 @@ goto waitdocker
 echo Docker is up.
 :docker_ok
 
-REM --- 2. Already up? Just open the browser. ---
-for /f %%i in ('docker ps -q --filter "name=^hmm-studio$" --filter "status=running" 2^>nul') do (
-    echo hmm-studio is already running. Opening UI...
-    start "" "http://localhost:8000"
-    exit /b 0
+REM --- 2. Frontend stale-check (React tweak triggers a rebuild even if ---
+REM --- the container is already up). Exit 1 from the helper = needs rebuild. ---
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\check_frontend_stale.ps1"
+set "FRONTEND_STALE=%errorlevel%"
+
+REM --- 3. Already up? Open the browser unless the frontend is stale. ---
+set "ALREADY_RUNNING="
+for /f %%i in ('docker ps -q --filter "name=^hmm-studio$" --filter "status=running" 2^>nul') do set "ALREADY_RUNNING=1"
+
+if defined ALREADY_RUNNING (
+    if "%FRONTEND_STALE%"=="0" (
+        echo hmm-studio is already running. Opening UI...
+        start "" "http://localhost:8000"
+        exit /b 0
+    ) else (
+        echo Stopping running container to apply frontend rebuild...
+        docker compose down >nul 2>&1
+    )
 )
 
-REM --- 3. Release stale container name from a previous compose project ---
+REM --- 4. Release stale container name from a previous compose project ---
 docker rm -f hmm-studio >nul 2>&1
 
-REM --- 4. Build (no-op if cached) and start ---
+REM --- 5. Build (no-op if cached) and start ---
 echo Starting (first run takes ~2-3 min on a cold image)...
 docker compose up -d --build
 if errorlevel 1 (
