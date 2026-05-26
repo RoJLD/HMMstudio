@@ -19,7 +19,12 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("HMM_STUDIO_RESULTS_DIR", str(tmp_path / "results"))
     monkeypatch.setenv("HMM_STUDIO_UPLOADS_DIR", str(tmp_path / "uploads"))
     app = create_app()
-    return TestClient(app)
+    # Context-manager form triggers FastAPI lifespan teardown, which calls
+    # JobRunner.shutdown(). Without this, every test leaks a ThreadPoolExecutor
+    # whose worker threads stay alive until the pytest process exits — fine in
+    # isolation but a multiplier under I/O contention (e.g. Defender scanning).
+    with TestClient(app) as c:
+        yield c
 
 
 VALID_TOPOLOGY = """

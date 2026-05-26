@@ -16,8 +16,9 @@ import os
 import tempfile
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
-from datetime import datetime
 from pathlib import Path
+
+from hmm_studio.server._time import utcnow
 
 import numpy as np
 import pandas as pd
@@ -95,7 +96,7 @@ def _update_scan_parent_status(engine, parent_id: str) -> None:
             parent.status = FitJobStatus.FAILED
         else:
             parent.status = FitJobStatus.DONE
-        parent.ended_at = datetime.utcnow()
+        parent.ended_at = utcnow()
         session.add(parent)
         session.commit()
 
@@ -198,7 +199,7 @@ class JobRunner:
         with get_session(self._engine) as session:
             parent = session.get(FitJob, parent_id)
             parent.status = FitJobStatus.RUNNING
-            parent.started_at = datetime.utcnow()
+            parent.started_at = utcnow()
             session.add(parent)
             session.commit()
 
@@ -248,7 +249,7 @@ class JobRunner:
                 if dataset is None:
                     job.status = FitJobStatus.FAILED
                     job.error = f"dataset {job.dataset_id} not found"
-                    job.ended_at = datetime.utcnow()
+                    job.ended_at = utcnow()
                     session.add(job)
                     session.commit()
                     if job_parent_id is not None:
@@ -267,7 +268,7 @@ class JobRunner:
                     job = session.get(FitJob, job_id)
                     job.status = FitJobStatus.FAILED
                     job.error = f"invalid topology: {exc}"
-                    job.ended_at = datetime.utcnow()
+                    job.ended_at = utcnow()
                     session.add(job)
                     session.commit()
                 if job_parent_id is not None:
@@ -309,7 +310,7 @@ class JobRunner:
             with get_session(self._engine) as session:
                 job = session.get(FitJob, job_id)
                 job.status = FitJobStatus.RUNNING
-                job.started_at = datetime.utcnow()
+                job.started_at = utcnow()
                 session.add(job)
                 session.commit()
 
@@ -350,7 +351,7 @@ class JobRunner:
                     job = session.get(FitJob, job_id)
                     job.status = FitJobStatus.FAILED
                     job.error = f"fit error: {exc}"
-                    job.ended_at = datetime.utcnow()
+                    job.ended_at = utcnow()
                     session.add(job)
                     session.commit()
                 if job_parent_id is not None:
@@ -379,7 +380,7 @@ class JobRunner:
                 job.status = FitJobStatus.DONE
                 job.progress = json.dumps([float(x) for x in history])
                 job.result_path = str(result_dir)
-                job.ended_at = datetime.utcnow()
+                job.ended_at = utcnow()
                 session.add(job)
                 session.commit()
 
@@ -394,7 +395,7 @@ class JobRunner:
                 if job is not None:
                     job.status = FitJobStatus.FAILED
                     job.error = f"unexpected error: {exc}"
-                    job.ended_at = datetime.utcnow()
+                    job.ended_at = utcnow()
                     session.add(job)
                     session.commit()
             if job_parent_id is not None:

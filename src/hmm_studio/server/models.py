@@ -8,6 +8,8 @@ from enum import Enum
 
 from sqlmodel import Field, SQLModel
 
+from hmm_studio.server._time import utcnow
+
 
 class FitJobStatus(str, Enum):
     QUEUED = "queued"
@@ -30,7 +32,7 @@ class Dataset(SQLModel, table=True):
     n_cols: int
     dtypes: str = ""
     path: str = ""
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class FitJob(SQLModel, table=True):
@@ -46,7 +48,7 @@ class FitJob(SQLModel, table=True):
     error: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
     covariate_names: str = ""  # JSON list[str] of column names used as NHMM covariates
     lengths: str = ""  # JSON list[int], empty = single sequence
     parent_id: str | None = Field(default=None)  # if set, this is a child of a scan job
@@ -65,7 +67,7 @@ class Annotation(SQLModel, table=True):
     t: int
     label: str
     color: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class SettingsRow(SQLModel, table=True):
@@ -77,4 +79,4 @@ class SettingsRow(SQLModel, table=True):
 
     id: str = Field(default="global", primary_key=True)
     warehouse_path: str | None = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

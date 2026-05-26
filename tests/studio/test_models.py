@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from hmm_studio.server._time import utcnow
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.models import Dataset, FitJob, FitJobStatus
 
@@ -62,13 +63,13 @@ def test_fit_job_status_transitions(tmp_path):
 
         # Transition to running
         job.status = FitJobStatus.RUNNING
-        job.started_at = datetime.utcnow()
+        job.started_at = utcnow()
         session.add(job)
         session.commit()
 
         # Transition to done
         job.status = FitJobStatus.DONE
-        job.ended_at = datetime.utcnow()
+        job.ended_at = utcnow()
         job.result_path = "/tmp/result/"
         session.add(job)
         session.commit()

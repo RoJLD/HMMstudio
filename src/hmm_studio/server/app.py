@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
+from hmm_studio.server._time import utcnow
 from hmm_studio.server.db import create_db_engine, get_session
 from hmm_studio.server.jobs import JobRunner, _load_topology_from_yaml_str
 from hmm_studio.server.models import Annotation, Dataset, FitJob, FitJobStatus, SettingsRow
@@ -687,16 +688,14 @@ def create_app() -> FastAPI:
                 )
             new_value = str(candidate)
 
-        from datetime import datetime as _dt
-
         with get_session(engine) as session:
             row = session.get(SettingsRow, "global")
             if row is None:
-                row = SettingsRow(id="global", warehouse_path=new_value, updated_at=_dt.utcnow())
+                row = SettingsRow(id="global", warehouse_path=new_value, updated_at=utcnow())
                 session.add(row)
             else:
                 row.warehouse_path = new_value
-                row.updated_at = _dt.utcnow()
+                row.updated_at = utcnow()
                 session.add(row)
 
         # Invalidate the warehouse scan cache so a new path takes effect immediately.

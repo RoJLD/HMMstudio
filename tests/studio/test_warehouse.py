@@ -26,7 +26,10 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("HMM_STUDIO_UPLOADS_DIR", str(tmp_path / "uploads"))
     monkeypatch.delenv("HMM_STUDIO_WAREHOUSE_PATH", raising=False)
     app = create_app()
-    return TestClient(app)
+    # Context-manager form triggers lifespan teardown (JobRunner.shutdown);
+    # see test_endpoints.client for full rationale.
+    with TestClient(app) as c:
+        yield c
 
 
 # ---------------------------------------------------------------------------
