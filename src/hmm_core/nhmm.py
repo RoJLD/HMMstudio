@@ -52,6 +52,64 @@ class NHMMFittedModel:
             return self.A_t[t_idx]
         return self.base.model.transmat_
 
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import (
+            render_chip_list,
+            render_matrix_heatmap,
+            render_stats_table,
+            wrap_html,
+        )
+
+        K = self.n_states
+        T = self.A_t.shape[0]
+        mask = self.topology.transition_mask()
+
+        n_classifiers = len(self.classifiers)
+        n_fallback = len(self.fallback_rows)
+
+        stats_rows = [
+            ("Base topology", self.topology.name),
+            ("States (K)", K),
+            ("Sequence length (T)", T),
+            ("Covariates", render_chip_list(self.covariate_names)),
+            ("Logit classifiers fitted", f"{n_classifiers} / {K} source states"),
+            ("Fallback rows", f"{n_fallback} (homogeneous fallback)"),
+            ("Base log-likelihood", f"{self.base.log_likelihood:.3f}"),
+            ("Base BIC", f"{self.base.bic:.3f}"),
+        ]
+        stats_html = render_stats_table(stats_rows)
+
+        # Mean A_t over t (gives a static homogeneous-equivalent view)
+        A_mean = self.A_t.mean(axis=0)
+        heatmap_mean = render_matrix_heatmap(
+            A_mean,
+            self.topology.state_names,
+            self.topology.state_names,
+            forbidden_mask=mask,
+            title="A_t averaged over T (homogeneous-equivalent view)",
+        )
+
+        # Variability heatmap : std of A_t across t (shows where covariates matter)
+        A_std = self.A_t.std(axis=0)
+        heatmap_std = render_matrix_heatmap(
+            A_std,
+            self.topology.state_names,
+            self.topology.state_names,
+            forbidden_mask=mask,
+            title="A_t variability across t (std)",
+        )
+
+        return wrap_html(
+            "<h4>NHMMFittedModel</h4>",
+            stats_html,
+            heatmap_mean,
+            heatmap_std,
+            '<div class="small">Use <code>.A_at(t)</code> for the transition '
+            "matrix at a specific time, or <code>.A_t</code> for the full "
+            "(T, K, K) array.</div>",
+        )
+
 
 def fit_nhmm(
     topology: Topology,

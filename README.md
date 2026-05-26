@@ -56,6 +56,42 @@ docker compose down -v    # wipe volume (clears DB, uploads, results)
 **Desktop shortcut**: right-click `start.bat` → "Send to" → "Desktop (create
 shortcut)". Rename to "hmm-studio".
 
+## Quickstart in Jupyter (recommended)
+
+`hmm-studio` is **Jupyter-native** : every object renders as a rich HTML view
+inline (heatmaps, statistics tables, sequence strips). The fastest way to
+get started :
+
+```python
+from hmm_core.topology import Topology, EmissionSpec, FitSpec, InitSpec
+from hmm_core.fit import fit
+import numpy as np
+
+# 1. Build a topology (renders inline as HTML in Jupyter)
+topo = Topology(
+    name="quickstart",
+    n_states=3,
+    state_names=["low", "mid", "high"],
+    emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=1),
+    allowed_transitions=None,                   # ergodic
+    startprob="uniform",
+    init=InitSpec(strategy="kmeans", seed=42),
+    fit=FitSpec(algorithm="baum_welch", n_iter=100, tol=1e-4),
+)
+topo                                            # rich HTML view
+
+# 2. Fit on data (FittedModel renders heatmap + stats)
+X = np.random.default_rng(42).normal(size=(200, 1))
+result = fit(topo, X, seed=42)
+result                                          # rich HTML view
+
+# 3. Decode
+viterbi_states = result.model.predict(X)
+```
+
+See the [notebook gallery](notebooks/) for full examples : quickstart,
+NHMM regime detection, data preprocessing recipes, and more.
+
 ## 30-second tour
 
 ### CLI

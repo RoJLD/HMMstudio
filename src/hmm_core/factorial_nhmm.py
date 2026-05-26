@@ -126,6 +126,54 @@ class FactorialNHMMFittedModel:
         """Transition matrix array (T, K_d, K_d) for the given chain."""
         return self.A_t_per_chain[chain_name]
 
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import (
+            render_chip_list,
+            render_matrix_heatmap,
+            render_stats_table,
+            wrap_html,
+        )
+
+        D = self.n_chains
+        K_joint = self.K_joint
+        T = next(iter(self.A_t_per_chain.values())).shape[0]
+
+        stats_rows = [
+            ("Chains (D)", D),
+            ("K per chain", " × ".join(str(c.n_states) for c in self.chain_specs)),
+            ("K_joint", K_joint),
+            ("Sequence length (T)", T),
+            ("Chain names", render_chip_list(self.chain_names)),
+            ("Joint log-likelihood", f"{self.base.log_likelihood:.3f}"),
+            ("Joint BIC", f"{self.base.bic:.3f}"),
+        ]
+        stats_html = render_stats_table(stats_rows)
+
+        # Per-chain A_t mean heatmap
+        per_chain_heatmaps = []
+        for chain in self.chain_specs:
+            A_mean = self.A_t_per_chain[chain.name].mean(axis=0)
+            labels = [f"{chain.name}{i}" for i in range(chain.n_states)]
+            per_chain_heatmaps.append(
+                render_matrix_heatmap(
+                    A_mean,
+                    labels,
+                    labels,
+                    title=f"Chain '{chain.name}' — A_t averaged over T",
+                )
+            )
+
+        return wrap_html(
+            "<h4>FactorialNHMMFittedModel</h4>",
+            stats_html,
+            "".join(per_chain_heatmaps),
+            '<div class="small">Two-stage decomposition : joint Gaussian HMM '
+            "on K_joint = ∏K_d states + per-chain NHMM logits on projected "
+            "Viterbi. Strategy A from "
+            "<code>docs/specs/2026-05-22-phase-a13-factorial-nhmm.md</code>.</div>",
+        )
+
 
 # ---------------------------------------------------------------------------
 # Public entry point

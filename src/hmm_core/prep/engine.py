@@ -116,6 +116,43 @@ class PreparedResult:
         )
         return sidecar
 
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import render_chip_list, render_stats_table, wrap_html
+
+        T, n_cols = self.df.shape
+        n_nan = int(self.df.isna().sum().sum())
+
+        stats_rows = [
+            ("Output shape", f"{T} rows × {n_cols} cols"),
+            ("Remaining NaN", f"{n_nan}"),
+            ("Applied steps", len(self.provenance)),
+            ("Columns", render_chip_list(list(self.df.columns)[:10])),
+        ]
+        if self.X is not None:
+            stats_rows.append(
+                ("Observations (X)", f"shape {self.X.shape}, columns: {list(self.X.columns)}")
+            )
+        if self.Z is not None:
+            stats_rows.append(
+                ("Covariates (Z)", f"shape {self.Z.shape}, columns: {list(self.Z.columns)}")
+            )
+        stats_html = render_stats_table(stats_rows)
+
+        # Preview first 5 rows via pandas's _repr_html_
+        try:
+            preview_html = '<h5>First 5 rows</h5>' + self.df.head(5).to_html(
+                max_cols=8, classes="dataframe"
+            )
+        except Exception:
+            preview_html = ""
+
+        return wrap_html(
+            "<h4>PreparedResult</h4>",
+            stats_html,
+            preview_html,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Recipe lookup
@@ -360,4 +397,39 @@ class Pipeline:
             f"Pipeline(name={self._recipe_name!r}, "
             f"n_steps={len(self._steps)}, "
             f"output={self._output})"
+        )
+
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import render_chip_list, render_stats_table, wrap_html, _esc
+
+        # Steps table
+        steps_rows = ["<h5>Pipeline steps</h5>"]
+        steps_rows.append("<table><tr><th>#</th><th>Op</th><th>Parameters</th></tr>")
+        for i, step in enumerate(self._steps):
+            params_str = ", ".join(
+                f"{k}={v!r}" for k, v in step.params.items()
+            )
+            steps_rows.append(
+                f"<tr><td>{i + 1}</td><td><code>{_esc(step.op)}</code></td>"
+                f"<td style='text-align:left'><code>{_esc(params_str)}</code></td></tr>"
+            )
+        steps_rows.append("</table>")
+
+        stats_rows = [("Name", self._recipe_name), ("Steps", len(self._steps))]
+        if self._output is not None:
+            stats_rows.append(("Observations", render_chip_list(self._output.observations)))
+            stats_rows.append(("Covariates", render_chip_list(self._output.covariates)))
+        stats_html = render_stats_table(stats_rows)
+
+        if self._recipe_description:
+            desc_html = f'<div class="small" style="margin: 4px 0">{_esc(self._recipe_description)}</div>'
+        else:
+            desc_html = ""
+
+        return wrap_html(
+            "<h4>Pipeline</h4>",
+            stats_html,
+            desc_html,
+            "".join(steps_rows),
         )

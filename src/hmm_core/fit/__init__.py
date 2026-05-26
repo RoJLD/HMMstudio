@@ -31,6 +31,56 @@ class FittedModel:
     seed: int
     duration_seconds: float
 
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import (
+            render_matrix_heatmap,
+            render_sequence_strip,
+            render_stats_table,
+            wrap_html,
+        )
+
+        # Top-line stats
+        converged_html = (
+            '<span class="ok">✓ converged</span>'
+            if self.converged
+            else '<span class="warn">✗ did not converge (hit n_iter)</span>'
+        )
+        stats_rows = [
+            ("Topology", self.topology.name),
+            ("States (K)", self.topology.n_states),
+            ("Log-likelihood", f"{self.log_likelihood:.3f}"),
+            ("BIC", f"{self.bic:.3f}"),
+            ("AIC", f"{self.aic:.3f}"),
+            ("Converged", converged_html),
+            ("Iterations", f"{self.n_iter_actual} / {self.topology.fit.n_iter}"),
+            ("Seed", self.seed),
+            ("Duration", f"{self.duration_seconds:.2f}s"),
+        ]
+        stats_html = render_stats_table(stats_rows)
+
+        # Heatmap of transmat (with forbidden mask)
+        mask = self.topology.transition_mask()
+        transmat = np.asarray(self.model.transmat_)
+        heatmap_html = render_matrix_heatmap(
+            transmat,
+            self.topology.state_names,
+            self.topology.state_names,
+            forbidden_mask=mask,
+            title="Fitted transmat (rows = from, cols = to)",
+        )
+
+        # Optional Viterbi strip on the original data — only if available cheaply.
+        # We don't auto-decode here (no X stored on the FittedModel) ; users get
+        # the strip when they call .predict() themselves.
+
+        parts = [
+            "<h4>FittedModel</h4>",
+            stats_html,
+            heatmap_html,
+        ]
+        return wrap_html(*parts)
+
 
 def _n_params(K: int, emission_spec) -> int:
     """Free parameters for BIC/AIC."""

@@ -57,6 +57,71 @@ class GMMNHMMFittedModel:
             return self.A_t[t_idx]
         return self.base.model.transmat_
 
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter (Phase I.1)."""
+        from hmm_core._jupyter import (
+            render_chip_list,
+            render_matrix_heatmap,
+            render_stats_table,
+            wrap_html,
+        )
+
+        K = self.n_states
+        M = self.n_mix
+        T = self.A_t.shape[0]
+        mask = self.topology.transition_mask()
+
+        stats_rows = [
+            ("Topology", self.topology.name),
+            ("Regimes (K)", K),
+            ("Mixture components per regime (M)", M),
+            ("Sequence length (T)", T),
+            ("Covariates", render_chip_list(self.covariate_names)),
+            ("Logit classifiers fitted", f"{len(self.classifiers)} / {K}"),
+            ("Base log-likelihood", f"{self.base.log_likelihood:.3f}"),
+            ("Base BIC", f"{self.base.bic:.3f}"),
+        ]
+        stats_html = render_stats_table(stats_rows)
+
+        # A_t mean heatmap
+        A_mean = self.A_t.mean(axis=0)
+        heatmap_html = render_matrix_heatmap(
+            A_mean,
+            self.topology.state_names,
+            self.topology.state_names,
+            forbidden_mask=mask,
+            title="A_t averaged over T",
+        )
+
+        # Per-regime sub-mode breakdown (means + weights of the GMM)
+        # GMMHMM stores means_ of shape (K, M, D)
+        means = np.asarray(self.base.model.means_)  # (K, M, D)
+        weights = np.asarray(self.base.model.weights_)  # (K, M)
+
+        # Render a per-regime table : state | component | weight | mean[0]
+        rows_html = ["<h5>Sub-modes per regime (GMM components)</h5>"]
+        rows_html.append("<table><tr><th>Regime</th><th>Component</th>"
+                         "<th>Weight</th><th>Mean (D=0)</th></tr>")
+        for k in range(K):
+            for m in range(M):
+                state_name = self.topology.state_names[k]
+                rows_html.append(
+                    f"<tr><td>{state_name}</td><td>{m}</td>"
+                    f"<td>{weights[k, m]:.3f}</td>"
+                    f"<td>{means[k, m, 0]:.3f}</td></tr>"
+                )
+        rows_html.append("</table>")
+
+        return wrap_html(
+            "<h4>GMMNHMMFittedModel</h4>",
+            stats_html,
+            heatmap_html,
+            "".join(rows_html),
+            '<div class="small">Two-stage fit : GMM-HMM base + per-source-state '
+            "covariate logit. Strategy A from "
+            "<code>docs/specs/2026-05-22-phase-a10-gmm-nhmm.md</code>.</div>",
+        )
+
 
 def fit_gmm_nhmm(
     topology: Topology,

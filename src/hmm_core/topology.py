@@ -173,3 +173,57 @@ class Topology:
         if self.transmat_prior_alpha is not None:
             return self.transmat_prior_alpha * mask.astype(float)
         return None
+
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter / IPython (Phase I.1)."""
+        from hmm_core._jupyter import (
+            render_matrix_heatmap,
+            render_stats_table,
+            wrap_html,
+        )
+
+        mask = self.transition_mask()
+        K = self.n_states
+        n_allowed = int(mask.sum())
+
+        # Emission details (one-line summary)
+        em = self.emission
+        emission_summary = em.type
+        if em.type in ("gaussian", "gmm") and em.covariance_type:
+            emission_summary += f", {em.covariance_type} covariance"
+        if em.n_features is not None:
+            emission_summary += f", D={em.n_features}"
+        if em.type == "gmm" and em.n_mix is not None:
+            emission_summary += f", M={em.n_mix}"
+        if em.type == "multinomial" and em.n_symbols is not None:
+            emission_summary += f", n_symbols={em.n_symbols}"
+
+        stats_rows = [
+            ("Topology", self.name),
+            ("States (K)", K),
+            ("State names", ", ".join(self.state_names)),
+            ("Emission", emission_summary),
+            ("Allowed edges", f"{n_allowed} / {K * K}"),
+            ("Init strategy", f"{self.init.strategy} (seed={self.init.seed})"),
+            ("Fit", f"{self.fit.algorithm}, n_iter={self.fit.n_iter}, tol={self.fit.tol}"),
+        ]
+        if self.transmat_prior_alpha is not None or self.transmat_prior_matrix is not None:
+            stats_rows.append(("Transmat prior", "set"))
+
+        stats_html = render_stats_table(stats_rows)
+
+        # Heatmap of mask (binary), forbidden cells crossed
+        heatmap_html = render_matrix_heatmap(
+            mask.astype(float),
+            self.state_names,
+            self.state_names,
+            forbidden_mask=mask,
+            precision=0,
+            title="Transition mask (rows = from, cols = to)",
+        )
+
+        return wrap_html(
+            f"<h4>Topology</h4>",
+            stats_html,
+            heatmap_html,
+        )
