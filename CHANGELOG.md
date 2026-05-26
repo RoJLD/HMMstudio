@@ -4,18 +4,30 @@ All notable changes to `hmm-studio` are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
-## [Unreleased]
+## [1.1.0] — 2026-05-23
 
 Distribution-surface release: `hmm-studio` becomes pip-installable and
 Jupyter-/sklearn-native per [ADR-0012](docs/decisions/0012-distribution-strategy-hybrid.md).
-Three new HMM variants (GMM-NHMM, Factorial NHMM, supervised path completed),
-a declarative data prep layer, a local-filesystem data warehouse with
-editable settings, a six-layer scientific validation suite, and a
-seven-lesson interactive Academy land alongside the Phase I distribution
-surfaces.
+Four new HMM variants (GMM-NHMM, Factorial NHMM, Bayesian via PyMC NUTS,
+supervised path completed), a declarative data prep layer, a
+local-filesystem data warehouse with editable settings, a six-layer
+scientific validation suite, and a seven-lesson interactive Academy land
+alongside the three Phase I distribution surfaces (Jupyter rich displays,
+scikit-learn compatibility, PyMC bridge).
 
 ### Added — engine (`hmm_core`)
 
+- **A.6 Bayesian HMM backend + I.3 PyMC bridge** (`hmm_core.backends.bayesian_backend.BayesianHMMBackend`):
+  drop-in `HMMBackend` implementation using PyMC NUTS for full posterior
+  inference (priors: Dirichlet on transmat/startprob, Normal on means,
+  HalfNormal on sigmas; likelihood via `pytensor.scan` log-forward).
+  Posterior mean drops into a `ConstrainedGaussianHMM` so `decode` /
+  `predict` / `score` reuse the existing frequentist machinery. Full
+  `arviz.InferenceData` is exposed on `backend.last_idata_` for credible
+  intervals and posterior predictive checks. Installs via `pip install
+  "hmm-studio[bayesian]"` (PyMC ≥ 6.0, arviz ≥ 1.0). Registered as
+  backend `"bayesian"` via lazy import (pymc optional, the rest of
+  hmm-core works without it).
 - **A.7.1 supervised GMM + semi-supervised training**: closed-form per-state
   `GaussianMixture` fit closes the supervised-GMM gap (was `NotImplementedError`).
   Pass `states` with NaN (float) or `-1` (int) entries at unlabelled positions
@@ -115,7 +127,7 @@ Six-layer scientific validation, run separately from the unit tests:
 
 ### Added — notebook gallery (`notebooks/`)
 
-Eight runnable notebooks, each pip-only, no external data:
+Nine runnable notebooks, each pip-only, no external data:
 
 1. **Quickstart** — 30-second tour (declare topology, fit, decode,
    left-right constrained variant).
@@ -132,6 +144,9 @@ Eight runnable notebooks, each pip-only, no external data:
    filtering + smoothing within 5×10⁻³ of the published values.
 8. **Textbook Durbin dishonest casino** — Viterbi accuracy assertion
    on a sampled T=1000 sequence (≥ 70%, above the always-fair baseline).
+9. **Bayesian HMM (PyMC)** — full posterior inference via NUTS, credible
+   intervals on transmat / means, posterior predictive checks. Requires
+   the `[bayesian]` extra.
 
 ### Added — documentation
 
@@ -145,9 +160,12 @@ Eight runnable notebooks, each pip-only, no external data:
 
 ### Changed
 
-- Repository test count: **154 → 283** (+129 unit tests; +36 validation
-  tests across V.1–V.6 + V.perf; +17 Jupyter `_repr_html_` tests; +15
-  warehouse tests; +7 settings tests; +5 E2E specs).
+- Repository test count: **154 → 309 default** (+155; 14 supervised /
+  semi-supervised A.7.1 plus the GMM-NHMM / Factorial NHMM / prep /
+  warehouse / settings / Jupyter `_repr_html_` suites and the V.1-V.6
+  + V.perf validation layer). The 12 Bayesian backend tests are marked
+  `slow` and require the `[bayesian]` extra; run with
+  `pytest -m slow` to include them (321 total).
 - Studio frontend now ships split chunks (lazy-loaded React Flow / d3 /
   state / yaml / vendor) instead of one monolithic bundle.
 - `_store_dataframe_as_dataset()` helper factored out of
