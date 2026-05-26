@@ -845,16 +845,33 @@ def create_app() -> FastAPI:
         from fastapi.responses import FileResponse
         from fastapi.staticfiles import StaticFiles
 
-        # Mount /assets explicitly so Vite-built assets resolve.
+        # Mount /assets explicitly so Vite-built assets resolve. Asset files
+        # are hash-named by Vite (e.g. index-DJGDZv4_.js), so aggressive caching
+        # is safe — the hash changes when content changes.
         assets_dir = static_dir / "assets"
         if assets_dir.exists():
             app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
         # Catch-all for non-API routes -> index.html (SPA-style routing).
+        #
+        # CRITICAL : index.html must NEVER be cached by the browser. It is the
+        # entry point that references the hash-named asset bundles ; if the
+        # browser holds an old index.html, it keeps fetching old asset hashes
+        # even after a server rebuild. This bit the workflow until
+        # 2026-05-26 — clicking the launcher rebuilt the image and recreated
+        # the container, but the browser still served an old UI from cache.
+        # ``Cache-Control: no-store`` ensures the browser always fetches a
+        # fresh index.html, which then loads the current (cached) assets.
+        _NO_CACHE_HEADERS = {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+
         @app.get("/{full_path:path}", include_in_schema=False)
         def spa_fallback(full_path: str):
             # API and WS already handled by their respective routes. Anything
             # left should serve index.html so React Router takes over.
-            return FileResponse(static_dir / "index.html")
+            return FileResponse(static_dir / "index.html", headers=_NO_CACHE_HEADERS)
 
     return app

@@ -135,9 +135,18 @@ if (-not $ready) {
 }
 
 # --- 7. Open the UI ---
+# The server now sends Cache-Control: no-store on index.html (since
+# 2026-05-26) so future reloads always pick up the latest asset hashes.
+# We also append a launch-time cachebust query so browsers carrying a
+# pre-fix cached index.html see a "new URL" and refetch on the very
+# first visit after upgrading.
+$cachebust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$urlClean = "http://localhost:8000"
+$urlBusted = "${urlClean}/?_=$cachebust"
+
 Write-Host ""
 Write-Host "  hmm-studio is up." -ForegroundColor Green
-Write-Host "  UI:   http://localhost:8000" -ForegroundColor Green
-Write-Host "  API:  http://localhost:8000/docs (Swagger)" -ForegroundColor Green
+Write-Host "  UI:   $urlClean" -ForegroundColor Green
+Write-Host "  API:  $urlClean/docs (Swagger)" -ForegroundColor Green
 Write-Host ""
-Start-Process "http://localhost:8000"
+Start-Process $urlBusted

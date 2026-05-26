@@ -127,5 +127,10 @@ echo   UI:   http://localhost:8000
 echo   API:  http://localhost:8000/docs (Swagger)
 echo.
 
-start "" "http://localhost:8000"
+REM Cache-bust query : the server now sends Cache-Control: no-store on
+REM index.html (since 2026-05-26) but a pre-fix cached index.html in the
+REM browser may persist. A timestamped query makes the URL look "new"
+REM so the browser refetches at least on the first visit after upgrading.
+for /f %%i in ('powershell -NoProfile -Command "[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()"') do set "CACHEBUST=%%i"
+start "" "http://localhost:8000/?_=%CACHEBUST%"
 endlocal

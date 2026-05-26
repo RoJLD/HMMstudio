@@ -137,6 +137,21 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `hmm-studio` CLI from a local venv, or "should I rebuild before
   pushing ?" checks) — just no longer called by the Docker launchers.
 
+### Fixed — browser cache on index.html
+
+- The SPA fallback in `src/hmm_studio/server/app.py` now serves
+  `index.html` with `Cache-Control: no-store, no-cache, must-revalidate,
+  max-age=0` (plus `Pragma: no-cache` + `Expires: 0` for older browsers).
+  Without this, browsers happily cached the entry-point HTML between
+  releases, so even a rebuilt-and-recreated container kept showing the
+  old UI because the cached `index.html` referenced the old asset
+  hashes. Hashed assets in `/assets/` stay aggressively cacheable —
+  their hash changes with content, so the browser refetches naturally.
+- Launchers (`start.ps1` / `start.bat`) now append a `?_=<unix-ts>`
+  query when opening the browser. Belt-and-suspenders : if the browser
+  is carrying a pre-fix cached `index.html`, the new URL looks "fresh"
+  and forces a refetch on the very first launch after upgrading.
+
 ---
 
 ## [1.1.0] — 2026-05-23
