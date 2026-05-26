@@ -188,6 +188,107 @@ def test_op_robust_scale(sample_df):
     assert abs(out["close"].median()) < 1e-10
 
 
+# ---------------------------------------------------------------------------
+# Standardised `columns` API (post-v1.1.0)
+# ---------------------------------------------------------------------------
+
+
+def _multi_df():
+    return pd.DataFrame(
+        {
+            "a": np.arange(1.0, 11.0),
+            "b": np.arange(100.0, 110.0),
+            "label": ["x"] * 10,
+        }
+    )
+
+
+def test_op_rolling_mean_multi_column_in_place():
+    df = _multi_df()
+    out = OPS["rolling_mean"](df, columns=["a", "b"], window=3)
+    # Both columns overwritten in place
+    assert list(out.columns) == ["a", "b", "label"]
+    expected_a = df["a"].rolling(window=3).mean()
+    expected_b = df["b"].rolling(window=3).mean()
+    pd.testing.assert_series_equal(out["a"], expected_a, check_names=False)
+    pd.testing.assert_series_equal(out["b"], expected_b, check_names=False)
+    # Non-numeric column untouched
+    pd.testing.assert_series_equal(out["label"], df["label"])
+
+
+def test_op_rolling_mean_default_all_numeric():
+    df = _multi_df()
+    out = OPS["rolling_mean"](df, window=3)
+    # Default: all numeric columns rolled in place; non-numeric untouched
+    expected_a = df["a"].rolling(window=3).mean()
+    expected_b = df["b"].rolling(window=3).mean()
+    pd.testing.assert_series_equal(out["a"], expected_a, check_names=False)
+    pd.testing.assert_series_equal(out["b"], expected_b, check_names=False)
+    pd.testing.assert_series_equal(out["label"], df["label"])
+
+
+def test_op_rolling_mean_single_column_with_new_name_backcompat():
+    df = _multi_df()
+    out = OPS["rolling_mean"](df, column="a", window=3, new_name="a_smooth")
+    assert "a_smooth" in out.columns
+    # Original column unchanged
+    pd.testing.assert_series_equal(out["a"], df["a"])
+
+
+def test_op_rolling_mean_rejects_new_name_with_multi_column():
+    df = _multi_df()
+    with pytest.raises(ValueError, match="new_name only valid with a single column"):
+        OPS["rolling_mean"](df, columns=["a", "b"], window=3, new_name="x")
+
+
+def test_op_rolling_std_multi_column_in_place():
+    df = _multi_df()
+    out = OPS["rolling_std"](df, columns=["a", "b"], window=3)
+    expected_a = df["a"].rolling(window=3).std()
+    pd.testing.assert_series_equal(out["a"], expected_a, check_names=False)
+    assert "rolling_std_a_3" not in out.columns  # multi-column form is in-place
+
+
+def test_op_ewma_multi_column_in_place():
+    df = _multi_df()
+    out = OPS["ewma"](df, columns=["a", "b"], halflife=2)
+    expected_a = df["a"].ewm(halflife=2, adjust=False).mean()
+    pd.testing.assert_series_equal(out["a"], expected_a, check_names=False)
+
+
+def test_op_log_transform_multi_column_in_place():
+    df = _multi_df()
+    out = OPS["log_transform"](df, columns=["a", "b"])
+    np.testing.assert_allclose(out["a"].to_numpy(), np.log(df["a"].to_numpy()))
+    np.testing.assert_allclose(out["b"].to_numpy(), np.log(df["b"].to_numpy()))
+    # No log_a / log_b appended
+    assert list(out.columns) == ["a", "b", "label"]
+
+
+def test_op_log_transform_single_column_backcompat():
+    df = _multi_df()
+    out = OPS["log_transform"](df, column="a")
+    assert "log_a" in out.columns
+    # Original column untouched
+    pd.testing.assert_series_equal(out["a"], df["a"])
+
+
+def test_op_log_transform_rejects_new_name_with_multi_column():
+    df = _multi_df()
+    with pytest.raises(ValueError, match="new_name only valid with a single column"):
+        OPS["log_transform"](df, columns=["a", "b"], new_name="x")
+
+
+def test_op_zscore_default_all_numeric():
+    df = _multi_df()
+    out = OPS["zscore"](df)
+    for col in ("a", "b"):
+        assert abs(out[col].mean()) < 1e-10
+        assert abs(out[col].std() - 1.0) < 1e-10
+    # Non-numeric label column untouched
+    pd.testing.assert_series_equal(out["label"], df["label"])
+
+
 def test_op_interpolate(tiny_df):
     out = OPS["interpolate"](tiny_df, method="linear")
     # a iloc[2] interpolates between 2.0 (iloc[1]) and 4.0 (iloc[3]) -> 3.0

@@ -28,13 +28,57 @@ from typing import Callable
 import pandas as pd
 import yaml
 
+SIDECAR_SUFFIX = ".hmm.yaml"
+
+# Encoding cascade tried in order for CSV / TSV reads. UTF-8 covers
+# modern data, ISO-8859-1 covers older Latin-1 dumps (and never raises
+# UnicodeDecodeError — it accepts any byte), cp1252 is the Windows
+# default for French / Western European exports.
+_CSV_ENCODING_CASCADE = ("utf-8", "cp1252", "iso-8859-1")
+
+
+def _read_csv_with_encoding_fallback(path: Path, *, sep: str = ",") -> pd.DataFrame:
+    """Read a CSV / TSV with an encoding cascade fallback.
+
+    Tries UTF-8 first, then cp1252, then ISO-8859-1 on ``UnicodeDecodeError``.
+    If a ``<path>.hmm.yaml`` sidecar exposes ``provenance.encoding: <enc>``,
+    that encoding is attempted first (the standard cascade is the fallback
+    if even the user's hint fails).
+
+    Raises ``ValueError`` listing every attempted encoding when nothing works.
+    """
+    candidates: list[str] = []
+    sidecar_meta = load_sidecar(path)
+    if sidecar_meta is not None:
+        provenance = sidecar_meta.get("provenance")
+        if isinstance(provenance, dict):
+            hint = provenance.get("encoding")
+            if isinstance(hint, str) and hint:
+                candidates.append(hint)
+    for enc in _CSV_ENCODING_CASCADE:
+        if enc not in candidates:
+            candidates.append(enc)
+
+    errors: list[str] = []
+    for enc in candidates:
+        try:
+            return pd.read_csv(path, sep=sep, encoding=enc)
+        except UnicodeDecodeError as e:
+            errors.append(f"{enc}: {e.reason}")
+            continue
+    raise ValueError(
+        f"could not decode {path.name} ; tried encodings {candidates}. "
+        f"Errors: {errors}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Format dispatch
 # ---------------------------------------------------------------------------
 
 FORMAT_READERS: dict[str, Callable[[Path], pd.DataFrame]] = {
-    ".csv": pd.read_csv,
-    ".tsv": lambda p: pd.read_csv(p, sep="\t"),
+    ".csv": _read_csv_with_encoding_fallback,
+    ".tsv": lambda p: _read_csv_with_encoding_fallback(p, sep="\t"),
     ".parquet": pd.read_parquet,
     ".feather": pd.read_feather,
     ".json": lambda p: pd.read_json(p, orient="records"),
@@ -42,8 +86,6 @@ FORMAT_READERS: dict[str, Callable[[Path], pd.DataFrame]] = {
     ".xlsx": pd.read_excel,
     ".xls": pd.read_excel,
 }
-
-SIDECAR_SUFFIX = ".hmm.yaml"
 
 
 def is_supported(path: Path) -> bool:

@@ -168,6 +168,78 @@ def test_read_dataset_unsupported_format_raises(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# CSV encoding cascade (post-v1.1.0)
+# ---------------------------------------------------------------------------
+
+
+def test_read_csv_utf8_default(tmp_path):
+    p = tmp_path / "ascii.csv"
+    p.write_bytes("x,y\n1,2\n3,4\n".encode("utf-8"))
+    df = read_dataset(p)
+    assert list(df.columns) == ["x", "y"]
+    assert df["x"].tolist() == [1, 3]
+
+
+def test_read_csv_latin1_fallback(tmp_path):
+    """A latin-1-encoded CSV (e.g., older French export) must NOT crash on
+    the default UTF-8 read — the cascade should fall through."""
+    p = tmp_path / "latin1.csv"
+    # 'café' contains a non-ASCII byte (0xE9) that breaks strict UTF-8.
+    # latin-1 (iso-8859-1) maps it to U+00E9 ('é').
+    p.write_bytes("city,name\nparis,café\n".encode("iso-8859-1"))
+    df = read_dataset(p)
+    assert df["name"].iloc[0] == "café"
+
+
+def test_read_csv_cp1252_fallback(tmp_path):
+    """cp1252 (Windows default) encodes the euro sign as 0x80 — that byte is
+    invalid as a UTF-8 leading byte, so the cascade must reach a non-UTF-8
+    encoding (cp1252 or iso-8859-1) for this file to read at all."""
+    p = tmp_path / "windows.csv"
+    # '€' (U+20AC) -> single byte 0x80 in cp1252; 0x80 is an invalid UTF-8
+    # leading byte so utf-8 must fall through.
+    p.write_bytes("label,value\nprice,€\n".encode("cp1252"))
+    df = read_dataset(p)
+    # The cascade resolves; the round-trip is encoding-dependent. cp1252
+    # would give '€', iso-8859-1 would give '\x80' (a control char). Either
+    # way, the file must read without raising — that's the regression guard.
+    assert df.shape == (1, 2)
+    assert df["label"].iloc[0] == "price"
+
+
+def test_read_csv_sidecar_encoding_override(tmp_path):
+    """Sidecar provenance.encoding hint must be tried first."""
+    p = tmp_path / "data.csv"
+    p.write_bytes("city,name\nparis,café\n".encode("iso-8859-1"))
+    # Sidecar pins encoding to iso-8859-1 explicitly
+    write_sidecar(
+        p,
+        {
+            "schema_version": 1,
+            "provenance": {"encoding": "iso-8859-1"},
+        },
+    )
+    df = read_dataset(p)
+    assert df["name"].iloc[0] == "café"
+
+
+def test_read_csv_truly_invalid_encoding_raises_clear_error(tmp_path, monkeypatch):
+    """Bytes that no encoding decodes (binary garbage) → ValueError listing
+    the attempted encodings."""
+    # iso-8859-1 famously accepts ANY byte, so we monkey-patch the cascade to
+    # an encoding set that can actually all fail on the test bytes.
+    from hmm_studio.server import warehouse as wh
+
+    monkeypatch.setattr(wh, "_CSV_ENCODING_CASCADE", ("utf-8", "ascii"))
+    p = tmp_path / "binary.csv"
+    # Bytes that are invalid both as UTF-8 (lone continuation byte) and as
+    # ASCII (>0x7F): 0x80, 0x81, ...
+    p.write_bytes(b"x,y\n\x80\x81\x82,\x83\n")
+    with pytest.raises(ValueError, match="could not decode"):
+        wh.read_dataset(p)
+
+
+# ---------------------------------------------------------------------------
 # FastAPI integration tests
 # ---------------------------------------------------------------------------
 

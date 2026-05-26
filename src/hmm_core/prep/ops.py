@@ -40,6 +40,27 @@ def register_op(name: str) -> Callable[[Callable], Callable]:
     return decorator
 
 
+def _resolve_columns(
+    df: pd.DataFrame,
+    columns: list[str] | None,
+    column: str | None,
+) -> list[str]:
+    """Resolve target columns for per-column ops.
+
+    Resolution order :
+        - ``column="x"`` (legacy single-column form) -> ``["x"]``
+        - ``columns=["x", "y"]`` -> ``["x", "y"]``
+        - both None -> every numeric column of ``df``.
+    """
+    if column is not None and columns is not None:
+        raise ValueError("pass either `column` (single) or `columns` (list), not both")
+    if column is not None:
+        return [column]
+    if columns is not None:
+        return list(columns)
+    return [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+
+
 # ---------------------------------------------------------------------------
 # Column manipulation
 # ---------------------------------------------------------------------------
@@ -162,11 +183,32 @@ def pct_change(
 
 @register_op("log_transform")
 def log_transform(
-    df: pd.DataFrame, *, column: str, new_name: str | None = None
+    df: pd.DataFrame,
+    *,
+    column: str | None = None,
+    columns: list[str] | None = None,
+    new_name: str | None = None,
 ) -> pd.DataFrame:
+    """Replace listed columns by ``log(col)``.
+
+    - Single-column form: ``column="x"`` (legacy) writes to ``new_name`` if
+      provided, else to ``log_{column}``.
+    - Multi-column form: ``columns=["a", "b"]`` overwrites each in place.
+      Defaults to every numeric column when both args are omitted.
+    - ``new_name`` is only valid with the single-column form.
+    """
+    targets = _resolve_columns(df, columns, column)
+    is_single_legacy = column is not None
+    if new_name is not None and not is_single_legacy:
+        raise ValueError("new_name only valid with a single column")
+
     out = df.copy()
-    name = new_name or f"log_{column}"
-    out[name] = np.log(out[column].astype(float))
+    if is_single_legacy:
+        name = new_name or f"log_{column}"
+        out[name] = np.log(out[column].astype(float))
+        return out
+    for col in targets:
+        out[col] = np.log(out[col].astype(float))
     return out
 
 
@@ -256,14 +298,32 @@ def shift(
 def rolling_mean(
     df: pd.DataFrame,
     *,
-    column: str,
     window: int,
+    column: str | None = None,
+    columns: list[str] | None = None,
     new_name: str | None = None,
     min_periods: int | None = None,
 ) -> pd.DataFrame:
+    """Rolling mean per column.
+
+    - Single-column form (legacy): ``column="x"`` produces a new column
+      named ``new_name`` if given, else ``rolling_mean_{column}_{window}``.
+    - Multi-column form: ``columns=["a", "b"]`` overwrites each column in
+      place. Defaults to all numeric columns when both args are omitted.
+    - ``new_name`` is only valid with the single-column form.
+    """
+    targets = _resolve_columns(df, columns, column)
+    is_single_legacy = column is not None
+    if new_name is not None and not is_single_legacy:
+        raise ValueError("new_name only valid with a single column")
+
     out = df.copy()
-    name = new_name or f"rolling_mean_{column}_{window}"
-    out[name] = out[column].rolling(window=window, min_periods=min_periods).mean()
+    if is_single_legacy:
+        name = new_name or f"rolling_mean_{column}_{window}"
+        out[name] = out[column].rolling(window=window, min_periods=min_periods).mean()
+        return out
+    for col in targets:
+        out[col] = out[col].rolling(window=window, min_periods=min_periods).mean()
     return out
 
 
@@ -271,14 +331,26 @@ def rolling_mean(
 def rolling_std(
     df: pd.DataFrame,
     *,
-    column: str,
     window: int,
+    column: str | None = None,
+    columns: list[str] | None = None,
     new_name: str | None = None,
     min_periods: int | None = None,
 ) -> pd.DataFrame:
+    """Rolling standard deviation per column. See ``rolling_mean`` for the
+    column-selection contract and backwards-compatibility rules."""
+    targets = _resolve_columns(df, columns, column)
+    is_single_legacy = column is not None
+    if new_name is not None and not is_single_legacy:
+        raise ValueError("new_name only valid with a single column")
+
     out = df.copy()
-    name = new_name or f"rolling_std_{column}_{window}"
-    out[name] = out[column].rolling(window=window, min_periods=min_periods).std()
+    if is_single_legacy:
+        name = new_name or f"rolling_std_{column}_{window}"
+        out[name] = out[column].rolling(window=window, min_periods=min_periods).std()
+        return out
+    for col in targets:
+        out[col] = out[col].rolling(window=window, min_periods=min_periods).std()
     return out
 
 
@@ -286,21 +358,37 @@ def rolling_std(
 def ewma(
     df: pd.DataFrame,
     *,
-    column: str,
+    column: str | None = None,
+    columns: list[str] | None = None,
     halflife: float | None = None,
     span: float | None = None,
     new_name: str | None = None,
 ) -> pd.DataFrame:
+    """Exponentially weighted moving average per column. See ``rolling_mean``
+    for the column-selection contract and backwards-compatibility rules."""
     if halflife is None and span is None:
         raise ValueError("ewma requires one of halflife or span")
+    targets = _resolve_columns(df, columns, column)
+    is_single_legacy = column is not None
+    if new_name is not None and not is_single_legacy:
+        raise ValueError("new_name only valid with a single column")
+
     out = df.copy()
-    suffix = f"hl{halflife}" if halflife is not None else f"span{span}"
-    name = new_name or f"ewma_{column}_{suffix}"
-    out[name] = (
-        out[column]
-        .ewm(halflife=halflife, span=span, adjust=False)
-        .mean()
-    )
+    if is_single_legacy:
+        suffix = f"hl{halflife}" if halflife is not None else f"span{span}"
+        name = new_name or f"ewma_{column}_{suffix}"
+        out[name] = (
+            out[column]
+            .ewm(halflife=halflife, span=span, adjust=False)
+            .mean()
+        )
+        return out
+    for col in targets:
+        out[col] = (
+            out[col]
+            .ewm(halflife=halflife, span=span, adjust=False)
+            .mean()
+        )
     return out
 
 
@@ -310,9 +398,13 @@ def ewma(
 
 
 @register_op("zscore")
-def zscore(df: pd.DataFrame, *, columns: list[str]) -> pd.DataFrame:
+def zscore(
+    df: pd.DataFrame, *, columns: list[str] | None = None
+) -> pd.DataFrame:
+    """Standardise each column to mean 0 / std 1. Defaults to all numeric columns."""
+    targets = _resolve_columns(df, columns, None)
     out = df.copy()
-    for col in columns:
+    for col in targets:
         mu = out[col].mean()
         sigma = out[col].std()
         if sigma == 0 or pd.isna(sigma):
@@ -324,11 +416,16 @@ def zscore(df: pd.DataFrame, *, columns: list[str]) -> pd.DataFrame:
 
 @register_op("minmax")
 def minmax(
-    df: pd.DataFrame, *, columns: list[str], feature_range: tuple[float, float] = (0.0, 1.0)
+    df: pd.DataFrame,
+    *,
+    columns: list[str] | None = None,
+    feature_range: tuple[float, float] = (0.0, 1.0),
 ) -> pd.DataFrame:
+    """Rescale to ``feature_range``. Defaults to all numeric columns."""
+    targets = _resolve_columns(df, columns, None)
     lo, hi = feature_range
     out = df.copy()
-    for col in columns:
+    for col in targets:
         col_min = out[col].min()
         col_max = out[col].max()
         spread = col_max - col_min
@@ -340,10 +437,13 @@ def minmax(
 
 
 @register_op("robust_scale")
-def robust_scale(df: pd.DataFrame, *, columns: list[str]) -> pd.DataFrame:
-    """Median + IQR scaling — robust to outliers."""
+def robust_scale(
+    df: pd.DataFrame, *, columns: list[str] | None = None
+) -> pd.DataFrame:
+    """Median + IQR scaling — robust to outliers. Defaults to all numeric columns."""
+    targets = _resolve_columns(df, columns, None)
     out = df.copy()
-    for col in columns:
+    for col in targets:
         median = out[col].median()
         q1 = out[col].quantile(0.25)
         q3 = out[col].quantile(0.75)
@@ -364,12 +464,14 @@ def robust_scale(df: pd.DataFrame, *, columns: list[str]) -> pd.DataFrame:
 def winsorize(
     df: pd.DataFrame,
     *,
-    columns: list[str],
+    columns: list[str] | None = None,
     lower: float = 0.01,
     upper: float = 0.99,
 ) -> pd.DataFrame:
+    """Clip each column to quantile bounds. Defaults to all numeric columns."""
+    targets = _resolve_columns(df, columns, None)
     out = df.copy()
-    for col in columns:
+    for col in targets:
         lo = out[col].quantile(lower)
         hi = out[col].quantile(upper)
         out[col] = out[col].clip(lower=lo, upper=hi)
