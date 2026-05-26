@@ -454,8 +454,20 @@ Hosted URL (placeholder until the GitHub remote is set up):
 
 To add a doc page, see [docs/contributing.md](docs/contributing.md).
 
+**User guides** for the advanced variants and the prep layer live under
+[`docs/guides/`](docs/guides/) — topic-oriented walkthroughs that
+complement the API reference and notebook gallery.
+
 Other quick links:
 
+- [Notebook gallery](notebooks/) — 8 runnable notebooks (Quickstart, NHMM,
+  data prep, sklearn, GMM-NHMM, Factorial NHMM, two textbook reproductions).
+- [User guides](docs/guides/) — topic-oriented walkthroughs for the
+  advanced variants and the prep layer.
+- [Validation suite](validation/) — scientific validation layers V.1–V.6
+  (cross-check vs `hmmlearn`, statistical recovery, textbook canonicals,
+  numerical stability, GMM-NHMM oracles, Factorial NHMM + parameter-savings
+  proof) plus V.perf regression tests.
 - [Roadmap](docs/roadmap.md) — strategic overview and planned work.
 - [Specs](docs/specs/) — detailed specs for sub-projects A, B, C.
 - [ADRs](docs/decisions/) — architecture decision records.
