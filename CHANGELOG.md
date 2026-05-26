@@ -97,6 +97,21 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `NHMMFittedModel`, `GMMNHMMFittedModel`, `FactorialNHMMFittedModel`,
   including JSON round-trip.
 
+### Added — shared regression-test helper
+
+- `tests/_regression_helpers.py`: factors the "load CSV → recipe → optional
+  post-prep transform → fit → compare to reference" pattern out of every
+  regression test. Components: `env_csv_path()` (env-var path lookup),
+  `skipif_env_missing()` (module-level skip marker), `RegressionReference`
+  (frozen dataclass with per-field tolerances and an iter-range special
+  case), `assert_summary_matches_reference()` (numeric vs boolean vs
+  string vs None handling), and `run_recipe_fit()` (end-to-end wrapper).
+- `tests/test_valentin_eth_regression.py` refactored to use the helper —
+  shrank from 6 ad-hoc tests + bespoke fixture (170 LOC) to 3 declarative
+  tests + one reference dict (110 LOC) for equivalent coverage.
+- `tests/test_regression_helpers.py`: 14 unit tests for the helper itself
+  (env-var lookup, tolerance modes, error paths).
+
 ---
 
 ## [1.1.0] — 2026-05-23
