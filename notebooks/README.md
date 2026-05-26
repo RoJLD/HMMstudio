@@ -29,11 +29,10 @@ The notebooks have no GPU requirements and run in seconds. They work in :
 | 02 | [NHMM for crypto regimes](02_nhmm_crypto.ipynb) | Covariate-dependent transitions, A_t inspection, decoded path accuracy. |
 | 03 | [Data prep recipes](03_data_prep_recipes.ipynb) | Bundled recipes, Python pipeline builder, provenance sidecar. |
 | 04 | [sklearn pipeline integration](04_sklearn_pipeline.ipynb) | Drop-in `HMMClassifier` in sklearn `Pipeline`, `GridSearchCV`, `cross_val_score`. |
-
-More notebooks coming :
-- GMM-NHMM sub-modes per regime
-- Factorial NHMM multi-factor regimes
-- Reproducing textbook canonicals (Russell-Norvig, Durbin)
+| 05 | [GMM-NHMM sub-modes](05_gmm_nhmm_submodes.ipynb) | Multi-modal regimes : each state hosts a Gaussian mixture, transitions modulated by covariates. |
+| 06 | [Factorial NHMM multi-factor](06_factorial_nhmm_multifactor.ipynb) | Independent regime dimensions (trend × vol), per-chain covariates, parameter savings vs joint HMM. |
+| 07 | [Textbook : AIMA umbrella world](07_textbook_aima_umbrella.ipynb) | Reproduce Russell & Norvig Chap. 14 smoothing + filtering values on the canonical 5-step sequence. |
+| 08 | [Textbook : Durbin dishonest casino](08_textbook_dishonest_casino.ipynb) | Reproduce the Viterbi recovery accuracy from Durbin et al. *Biological Sequence Analysis* Chap. 3. |
 
 ## Philosophy
 
