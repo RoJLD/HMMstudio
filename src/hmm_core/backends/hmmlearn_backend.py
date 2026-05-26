@@ -96,6 +96,19 @@ class HmmlearnBackend:
         default_init = getattr(model, "init_params", "stmc")
         model.init_params = "".join(c for c in default_init if c not in skip_letters)
 
+        # Fix #7: translate FitSpec.freeze_startprob / freeze_transmat into
+        # hmmlearn's per-EM-step `params` string. Removing a letter prevents
+        # the corresponding M-step from updating that parameter. Emission
+        # letters (m / c / w / e / l) are always kept so EM still fits them.
+        if topology.fit.freeze_startprob or topology.fit.freeze_transmat:
+            default_params = getattr(model, "params", default_init)
+            params_letters = list(default_params)
+            if topology.fit.freeze_startprob and "s" in params_letters:
+                params_letters.remove("s")
+            if topology.fit.freeze_transmat and "t" in params_letters:
+                params_letters.remove("t")
+            model.params = "".join(params_letters)
+
         # Spawn a polling thread when a progress_callback is provided.
         # The thread reads model.monitor_.history every 200 ms while the
         # blocking model.fit() runs in this thread.

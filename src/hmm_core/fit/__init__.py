@@ -31,6 +31,46 @@ class FittedModel:
     seed: int
     duration_seconds: float
 
+    def to_summary_dict(self) -> dict:
+        """Return all regression-test / changelog relevant fit metadata as a flat dict.
+
+        Useful for:
+
+          - capturing reference values in regression tests
+          - serialising fit results for run logs / CI dashboards
+          - quickly inspecting a fit from a notebook
+
+        Notes
+        -----
+        ``n_params`` is derived from the topology (BIC/AIC convention used by
+        the dispatcher). ``n_obs`` is not stored on ``FittedModel`` (it would
+        require keeping a reference to the training data) and is therefore not
+        included here.
+        """
+        e = self.topology.emission
+        return {
+            "topology_name": self.topology.name,
+            "n_states": int(self.topology.n_states),
+            "emission_type": e.type,
+            "n_features": e.n_features,
+            "n_mix": e.n_mix,  # None for non-GMM
+            "covariance_type": e.covariance_type,  # None for non-gaussian/gmm
+            "log_likelihood": float(self.log_likelihood),
+            "bic": float(self.bic),
+            "aic": float(self.aic),
+            "n_iter_actual": int(self.n_iter_actual),
+            "converged": bool(self.converged),
+            "n_params": int(_n_params(self.topology.n_states, e)),
+            "seed": int(self.seed) if self.seed is not None else None,
+            "duration_seconds": float(self.duration_seconds),
+        }
+
+    def to_summary_json(self, *, indent: int = 2) -> str:
+        """JSON wrapper around :meth:`to_summary_dict`."""
+        import json
+
+        return json.dumps(self.to_summary_dict(), indent=indent, default=str)
+
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter (Phase I.1)."""
         from hmm_core._jupyter import (

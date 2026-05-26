@@ -126,6 +126,36 @@ class FactorialNHMMFittedModel:
         """Transition matrix array (T, K_d, K_d) for the given chain."""
         return self.A_t_per_chain[chain_name]
 
+    def to_summary_dict(self) -> dict:
+        """Flat dict of Factorial NHMM fit metadata (extends the joint base summary)."""
+        d = self.base.to_summary_dict()
+        # The "joint" base has n_states = K_joint already. Re-expose the
+        # factorial decomposition explicitly so callers don't have to unravel
+        # it themselves.
+        T_any = next(iter(self.A_t_per_chain.values())).shape[0]
+        d.update(
+            {
+                "chain_names": list(self.chain_names),
+                "K_per_chain": list(self.K_per_chain),
+                "K_joint": int(self.K_joint),
+                "n_chains": int(self.n_chains),
+                "T": int(T_any),
+                "chain_covariate_names": {
+                    k: list(v) for k, v in self.chain_covariate_names.items()
+                },
+                "n_classifiers_per_chain": {
+                    k: len(v) for k, v in self.chain_classifiers.items()
+                },
+            }
+        )
+        return d
+
+    def to_summary_json(self, *, indent: int = 2) -> str:
+        """JSON wrapper around :meth:`to_summary_dict`."""
+        import json
+
+        return json.dumps(self.to_summary_dict(), indent=indent, default=str)
+
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter (Phase I.1)."""
         from hmm_core._jupyter import (

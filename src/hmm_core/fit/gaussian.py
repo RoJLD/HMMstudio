@@ -10,6 +10,7 @@ from hmm_core.fit._base import (
     _apply_mask,
     _map_update,
     _resolve_clamp_slice,
+    _smooth_startprob_,
 )
 
 
@@ -48,6 +49,9 @@ class ConstrainedGaussianHMM(GaussianHMM):
             self.transmat_ = _map_update(self.transmat_, self.transmat_prior, self.transmat_mask)
         if self.transmat_mask is not None:
             self.transmat_ = _apply_mask(self.transmat_, self.transmat_mask)
+        # Fix #6: smooth startprob to prevent 0/0 -> NaN on never-revisited
+        # states (e.g. state 0 in a strict left-right topology).
+        _smooth_startprob_(self)
 
     def _estep_begin(self):
         # Reset the per-sequence clamp cursor at the start of every E-step.

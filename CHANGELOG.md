@@ -46,6 +46,57 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `notebooks/data/` patterns to prevent accidental commit of private
   research datasets referenced from notebooks via env vars.
 
+### Added — post-v1.1 quality pass (Valentin ETH port debrief)
+
+- **`FittedModel.to_summary_dict()` + `.to_summary_json()`**: single source
+  of truth for the fit's reportable metrics (log-likelihood, BIC/AIC,
+  n_iter_actual, converged, n_params, seed, duration, emission shape).
+  Same pair of methods on `NHMMFittedModel`, `GMMNHMMFittedModel`, and
+  `FactorialNHMMFittedModel` — each variant adds its own metadata
+  (covariate_names, n_mix, K_per_chain / K_joint / chain_names …) on top
+  of the base summary so regression tests, run logs, and CHANGELOG
+  entries no longer re-derive the same dict by hand.
+- **GMM kmeans init for `full` / `tied` / `spherical` covariance**:
+  previously the kmeans branch in `init.py` only emitted the diag-shape
+  `(K, M, D)` covars array, so declaring `emission: {type: gmm,
+  covariance_type: full, …}` silently failed at fit time inside
+  hmmlearn's `GMMHMM`. The branch now produces the correct shape for
+  every covariance_type (`full` → `(K, M, D, D)`, `tied` → `(K, D, D)`,
+  `spherical` → `(K, M)`), with SPD symmetrisation + 1e-6 ridge on the
+  full case.
+- **Startprob smoothing in `_do_mstep`**: every `Constrained*HMM`
+  subclass now calls a shared `_smooth_startprob_(model, eps=1e-30)`
+  helper after the base M-step. This adds a tiny epsilon to
+  `startprob_` and renormalises, and falls back to uniform if a NaN/Inf
+  appears (the pathology hit by strict left-right + `first_state` when
+  a state is only visited at `t=0`). eps is small enough that the V.1
+  cross-check vs vanilla hmmlearn still passes at its 1e-12 tolerance.
+- **`FitSpec.freeze_startprob` and `FitSpec.freeze_transmat`**
+  (defaults `False`): translate to hmmlearn's `params` string by
+  removing `'s'` / `'t'` so the corresponding matrix is not re-fit in
+  the M-step. The YAML loader recognises both keys under the `fit:`
+  block. Users who provide a hand-crafted prior on either matrix can
+  now clamp it — making Valentin's original strict-left-right pattern
+  expressible without the ergodic workaround (left as a follow-up to
+  update the example YAML / notebook accordingly).
+
+### Added — tests (post-v1.1 quality pass)
+
+- 9 new init tests in `tests/test_init_strategies.py` covering GMM
+  `full` / `tied` / `spherical` / `diag` covariance shape, SPD
+  validation, and end-to-end fits.
+- 5 new tests in `tests/test_strict_left_right.py` asserting no NaN
+  appears in fitted matrices under strict-left-right + first_state, and
+  that the smoothing is invisible on ergodic / vanilla-equivalent fits.
+- 9 new tests in `tests/test_freeze_params.py` covering FitSpec
+  defaults, YAML round-trip, frozen-startprob / frozen-transmat
+  preservation through EM, and emission updates still happening when
+  both are frozen.
+- 7 new tests in `tests/test_fit_dispatcher.py` for
+  `to_summary_dict` / `to_summary_json` across `FittedModel`,
+  `NHMMFittedModel`, `GMMNHMMFittedModel`, `FactorialNHMMFittedModel`,
+  including JSON round-trip.
+
 ---
 
 ## [1.1.0] — 2026-05-23

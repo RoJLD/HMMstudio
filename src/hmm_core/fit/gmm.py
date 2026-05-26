@@ -10,6 +10,7 @@ from hmm_core.fit._base import (
     _apply_mask,
     _map_update,
     _resolve_clamp_slice,
+    _smooth_startprob_,
 )
 
 
@@ -45,6 +46,7 @@ class ConstrainedGMMHMM(GMMHMM):
             self.transmat_ = _map_update(self.transmat_, self.transmat_prior, self.transmat_mask)
         if self.transmat_mask is not None:
             self.transmat_ = _apply_mask(self.transmat_, self.transmat_mask)
+        _smooth_startprob_(self)
 
     def _estep_begin(self):
         cursor = getattr(self, "_label_clamp_cursor", None)

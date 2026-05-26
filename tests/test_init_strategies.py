@@ -193,6 +193,122 @@ def test_kmeans_emission_gaussian_covariance_shapes(synthetic_gaussian_left_righ
     assert params["covars_"].shape == expected_shapes[covariance_type]
 
 
+def _gmm_topo(covariance_type: str, n_mix: int = 2):
+    """Helper: build a 3-state GMM topology with the requested covariance type."""
+    return Topology(
+        name="gmm_init",
+        n_states=3,
+        state_names=["a", "b", "c"],
+        emission=EmissionSpec(
+            type="gmm",
+            n_features=2,
+            covariance_type=covariance_type,
+            n_mix=n_mix,
+        ),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=42),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-4),
+    )
+
+
+def test_init_gmm_full_covariance_shape(synthetic_gmm_3state):
+    """Fix #5: kmeans init for gmm + full must emit (K, n_mix, D, D)."""
+    topo = _gmm_topo("full", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert "means_" in params and "covars_" in params and "weights_" in params
+    assert params["covars_"].shape == (3, 2, 2, 2)
+    assert params["means_"].shape == (3, 2, 2)
+    assert params["weights_"].shape == (3, 2)
+
+
+def test_init_gmm_tied_covariance_shape(synthetic_gmm_3state):
+    """Fix #5: kmeans init for gmm + tied must emit (K, D, D) (one per state)."""
+    topo = _gmm_topo("tied", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert params["covars_"].shape == (3, 2, 2)
+
+
+def test_init_gmm_spherical_covariance_shape(synthetic_gmm_3state):
+    """Fix #5: kmeans init for gmm + spherical must emit (K, n_mix)."""
+    topo = _gmm_topo("spherical", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert params["covars_"].shape == (3, 2)
+    # All variances must be strictly positive.
+    assert (params["covars_"] > 0).all()
+
+
+def test_init_gmm_diag_covariance_shape_unchanged(synthetic_gmm_3state):
+    """Fix #5: existing diag path must still emit (K, n_mix, D)."""
+    topo = _gmm_topo("diag", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    assert params["covars_"].shape == (3, 2, 2)
+
+
+def test_init_gmm_full_covariance_is_spd(synthetic_gmm_3state):
+    """Fix #5: each (D, D) block for full covariance must be symmetric & PD."""
+    topo = _gmm_topo("full", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    K, M, D, _ = params["covars_"].shape
+    for k in range(K):
+        for m in range(M):
+            C = params["covars_"][k, m]
+            np.testing.assert_allclose(C, C.T, atol=1e-12)
+            eigs = np.linalg.eigvalsh(C)
+            assert (eigs > 0).all(), (
+                f"covars_[{k}, {m}] not positive definite: eigs={eigs}"
+            )
+
+
+def test_init_gmm_tied_covariance_is_spd(synthetic_gmm_3state):
+    """Fix #5: each per-state tied (D, D) must be symmetric & PD."""
+    topo = _gmm_topo("tied", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    params = init.emission_params(topo, X=X, seed=42)
+    K, D, _ = params["covars_"].shape
+    for k in range(K):
+        C = params["covars_"][k]
+        np.testing.assert_allclose(C, C.T, atol=1e-12)
+        eigs = np.linalg.eigvalsh(C)
+        assert (eigs > 0).all()
+
+
+def test_fit_gmm_full_does_not_crash(synthetic_gmm_3state):
+    """Fix #5: end-to-end: declare gmm + full + kmeans, fit, get finite log-lik."""
+    from hmm_core.fit import fit
+
+    topo = _gmm_topo("full", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    result = fit(topo, X)
+    assert np.isfinite(result.log_likelihood)
+    assert np.isfinite(result.bic)
+
+
+def test_fit_gmm_tied_does_not_crash(synthetic_gmm_3state):
+    """Fix #5: tied covariance shape lands correctly through hmmlearn."""
+    from hmm_core.fit import fit
+
+    topo = _gmm_topo("tied", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    result = fit(topo, X)
+    assert np.isfinite(result.log_likelihood)
+
+
+def test_fit_gmm_spherical_does_not_crash(synthetic_gmm_3state):
+    """Fix #5: spherical covariance shape lands correctly through hmmlearn."""
+    from hmm_core.fit import fit
+
+    topo = _gmm_topo("spherical", n_mix=2)
+    X = synthetic_gmm_3state["X"]
+    result = fit(topo, X)
+    assert np.isfinite(result.log_likelihood)
+
+
 def test_data_frequencies_with_lengths_skips_boundary_transitions(synthetic_gaussian_left_right):
     """Multi-sequence support: lengths parameter prevents counting transitions across sequence boundaries."""
     from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology

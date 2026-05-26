@@ -40,6 +40,13 @@ class FitSpec:
     algorithm: Literal["baum_welch"]
     n_iter: int
     tol: float
+    # Fix #7: optional M-step parameter freezes. When True, the corresponding
+    # matrix is NOT re-fit by the backend's M-step; whatever initial value the
+    # init strategy produced (or a hand-crafted prior wired in via topology
+    # YAML) is preserved through every EM iteration. Emission parameters are
+    # always re-fit. Defaults False on both for backward compatibility.
+    freeze_startprob: bool = False
+    freeze_transmat: bool = False
 
 
 @dataclass(frozen=True)

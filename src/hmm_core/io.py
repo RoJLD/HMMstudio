@@ -64,6 +64,8 @@ def load_topology(path: str | Path) -> Topology:
             algorithm=raw["fit"]["algorithm"],
             n_iter=int(raw["fit"]["n_iter"]),
             tol=float(raw["fit"]["tol"]),
+            freeze_startprob=bool(raw["fit"].get("freeze_startprob", False)),
+            freeze_transmat=bool(raw["fit"].get("freeze_transmat", False)),
         )
         allowed = raw.get("allowed_transitions")
         if allowed is not None:

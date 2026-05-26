@@ -57,6 +57,27 @@ class GMMNHMMFittedModel:
             return self.A_t[t_idx]
         return self.base.model.transmat_
 
+    def to_summary_dict(self) -> dict:
+        """Flat dict of GMM-NHMM fit metadata (extends the base FittedModel summary)."""
+        d = self.base.to_summary_dict()
+        d.update(
+            {
+                "covariate_names": list(self.covariate_names),
+                "n_covariates": len(self.covariate_names),
+                "n_mix": int(self.n_mix),
+                "T": int(self.A_t.shape[0]),
+                "n_classifiers": len(self.classifiers),
+                "n_fallback_rows": len(self.fallback_rows),
+            }
+        )
+        return d
+
+    def to_summary_json(self, *, indent: int = 2) -> str:
+        """JSON wrapper around :meth:`to_summary_dict`."""
+        import json
+
+        return json.dumps(self.to_summary_dict(), indent=indent, default=str)
+
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter (Phase I.1)."""
         from hmm_core._jupyter import (

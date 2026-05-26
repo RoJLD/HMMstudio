@@ -223,24 +223,79 @@ def _kmeans_emission_params(
         return {"means_": means_, "covars_": covars_}
 
     if e.type == "gmm":
-        # For GMM init: per state, fit k=n_mix sub-kmeans (means + diag covars).
-        # Returns means_ (K, n_mix, D), covars_ (K, n_mix, D), weights_ (K, n_mix).
+        # For GMM init: per state, fit k=n_mix sub-kmeans (means + per-mode covars).
+        # Returns means_ (K, n_mix, D), covars_ in the shape hmmlearn's GMMHMM
+        # expects for the requested covariance_type:
+        #   - "diag"      -> (K, n_mix, D)
+        #   - "full"      -> (K, n_mix, D, D)
+        #   - "tied"      -> (K, D, D)         (one (D, D) per state, shared across mixtures)
+        #   - "spherical" -> (K, n_mix)
+        # weights_ -> (K, n_mix), uniform.
         km = KMeans(n_clusters=K, random_state=seed, n_init=10).fit(X)
         D = X.shape[1]
-        means_ = np.zeros((K, e.n_mix, D))
-        covars_ = np.zeros((K, e.n_mix, D))
-        weights_ = np.ones((K, e.n_mix)) / e.n_mix
+        M = e.n_mix
+        cov_type = e.covariance_type
+        means_ = np.zeros((K, M, D))
+        weights_ = np.ones((K, M)) / M
+
+        if cov_type == "full":
+            covars_ = np.zeros((K, M, D, D))
+        elif cov_type == "tied":
+            covars_ = np.zeros((K, D, D))
+        elif cov_type == "spherical":
+            covars_ = np.zeros((K, M))
+        else:  # "diag" — original path
+            covars_ = np.zeros((K, M, D))
+
         for k in range(K):
             cluster_X = X[km.labels_ == k]
-            if len(cluster_X) < e.n_mix:
+            if len(cluster_X) < M:
+                # Degenerate state: not enough points to fit M sub-mixtures.
                 means_[k] = km.cluster_centers_[k]
-                covars_[k] = 1.0
-            else:
-                sub = KMeans(n_clusters=e.n_mix, random_state=seed, n_init=5).fit(cluster_X)
-                means_[k] = sub.cluster_centers_
-                for m in range(e.n_mix):
-                    pts = cluster_X[sub.labels_ == m]
-                    covars_[k, m] = pts.var(axis=0) + 1e-3 if len(pts) > 1 else 1.0
+                if cov_type == "full":
+                    for m in range(M):
+                        covars_[k, m] = np.eye(D)
+                elif cov_type == "tied":
+                    covars_[k] = np.eye(D)
+                elif cov_type == "spherical":
+                    covars_[k] = 1.0
+                else:  # diag
+                    covars_[k] = 1.0
+                continue
+
+            sub = KMeans(n_clusters=M, random_state=seed, n_init=5).fit(cluster_X)
+            means_[k] = sub.cluster_centers_
+
+            if cov_type == "tied":
+                # One (D, D) covariance per state, shared across all mixtures.
+                if len(cluster_X) > 1:
+                    C = np.cov(cluster_X, rowvar=False)
+                    C = 0.5 * (C + C.T) + 1e-6 * np.eye(D)
+                    covars_[k] = C
+                else:
+                    covars_[k] = np.eye(D)
+                continue
+
+            for m in range(M):
+                sub_pts = cluster_X[sub.labels_ == m]
+                if cov_type == "full":
+                    if len(sub_pts) > 1:
+                        C = np.cov(sub_pts, rowvar=False)
+                        # Symmetrise + SPD regularisation
+                        C = 0.5 * (C + C.T) + 1e-6 * np.eye(D)
+                        covars_[k, m] = C
+                    else:
+                        covars_[k, m] = np.eye(D)
+                elif cov_type == "spherical":
+                    if len(sub_pts) > 1:
+                        # Mean of per-feature variances -> a single scalar.
+                        covars_[k, m] = float(sub_pts.var(axis=0).mean()) + 1e-6
+                    else:
+                        covars_[k, m] = 1.0
+                else:  # "diag"
+                    covars_[k, m] = (
+                        sub_pts.var(axis=0) + 1e-3 if len(sub_pts) > 1 else 1.0
+                    )
         return {"means_": means_, "covars_": covars_, "weights_": weights_}
 
     if e.type == "multinomial":

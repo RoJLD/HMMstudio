@@ -145,6 +145,44 @@ def _resolve_clamp_slice(
     return full_clamp
 
 
+def _smooth_startprob_(model, eps: float = 1e-30) -> None:
+    """Smooth ``model.startprob_`` in place ; replace with uniform if NaN/Inf appears.
+
+    Addresses Fix #6: with a strict left-right topology + ``startprob='first_state'``
+    (or even ``'uniform'``), hmmlearn's M-step re-fits startprob from the
+    forward-backward responsibilities. For states never revisited (state 0 in a
+    left-right topology), the per-state responsibility sum collapses to ~0 over
+    the sequence and the normalisation produces 0/0 = NaN.
+
+    This helper:
+
+      * skips entirely when startprob is frozen (Fix #7: ``model.params`` does
+        not contain ``'s'``), so a hand-crafted prior is preserved exactly;
+      * if the array contains any non-finite value, replaces it with the uniform
+        distribution (safe fallback);
+      * otherwise adds ``eps`` and renormalises so subsequent EM iterations have
+        a well-defined startprob_ row.
+
+    ``eps`` is small enough (1e-30) that fits that don't hit the pathology are
+    unaffected within the V.1 cross-check tolerance (parameter agreement at
+    1e-12 with vanilla hmmlearn) while still being large enough to break the
+    0/0 cascade on the next M-step iteration.
+    """
+    # When startprob is frozen ('s' removed from `params`), don't touch it ;
+    # the user is preserving a hand-crafted initial distribution and even an
+    # eps shift would be a behaviour change.
+    params = getattr(model, "params", None)
+    if params is not None and "s" not in params:
+        return
+    sp = np.asarray(model.startprob_, dtype=float)
+    if not np.isfinite(sp).all():
+        K = len(sp)
+        model.startprob_ = np.full(K, 1.0 / K)
+        return
+    sp = sp + eps
+    model.startprob_ = sp / sp.sum()
+
+
 def _map_update(
     transmat: np.ndarray,
     prior: np.ndarray | None,
