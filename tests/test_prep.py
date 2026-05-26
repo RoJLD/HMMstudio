@@ -194,6 +194,47 @@ def test_op_interpolate(tiny_df):
     assert out["a"].iloc[2] == 3.0
 
 
+def test_op_log1p_explicit_columns(sample_df):
+    out = OPS["log1p"](sample_df.fillna(0), columns=["close"])
+    expected = np.log1p(sample_df["close"].fillna(0).astype(float))
+    pd.testing.assert_series_equal(out["close"], expected, check_names=False)
+
+
+def test_op_log1p_skips_negative_column_by_default():
+    df = pd.DataFrame({"pos": [0.0, 1.0, 2.0], "neg": [-1.0, 0.5, 2.0]})
+    out = OPS["log1p"](df)
+    np.testing.assert_allclose(out["pos"].to_numpy(), np.log1p([0.0, 1.0, 2.0]))
+    # neg column has a negative value -> skipped (unchanged)
+    pd.testing.assert_series_equal(out["neg"], df["neg"])
+
+
+def test_op_log1p_forced_on_negative_produces_nan():
+    df = pd.DataFrame({"neg": [-1.0, 0.0, 2.0]})
+    out = OPS["log1p"](df, skip_if_negative=False)
+    # log1p(-1) = -inf, log1p(values <= -1) = nan beyond; just check NaN propagation
+    assert np.isinf(out["neg"].iloc[0]) or np.isnan(out["neg"].iloc[0])
+
+
+def test_op_drop_low_variance_drops_near_constant():
+    df = pd.DataFrame({
+        "stable": [1.0] * 10,        # std = 0 -> dropped
+        "active": np.arange(10.0),    # std > threshold -> kept
+        "mostly_zero": [0.0] * 8 + [1.0, 2.0],   # zeros_frac = 0.8 -> dropped
+    })
+    out = OPS["drop_low_variance"](df)
+    assert "active" in out.columns
+    assert "stable" not in out.columns
+    assert "mostly_zero" not in out.columns
+
+
+def test_op_drop_low_variance_respects_threshold():
+    df = pd.DataFrame({"tiny_var": [1.0, 1.0 + 1e-9, 1.0]})
+    # Default threshold 1e-8 -> drops it
+    assert "tiny_var" not in OPS["drop_low_variance"](df).columns
+    # Loosened threshold -> keeps it
+    assert "tiny_var" in OPS["drop_low_variance"](df, std_threshold=1e-12).columns
+
+
 # ---------------------------------------------------------------------------
 # Pipeline : Python escape hatch
 # ---------------------------------------------------------------------------

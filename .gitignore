@@ -40,3 +40,11 @@ src/hmm_studio/frontend/dist/
 # Frontend build copied into the server package (built artifact, regenerated)
 src/hmm_studio/server/static/index.html
 src/hmm_studio/server/static/assets/
+
+# Private datasets — referenced via env vars from notebooks / regression
+# tests, must NEVER end up in commits. Add new patterns here whenever a
+# private CSV/parquet is wired into a notebook (env-var path pattern).
+*JDD_ETH*.csv
+*JDD_BTC*.csv
+**/private_data/
+notebooks/data/

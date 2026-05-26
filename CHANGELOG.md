@@ -4,6 +4,50 @@ All notable changes to `hmm-studio` are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
+## [Unreleased]
+
+### Added — engine (`hmm_core.prep`)
+
+- Two new prep ops:
+  - **`log1p`** — apply `np.log1p` to listed (or all numeric) columns; by
+    default skips columns containing any negative value so it chains
+    safely after generic preprocessing.
+  - **`drop_low_variance`** — drop columns that are near-constant
+    (`std < threshold`) or mostly-zero (`zeros_fraction > threshold`).
+    Encodes the "degenerate column" filter pattern that came up in the
+    Valentin ETH port.
+- New bundled recipe `valentin_eth` (5-step pipeline: 365-day rolling
+  mean → dropna → drop_low_variance → log1p → zscore) ready for use via
+  `Pipeline.from_recipe("valentin_eth")`.
+
+### Added — examples + notebooks
+
+- `examples/valentin_eth_3regime_gmm.yaml`: 3-state GMM topology (diag
+  covariance, `n_mix=3`, ergodic; documents Valentin's strict left-right
+  original and why it would need a frozen-startprob M-step to work
+  as-is).
+- `notebooks/10_valentin_eth_gmm_hmm.ipynb`: ports Valentin Laborie's
+  *2025 S2* ETH lifecycle GMM-HMM end-to-end through hmm-studio idioms
+  (private data: set `HMM_VALENTIN_ETH_PATH` env var to the CSV path
+  before running).
+
+### Added — tests
+
+- `tests/test_valentin_eth_regression.py`: 6 regression tests pinning the
+  log-likelihood (−636 ± 5%), BIC, PCA explained variance, EM convergence,
+  prep-output shape, and phase populations. **Auto-skipped** when
+  `HMM_VALENTIN_ETH_PATH` is unset (private dataset not in the repo).
+- 5 new prep-op tests covering `log1p` (explicit columns, negative-skip,
+  forced-on-negative) and `drop_low_variance` (default + thresholds).
+
+### Changed — `.gitignore`
+
+- Added `*JDD_ETH*.csv`, `*JDD_BTC*.csv`, `**/private_data/`,
+  `notebooks/data/` patterns to prevent accidental commit of private
+  research datasets referenced from notebooks via env vars.
+
+---
+
 ## [1.1.0] — 2026-05-23
 
 Distribution-surface release: `hmm-studio` becomes pip-installable and

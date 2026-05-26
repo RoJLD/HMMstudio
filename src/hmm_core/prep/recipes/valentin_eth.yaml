@@ -1,0 +1,57 @@
+name: valentin_eth
+description: |
+  Preprocessing pipeline for the ETH on-chain HMM (Valentin Laborie, 2025 S2):
+
+    1. 365-day rolling mean on each of the 4 input features (overwrites
+       in place — de-noises daily on-chain metrics).
+    2. dropna : drop the first 364 rows that the rolling window leaves
+       as NaN.
+    3. drop_low_variance : drop columns that become near-constant or
+       mostly-zero after smoothing (zeros_fraction > 50% or std < 1e-8).
+       Valentin's logic from the original script.
+    4. log1p on every non-negative column (variance compression). Skips
+       sign-bearing columns like ROI30d automatically.
+    5. zscore on the 4 input features (mean=0 std=1, ready for HMM /
+       optional PCA).
+
+  Expects a DataFrame with columns:
+      [AdrActCnt, ROI30d, TxCnt, SplyExNtv]
+  typically read from the post-correlation ETH CSV in Valentin's
+  deliverable (``JDD_ETH_après la corrélation_FINAL_HMM.csv``) and
+  indexed by date.
+
+  PCA is intentionally NOT part of the recipe: the prep layer stays
+  pandas-only by design, and PCA fitting belongs in the modelling
+  notebook so the user can inspect explained variance per dataset.
+
+  See:
+  - ``notebooks/10_valentin_eth_gmm_hmm.ipynb`` for end-to-end usage
+  - Source script: ``Modèles probabilistes (py)/gmmhmm Full.py`` in
+    Valentin's 2025 S2 deliverable.
+
+version: 1
+steps:
+  - op: rolling_mean
+    column: AdrActCnt
+    window: 365
+    new_name: AdrActCnt
+  - op: rolling_mean
+    column: ROI30d
+    window: 365
+    new_name: ROI30d
+  - op: rolling_mean
+    column: TxCnt
+    window: 365
+    new_name: TxCnt
+  - op: rolling_mean
+    column: SplyExNtv
+    window: 365
+    new_name: SplyExNtv
+  - op: dropna
+  - op: drop_low_variance
+    std_threshold: 1.0e-8
+    zeros_fraction_max: 0.5
+  - op: log1p
+    skip_if_negative: true
+  - op: zscore
+    columns: [AdrActCnt, ROI30d, TxCnt, SplyExNtv]

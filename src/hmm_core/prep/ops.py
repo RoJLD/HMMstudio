@@ -170,6 +170,69 @@ def log_transform(
     return out
 
 
+@register_op("drop_low_variance")
+def drop_low_variance(
+    df: pd.DataFrame,
+    *,
+    std_threshold: float = 1e-8,
+    zeros_fraction_max: float = 0.5,
+    columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Drop columns that are degenerate for downstream modeling.
+
+    Two filters apply (a column is dropped if EITHER triggers):
+    - ``std(col) < std_threshold`` — near-constant column.
+    - ``mean(col == 0) > zeros_fraction_max`` — sparse / mostly-zero column.
+
+    ``columns`` restricts the check to a subset (default: every numeric
+    column). Non-numeric columns are never touched.
+    """
+    out = df.copy()
+    candidates = (
+        columns
+        if columns is not None
+        else [c for c in out.columns if pd.api.types.is_numeric_dtype(out[c])]
+    )
+    to_drop: list[str] = []
+    for col in candidates:
+        col_vals = out[col].astype(float)
+        if col_vals.std() < std_threshold:
+            to_drop.append(col)
+            continue
+        if (col_vals == 0).mean() > zeros_fraction_max:
+            to_drop.append(col)
+    return out.drop(columns=to_drop)
+
+
+@register_op("log1p")
+def log1p(
+    df: pd.DataFrame,
+    *,
+    columns: list[str] | None = None,
+    skip_if_negative: bool = True,
+) -> pd.DataFrame:
+    """Replace each listed column by ``log1p(col)`` in place.
+
+    If ``columns`` is None, applies to every numeric column. By default skips
+    columns that contain any negative value (``skip_if_negative=True``) so
+    the op is safe to chain after a generic preprocessing step. Pass
+    ``skip_if_negative=False`` to force log1p (which will produce NaN on
+    negatives, matching ``numpy.log1p`` behavior).
+    """
+    out = df.copy()
+    target = (
+        columns
+        if columns is not None
+        else [c for c in out.columns if pd.api.types.is_numeric_dtype(out[c])]
+    )
+    for col in target:
+        col_vals = out[col].astype(float)
+        if skip_if_negative and (col_vals < 0).any():
+            continue
+        out[col] = np.log1p(col_vals)
+    return out
+
+
 @register_op("shift")
 def shift(
     df: pd.DataFrame,

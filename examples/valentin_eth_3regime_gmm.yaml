@@ -1,0 +1,44 @@
+name: valentin_eth_3regime_gmm
+n_states: 3
+state_names: [accumulation, expansion, distribution]
+
+# GMM emission : each state hosts a 3-component Gaussian mixture on the
+# 2-D PCA space of the preprocessed ETH on-chain indicators (see
+# notebooks/10_valentin_eth_gmm_hmm.ipynb for the upstream pipeline).
+#
+# Valentin's original used covariance_type='full' with a hand-crafted
+# init from 3 equal-length data segments. hmm-studio's kmeans init for
+# GMM emits diag-shaped covars, so we use diag here for an out-of-the-box
+# fit. In 2-D PCA space the practical difference is small; the notebook
+# documents the original full-covariance recipe for reference.
+emission:
+  type: gmm
+  covariance_type: diag
+  n_features: 2
+  n_mix: 3
+
+# Ergodic topology (no allowed_transitions block = all transitions allowed).
+#
+# Valentin's original was strict left-right (Bakis) with a hand-clamped
+# startprob = [1, 0, 0] and ``params='mcw'`` to freeze startprob/transmat
+# in hmmlearn's M-step. hmm-studio always re-fits startprob from
+# posteriors, which together with strict left-right produces a 0/0 NaN
+# in the M-step (state 0 is only visited at t=0; its responsibility sum
+# collapses).
+#
+# Workaround : leave the topology ergodic. The data is sufficiently
+# regime-like that EM naturally discovers a quasi-left-right structure
+# (self-loop probabilities ~ 0.998, cross-transitions ~ 0.001-0.002),
+# which is the practical answer Valentin's hard constraint was trying
+# to encode. The notebook compares the two formulations.
+
+startprob: uniform
+
+init:
+  strategy: kmeans
+  seed: 42
+
+fit:
+  algorithm: baum_welch
+  n_iter: 500
+  tol: 1.0e-4
