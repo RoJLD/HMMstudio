@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { ProbabilitySimplex } from "../components/academy/ProbabilitySimplex";
 
 export function Lesson2MarkovChains() {
@@ -47,6 +48,23 @@ export function Lesson2MarkovChains() {
         Add a forbidden transition (delete the edge from sunny to rainy
         directly) and see how the validator reacts.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Northeastern CSG220 HMM notes",
+            title: "Compiled from Russell-Norvig AIMA",
+            url: "https://www.khoury.northeastern.edu/home/rjw/csg220/lectures/hmm.pdf",
+            note: "Markov property explained from first principles",
+          },
+          {
+            label: "Murphy MLAPP §17.1",
+            title: "Machine Learning : A Probabilistic Perspective, Ch. 17 Markov & Hidden Markov Models",
+            url: "https://archive.org/details/machinelearningp0000murp",
+            note: "treats Markov chains as DAGs; ties to graphical-model intuition",
+          },
+        ]}
+      />
     </>
   );
 }

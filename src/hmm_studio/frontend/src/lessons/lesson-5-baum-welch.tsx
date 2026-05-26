@@ -1,4 +1,5 @@
 import { BaumWelchAnimation } from "../components/academy/BaumWelchAnimation";
+import { FurtherReading } from "../components/academy/FurtherReading";
 
 export function Lesson5BaumWelch() {
   return (
@@ -77,6 +78,35 @@ export function Lesson5BaumWelch() {
         from the <code>examples/</code> directory and watch Baum-Welch
         converge live on the Fit page.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Bilmes 1998",
+            title:
+              "A Gentle Tutorial of EM and its Application to GMM / HMM — derivation cornerstone for Baum-Welch",
+            url: "https://www.cs.cmu.edu/~aarti/Class/10701/readings/gentle_tut_HMM.pdf",
+            note: "the canonical reference for understanding why EM converges",
+          },
+          {
+            label: "Rabiner 1989 §III.C",
+            title: "Baum-Welch re-estimation formulae written out",
+            url: "https://www.cs.cmu.edu/~cga/behavior/rabiner1.pdf",
+          },
+          {
+            label: "MIT 16.410 Lec 21",
+            title: "Intro to HMM + Baum-Welch — robotics angle",
+            url: "https://ocw.mit.edu/courses/16-410-principles-of-autonomy-and-decision-making-fall-2010/2ebbc8cc4bc9adc3418a572a17331f63_MIT16_410F10_lec21.pdf",
+          },
+          {
+            label: "Eisner ice-cream tutorial",
+            title:
+              "An Interactive Spreadsheet for Teaching the Forward-Backward Algorithm",
+            url: "https://www.cs.jhu.edu/~jason/papers/eisner.tnlp02.pdf",
+            note: "watch EM converge on a toy 2-state HMM cell-by-cell",
+          },
+        ]}
+      />
     </>
   );
 }

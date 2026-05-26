@@ -137,6 +137,27 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `hmm-studio` CLI from a local venv, or "should I rebuild before
   pushing ?" checks) — just no longer called by the Docker launchers.
 
+### Added — Academy "Further reading" + sourced bibliography
+
+- New `docs/sources/academy-references.md`: 4-tier bibliography (~20
+  canonical PDFs) covering the foundational tutorials (Rabiner, Bishop,
+  Murphy, Jurafsky SLP3, Russell-Norvig AIMA), algorithm-specific
+  references (Bilmes EM tutorial, MIT 6.867 / 16.410, Princeton ORF557),
+  variants (Bengio-Frasconi IOHMM, Ghahramani-Jordan Factorial,
+  Fine-Singer-Tishby Hierarchical, GMM-HMM via Reynolds + Columbia
+  E6870 + Edinburgh ASR, semi-supervised via Tamposis et al.,
+  Bayesian via Stan tutorial + arXiv), and textbook canonicals
+  (Durbin et al. *Biological Sequence Analysis*, Eisner ice-cream
+  spreadsheet).
+- Reusable `<FurtherReading />` React component in
+  `src/hmm_studio/frontend/src/components/academy/`. Renders a styled
+  list of references with optional one-line notes, and links to the
+  central bibliography.
+- All 7 Academy lessons now end with a "Further reading" section
+  citing 2-4 references each, mapped to the topic of the lesson
+  (Lesson 1 cites Rabiner / AIMA / Bishop ; Lesson 5 Baum-Welch cites
+  Bilmes / Rabiner §III.C / MIT 16.410 / Eisner ice-cream ; etc.).
+
 ### Fixed — browser cache on index.html
 
 - The SPA fallback in `src/hmm_studio/server/app.py` now serves

@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { Trellis } from "../components/academy/Trellis";
 
 export function Lesson3ForwardAlgorithm() {
@@ -52,6 +53,26 @@ P(O | model) = SUM_k alpha_T(k)`}
         recursion. The result is Viterbi: the most likely sequence of hidden
         states given the observations.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Rabiner 1989 §III.A",
+            title: "Forward algorithm worked out step by step",
+            url: "https://www.cs.cmu.edu/~cga/behavior/rabiner1.pdf",
+          },
+          {
+            label: "Jurafsky SLP3 §A.2",
+            title: "Speech and Language Processing — Forward algorithm with the Eisner ice-cream example",
+            url: "https://web.stanford.edu/~jurafsky/slp3/A.pdf",
+          },
+          {
+            label: "MIT 6.867 Lec 19",
+            title: "Forward-backward derivation from scratch",
+            url: "https://ocw.mit.edu/courses/6-867-machine-learning-fall-2006/bd962d39492e55697cfa6bb418ae1642_lec19.pdf",
+          },
+        ]}
+      />
     </>
   );
 }

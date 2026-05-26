@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { MarkovChainDemo } from "../components/academy/MarkovChainDemo";
 
 export function Lesson1WhatIsAnHmm() {
@@ -70,6 +71,29 @@ export function Lesson1WhatIsAnHmm() {
         The next lesson zooms in on the transition matrix — how to read
         it, how to design it, and what happens when you constrain it.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Rabiner 1989 §I-II",
+            title: "A Tutorial on Hidden Markov Models",
+            url: "https://www.cs.cmu.edu/~cga/behavior/rabiner1.pdf",
+            note: "the canonical introduction; sets the notation everyone uses",
+          },
+          {
+            label: "Toronto CS486 Lec 14",
+            title: "Inference in Hidden Markov Models",
+            url: "https://www.cs.toronto.edu/~axgao/cs486686_f21/lecture_notes/Lecture_14_on_Hidden_Markov_Models_1.pdf",
+            note: "Russell-Norvig umbrella example, accessible",
+          },
+          {
+            label: "Bishop PRML §13.1",
+            title: "Pattern Recognition and Machine Learning, Ch. 13 Sequential Data",
+            url: "http://www.cis.hut.fi/Opinnot/T-61.6020/2007/sequential_data.pdf",
+            note: "HMM as a probabilistic graphical model",
+          },
+        ]}
+      />
     </>
   );
 }

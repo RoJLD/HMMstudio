@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { NhmmBreathing } from "../components/academy/NhmmBreathing";
 
 export function Lesson7Nhmm() {
@@ -88,6 +89,25 @@ and beta_ij in R^P are the learned coefficients
         learned <code>A(t)</code> just like the demo above — but with{" "}
         <em>your</em> data driving it.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Bengio & Frasconi 1994",
+            title:
+              "An Input-Output HMM Architecture — the seminal IOHMM / NHMM paper",
+            url: "https://proceedings.neurips.cc/paper/1994/hash/8065d07da4a77621450aa84fee5656d9-Abstract.html",
+            note: "direct ancestor of hmm_core.nhmm",
+          },
+          {
+            label: "Bengio handbook chapter 2002",
+            title:
+              "Hidden Markov Models and other Finite State Automata for Sequence Processing",
+            url: "https://bengio.abracadoudou.com/cv/publications/pdf/handbook_2002.pdf",
+            note: "broader survey including IOHMM extensions",
+          },
+        ]}
+      />
     </>
   );
 }

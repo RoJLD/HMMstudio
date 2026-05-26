@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { Trellis } from "../components/academy/Trellis";
 
 export function Lesson4Viterbi() {
@@ -49,6 +50,26 @@ z*_t       = psi_{t+1}(z*_{t+1})                           backtrace from T-1 to
         own short observation sequence, fit it, and inspect the Viterbi
         path on the Results page.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Rabiner 1989 §III.B",
+            title: "Viterbi algorithm — backpointer construction",
+            url: "https://www.cs.cmu.edu/~cga/behavior/rabiner1.pdf",
+          },
+          {
+            label: "Jurafsky SLP3 §A.4",
+            title: "Viterbi explained for POS tagging",
+            url: "https://web.stanford.edu/~jurafsky/slp3/A.pdf",
+          },
+          {
+            label: "Bilmes 1998 §6",
+            title: "Viterbi inside the EM framework — same recursion, different operator",
+            url: "https://www.cs.cmu.edu/~aarti/Class/10701/readings/gentle_tut_HMM.pdf",
+          },
+        ]}
+      />
     </>
   );
 }

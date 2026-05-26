@@ -1,3 +1,4 @@
+import { FurtherReading } from "../components/academy/FurtherReading";
 import { TopologyComparison } from "../components/academy/TopologyComparison";
 
 export function Lesson6ConstrainedTopologies() {
@@ -83,6 +84,24 @@ allowed_transitions:
         deleting one of the forward edges and watch the live validation
         catch the disconnected state.
       </p>
+
+      <FurtherReading
+        references={[
+          {
+            label: "Rabiner 1989 §V",
+            title:
+              "Left-right / Bakis models — the original treatment of structurally constrained HMMs for speech",
+            url: "https://www.cs.cmu.edu/~cga/behavior/rabiner1.pdf",
+          },
+          {
+            label: "Durbin et al. 1998, Ch. 5",
+            title:
+              "Profile HMMs — left-right topology with insertion / deletion states for biological sequences",
+            url: "http://www.mcb111.org/w06/durbin_book.pdf",
+            note: "the canonical biological-sequence topology",
+          },
+        ]}
+      />
     </>
   );
 }
