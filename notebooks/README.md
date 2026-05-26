@@ -28,12 +28,12 @@ The notebooks have no GPU requirements and run in seconds. They work in :
 | 01 | [Quickstart](01_quickstart.ipynb) | 30-second tour : declare topology, fit, decode. Includes left-right constrained example. |
 | 02 | [NHMM for crypto regimes](02_nhmm_crypto.ipynb) | Covariate-dependent transitions, A_t inspection, decoded path accuracy. |
 | 03 | [Data prep recipes](03_data_prep_recipes.ipynb) | Bundled recipes, Python pipeline builder, provenance sidecar. |
+| 04 | [sklearn pipeline integration](04_sklearn_pipeline.ipynb) | Drop-in `HMMClassifier` in sklearn `Pipeline`, `GridSearchCV`, `cross_val_score`. |
 
-More notebooks coming as Phase I.1 progresses :
+More notebooks coming :
 - GMM-NHMM sub-modes per regime
 - Factorial NHMM multi-factor regimes
 - Reproducing textbook canonicals (Russell-Norvig, Durbin)
-- sklearn pipeline integration (Phase I.2)
 
 ## Philosophy
 

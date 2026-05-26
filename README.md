@@ -92,6 +92,35 @@ viterbi_states = result.model.predict(X)
 See the [notebook gallery](notebooks/) for full examples : quickstart,
 NHMM regime detection, data preprocessing recipes, and more.
 
+## Drop-in with scikit-learn
+
+`HMMClassifier` slots into any existing `sklearn` workflow — `Pipeline`,
+`GridSearchCV`, `cross_val_score`, `clone`, `joblib.dump`. Same fit /
+predict / score contract as `RandomForestClassifier` etc.
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+from hmm_core.sklearn_compat import HMMClassifier
+
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("hmm", HMMClassifier(n_states=3, emission_type="gaussian")),
+])
+
+# Grid search over K + init strategy
+search = GridSearchCV(
+    HMMClassifier(),
+    param_grid={"n_states": [2, 3, 4], "init_strategy": ["kmeans", "random"]},
+    cv=3, scoring="accuracy",
+)
+search.fit(X, y)
+print(search.best_params_)
+```
+
+Full walkthrough in [notebooks/04_sklearn_pipeline.ipynb](notebooks/04_sklearn_pipeline.ipynb).
+
 ## 30-second tour
 
 ### CLI
