@@ -137,6 +137,29 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `hmm-studio` CLI from a local venv, or "should I rebuild before
   pushing ?" checks) — just no longer called by the Docker launchers.
 
+### Added — Academy lesson ↔ notebook bubbles
+
+- New reusable `<NotebookLink />` component (Option B from the
+  lessons-to-notebooks integration design : surface a 4-button
+  launcher card at the bottom of each lesson rather than embed the
+  notebook in an iframe). Buttons :
+  - **Launch in Binder** (zero-install cloud, ~30 s spin-up)
+  - **Open in Colab** (familiar to ML researchers)
+  - **View on GitHub** (read rendered notebook)
+  - **Download .ipynb** (run locally with Jupyter)
+- `LessonMeta` gains an optional `notebookLink: NotebookRef` field.
+  `LessonPage` renders the launcher card between the lesson body and
+  the "Mark as complete" / prev-next nav, so the flow is :
+  *theory → demo → further reading → run the notebook*.
+- 9 of the 12 lessons mapped to a companion notebook : L1 / L5 / L6
+  → `01_quickstart`, L3 → `07_textbook_aima_umbrella`, L4 →
+  `08_textbook_dishonest_casino`, L7 → `02_nhmm_crypto`, L8 →
+  `05_gmm_nhmm_submodes`, L9 → `06_factorial_nhmm_multifactor`,
+  L10 → `09_bayesian_hmm`. L2 (Markov chains), L11 (semi-supervised),
+  L12 (HHMM theory-only) deliberately have no notebook companion —
+  L2 is concept-only, L11 ships code snippets inline, L12 is gated
+  on external signal.
+
 ### Added — 5 advanced Academy lessons (8 → 12)
 
 Extends the Academy from 7 to 12 lessons, covering the variants

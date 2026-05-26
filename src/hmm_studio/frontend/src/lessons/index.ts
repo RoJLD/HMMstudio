@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { NotebookRef } from "../components/academy/NotebookLink";
 import { Lesson1WhatIsAnHmm } from "./lesson-1-what-is-an-hmm";
 import { Lesson2MarkovChains } from "./lesson-2-markov-chains";
 import { Lesson3ForwardAlgorithm } from "./lesson-3-forward-algorithm";
@@ -22,6 +23,9 @@ export interface LessonMeta {
   // Optional: a YAML topology preset to load in the editor when the user
   // clicks "Try in editor" from this lesson.
   presetTopologyYaml?: string;
+  // Optional: a Jupyter notebook companion. Rendered as a launcher card
+  // (Binder / Colab / GitHub / Download) at the bottom of the lesson.
+  notebookLink?: NotebookRef;
   // The rendered React component for the lesson body (only for "published" lessons)
   content?: () => ReactNode;
 }
@@ -36,6 +40,12 @@ export const LESSONS: LessonMeta[] = [
       "A gentle intro to hidden Markov models: hidden states, observations, transitions, emissions. No math required.",
     status: "published",
     content: Lesson1WhatIsAnHmm,
+    notebookLink: {
+      filename: "01_quickstart.ipynb",
+      title: "Quickstart — declare, fit, decode in 4 lines",
+      description:
+        "A 30-second tour : a 3-state Gaussian topology, Baum-Welch fit, Viterbi decode, plus a left-right constrained variant.",
+    },
   },
   {
     id: "lesson-2-markov-chains",
@@ -74,6 +84,12 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "How do we score a sequence under a model? The forward recursion, animated step-by-step.",
     status: "published",
     content: Lesson3ForwardAlgorithm,
+    notebookLink: {
+      filename: "07_textbook_aima_umbrella.ipynb",
+      title: "AIMA umbrella world — forward & smoothing reproduced",
+      description:
+        "Reproduces Russell & Norvig Chap. 14 filtering and smoothing values within 5×10⁻³ on the canonical 5-step sequence. See forward in action.",
+    },
   },
   {
     id: "lesson-4-viterbi",
@@ -94,6 +110,12 @@ startprob: uniform
 init: {strategy: uniform, seed: 42}
 fit: {algorithm: baum_welch, n_iter: 30, tol: 1.0e-4}
 `,
+    notebookLink: {
+      filename: "08_textbook_dishonest_casino.ipynb",
+      title: "Durbin's dishonest casino — Viterbi accuracy assertion",
+      description:
+        "Samples 1000 rolls from Durbin et al.'s canonical model and asserts Viterbi accuracy ≥ 70% (above the always-fair baseline). Watch Viterbi recover loaded-die runs.",
+    },
   },
   {
     id: "lesson-5-baum-welch",
@@ -115,6 +137,12 @@ startprob: uniform
 init: {strategy: kmeans, seed: 42}
 fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-5}
 `,
+    notebookLink: {
+      filename: "01_quickstart.ipynb",
+      title: "Quickstart — see EM converge end-to-end",
+      description:
+        "The same 3-state Gaussian model the lesson walks through, fit live with Baum-Welch. Inspect log-likelihood convergence, transmat, and Viterbi path.",
+    },
   },
   {
     id: "lesson-6-constrained-topologies",
@@ -144,6 +172,12 @@ startprob: first_state
 init: {strategy: kmeans, seed: 42}
 fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-5}
 `,
+    notebookLink: {
+      filename: "01_quickstart.ipynb",
+      title: "Quickstart — includes a left-right (Bakis) constrained example",
+      description:
+        "Section 'Try a left-right constrained topology' shows the same lesson concept : declare allowed_transitions, watch the mask × markers, fit, observe forbidden cells stay exactly 0.",
+    },
   },
   {
     id: "lesson-7-nhmm",
@@ -165,6 +199,12 @@ startprob: uniform
 init: {strategy: kmeans, seed: 42}
 fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
 `,
+    notebookLink: {
+      filename: "02_nhmm_crypto.ipynb",
+      title: "NHMM for crypto regime detection",
+      description:
+        "Simulate BTC-like returns with volatility-driven regime switching, fit an NHMM, and inspect A(t) at low-vol vs high-vol timesteps.",
+    },
   },
   {
     id: "lesson-8-gmm-hmm",
@@ -175,6 +215,12 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "When a single Gaussian per state isn't enough : Gaussian-mixture emissions, covariate-driven transitions, and when the extra parameters pay for themselves.",
     status: "published",
     content: Lesson8GmmHmm,
+    notebookLink: {
+      filename: "05_gmm_nhmm_submodes.ipynb",
+      title: "GMM-NHMM sub-modes — runnable example",
+      description:
+        "2 regimes × 2 sub-modes each (calm vs volatile), vol-driven covariate, BIC comparison vs single-Gaussian baseline proving the mixture pays for itself.",
+    },
   },
   {
     id: "lesson-9-factorial-nhmm",
@@ -185,6 +231,12 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "When the hidden state is a tuple : D parallel chains, K_joint = product of K_d, parameter savings vs the flat joint HMM.",
     status: "published",
     content: Lesson9FactorialNhmm,
+    notebookLink: {
+      filename: "06_factorial_nhmm_multifactor.ipynb",
+      title: "Factorial NHMM multi-factor — trend × vol",
+      description:
+        "Trend (3 states) × vol (2 states) with per-chain covariates. Computes the parameter savings vs joint HMM and demonstrates decode_chain / A_t per chain.",
+    },
   },
   {
     id: "lesson-10-bayesian-hmm",
@@ -195,6 +247,12 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "Posterior distributions instead of point estimates. PyMC NUTS sampler, full arviz InferenceData, when to reach for it vs Baum-Welch.",
     status: "published",
     content: Lesson10BayesianHmm,
+    notebookLink: {
+      filename: "09_bayesian_hmm.ipynb",
+      title: "Bayesian HMM — full posterior with PyMC NUTS",
+      description:
+        "Runs the BayesianHMMBackend on a 3-state Gaussian model. Shows credible intervals on transmat / means, posterior predictive checks, and arviz convergence diagnostics. Requires `pip install \"hmm-studio[bayesian]\"`.",
+    },
   },
   {
     id: "lesson-11-semi-supervised",
