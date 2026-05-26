@@ -220,8 +220,9 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
    V     Scientific validation suite       SPEC DRAFTED   A           ~3-5 jours
          (textbook + recovery + stability)                            prioritaire avant E
                                                                      et toute adoption externe
-   E     Academy (interactive learning)    SPEC DRAFTED   B, V        ~1-2 semaines
-         tab pédagogique + 7 leçons + bridge vers éditeur             gated sur V livrée
+   E     Academy (notebook gallery)        SHIPPED        I.1, V      livré 2026-05-26
+         8 notebooks runnables + Binder                              reframe via ADR-0012 :
+         + Colab badges + suggested path                             notebook = academy
    C     Visualisations avancées + viz NHMM SPEC DRAFTED  B           ~4-6 semaines
                                                                      spec à brainstormer
    Z.2+  Doc site, release, packaging      NOT STARTED    B, C        continu
@@ -1032,13 +1033,63 @@ doit avoir une réponse documentée et reproductible.
 
 ---
 
-## Phase E — Academy (apprentissage interactif intégré)
+## Phase E — Academy (notebook gallery)
 
-**Status** : SPEC DRAFTED · gated sur V livrée
-**Dépend de** : B (UI socle, livré pour l'essentiel), V (crédibilité scientifique)
-**Effort estimé** : ~1-2 semaines
+**Status** : ✅ **SHIPPED 2026-05-26** (reframe via ADR-0012)
+**Dépend de** : I.1 (Jupyter rich displays ✓), V (crédibilité scientifique ✓)
+**Effort réel** : ~1 jour (la majorité du contenu était déjà écrit côté I.1 et par Robin)
 
-> Spec complet : [docs/specs/2026-05-22-phase-e-academy.md](specs/2026-05-22-phase-e-academy.md)
+> Spec original : [docs/specs/2026-05-22-phase-e-academy.md](specs/2026-05-22-phase-e-academy.md)
+>
+> **Reframe ADR-0012 (2026-05-22 PM)** : la stratégie de distribution
+> hybride a pivoté Phase E d'**onglet web académie** vers **notebook
+> gallery officielle**. Plus naturel pour les chercheurs, gratuit en
+> distribution via GitHub/Binder/Colab, aligné avec le positionnement
+> "Jupyter-native HMM library".
+
+### Ce qui a été livré
+
+- **8 notebooks runnables** dans `notebooks/` couvrant la trajectoire
+  complète "newcomer → praticien" :
+  1. Quickstart (30 sec : Topology → fit → decode + left-right)
+  2. NHMM crypto regimes (covariate-dependent transitions, A_t inspection)
+  3. Data prep recipes (bundled + composition + provenance sidecar)
+  4. sklearn pipeline integration (Pipeline + GridSearchCV + cross_val)
+  5. GMM-NHMM sub-modes (multi-modal regimes)
+  6. Factorial NHMM multi-factor (independent regime dimensions)
+  7. AIMA umbrella world (canonical Russell & Norvig 14.2.2/14.2.4)
+  8. Durbin dishonest casino (Biological Sequence Analysis Chap. 3)
+- **Binder config** (`binder/requirements.txt` + `postBuild` + `runtime.txt`)
+  → mybinder.org build runnable en un clic
+- **Open-in-Binder + Open-in-Colab badges** sur `notebooks/README.md` et
+  badge global dans `README.md` racine
+- **Suggested learning path** dans `notebooks/README.md` (newcomer → praticien)
+- **Section "Academy : zero-install learning"** dans le README racine
+
+### Pourquoi notebook ≫ tab web académie
+
+Évaluation post-ADR-0012 :
+- **Distribution** : un notebook Binder = lien partageable, runnable en 30s, indexé Google/Kaggle
+- **Friction d'install** : zéro (vs nécessite l'app web + warehouse + topology editor)
+- **Updates** : un commit GitHub propage à tous les utilisateurs (vs déploiement web)
+- **Workflow naturel** : les chercheurs vivent dans Jupyter, on les y rencontre
+- **Coût d'investissement** : ~1 jour (vs ~1-2 semaines pour l'onglet web)
+
+### Critères de succès (à M+3)
+
+Inchangés par le reframe — seul le médium change :
+| Métrique | Cible | Mode de mesure |
+|---|---|---|
+| Visites uniques /mois notebook gallery | ≥ 100 | GitHub Insights (stars/clones) + Binder analytics |
+| Mentions externes | ≥ 3 | Recherche Google + Twitter + Reddit + Kaggle |
+| Profs identifiés | ≥ 1 confirmé | Outreach manuel |
+| Citations académiques | ≥ 1 | Google Scholar / CITATION.cff usage |
+
+### Kill criteria
+
+Si à M+3 : 0 mention externe ET 0 prof identifié ET Robin ne recommande pas
+les notebooks à ses propres collaborateurs → archiver les notebooks
+avancés (05-08), garder seulement quickstart + sklearn (le minimum vital).
 
 ### Pourquoi E existe
 

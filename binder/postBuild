@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Binder post-build hook : install hmm-studio in editable mode from the
+# repository checkout. This ensures Binder gets the latest dev version
+# rather than whatever's on PyPI.
+#
+# mybinder.org executes this script after pip install -r requirements.txt.
+
+set -euo pipefail
+
+# Install hmm-studio from the repo root (one level up from binder/)
+pip install -e ..
