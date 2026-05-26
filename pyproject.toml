@@ -71,12 +71,11 @@ bayesian = [
 ]
 
 [project.urls]
-# Placeholders — update when the GitHub remote is set up
-Homepage = "https://github.com/<user>/hmm-studio"
-Repository = "https://github.com/<user>/hmm-studio"
-Issues = "https://github.com/<user>/hmm-studio/issues"
-Documentation = "https://github.com/<user>/hmm-studio/blob/main/docs/roadmap.md"
-Changelog = "https://github.com/<user>/hmm-studio/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/RoJLD/HMMstudio"
+Repository = "https://github.com/RoJLD/HMMstudio"
+Issues = "https://github.com/RoJLD/HMMstudio/issues"
+Documentation = "https://rojld.github.io/HMMstudio/"
+Changelog = "https://github.com/RoJLD/HMMstudio/blob/main/CHANGELOG.md"
 
 [project.scripts]
 hmm-fit = "hmm_core.cli:app"

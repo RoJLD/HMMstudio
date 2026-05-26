@@ -1,8 +1,8 @@
 site_name: hmm-studio
 site_description: HMM topology editor, constrained fit engine, and visualizer
-repo_url: https://github.com/<user>/hmm-studio  # replace <user> once the GitHub remote is set up
+repo_url: https://github.com/RoJLD/HMMstudio
 edit_uri: edit/main/docs/
-site_url: https://<user>.github.io/hmm-studio/  # replace <user> once the GitHub remote is set up
+site_url: https://rojld.github.io/HMMstudio/
 
 docs_dir: docs
 

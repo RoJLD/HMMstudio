@@ -6,8 +6,8 @@ ambitious project — the more eyes, the better.
 ## Getting set up
 
 ```bash
-git clone https://github.com/<user>/hmm-studio.git
-cd hmm-studio
+git clone https://github.com/RoJLD/HMMstudio.git
+cd HMMstudio
 
 # Python side
 python -m venv .venv

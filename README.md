@@ -1,7 +1,9 @@
 # hmm-studio
 
-<!-- After pushing to GitHub, replace the placeholder below with the real badge URLs. -->
-<!-- [![CI](https://github.com/<user>/hmm-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/<user>/hmm-studio/actions/workflows/ci.yml) -->
+[![CI](https://github.com/RoJLD/HMMstudio/actions/workflows/ci.yml/badge.svg)](https://github.com/RoJLD/HMMstudio/actions/workflows/ci.yml)
+[![docs](https://github.com/RoJLD/HMMstudio/actions/workflows/docs.yml/badge.svg)](https://rojld.github.io/HMMstudio/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 `hmm-studio` is the deepest HMM library in the Python scientific stack —
 **pip-installable, sklearn-compatible, Jupyter-native**, with an optional
@@ -449,8 +451,7 @@ pip install -e ".[docs]"
 mkdocs serve   # http://127.0.0.1:8000
 ```
 
-Hosted URL (placeholder until the GitHub remote is set up):
-`https://<user>.github.io/hmm-studio/`
+Hosted at <https://rojld.github.io/HMMstudio/>.
 
 To add a doc page, see [docs/contributing.md](docs/contributing.md).
 
@@ -476,13 +477,22 @@ Other quick links:
 ## Publishing
 
 `hmm-studio` uses [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
-(OIDC, no API token required). Once the GitHub remote is configured:
+(OIDC, no API token required). The release workflow lives at
+[`.github/workflows/release.yml`](.github/workflows/release.yml) and fires on
+any `v*.*.*` tag push.
 
-1. Register the project at https://pypi.org/manage/account/publishing/ pointing
-   to the `release.yml` workflow.
-2. Push a version tag: `git tag -a v1.0.0 -m "..." && git push origin v1.0.0`.
-3. GitHub Actions builds the wheel (including the React frontend) and publishes
+To cut a release:
+
+1. Bump the version in `pyproject.toml`, `CITATION.cff`, the two `__init__.py`
+   files, and `src/hmm_studio/frontend/package.json`.
+2. Add the version section to [CHANGELOG.md](CHANGELOG.md).
+3. Tag and push: `git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`.
+4. GitHub Actions builds the wheel (Python + React frontend) and publishes
    to PyPI automatically.
+
+First-time setup: register the project at
+<https://pypi.org/manage/account/publishing/> as Pending Publisher with
+owner `RoJLD`, repo `HMMstudio`, workflow `release.yml`.
 
 ## License
 
