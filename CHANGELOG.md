@@ -38,7 +38,7 @@ surfaces.
   inline CSS, zero JavaScript — renders in JupyterLab, VS Code,
   Colab, Hex, Deepnote without any extension installed. Shared helpers
   for matrix heatmaps, sequence strips, chip lists in `hmm_core._jupyter`.
-- **scikit-learn-compatible API** (Phase I.2, `hmm_core.sklearn.HMMClassifier`):
+- **scikit-learn-compatible API** (Phase I.2, `hmm_core.sklearn_compat.HMMClassifier`):
   `BaseEstimator` + `ClassifierMixin`. Passes the official
   `sklearn.utils.estimator_checks.check_estimator` battery. Drops into
   `Pipeline`, `cross_val_score`, `GridSearchCV` without ceremony.

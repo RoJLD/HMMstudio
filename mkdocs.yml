@@ -99,4 +99,6 @@ nav:
       - "ADR-0005: per-state EmissionSpec": decisions/0005-per-state-emissions-scope.md
       - "ADR-0006: Dirichlet priors": decisions/0006-dirichlet-priors-scope.md
       - "ADR-0007: GMM-NHMM": decisions/0007-gmm-nhmm-scope.md
+      - "ADR-0010: data warehouse scope": decisions/0010-data-warehouse-scope.md
+      - "ADR-0012: distribution strategy (hybrid)": decisions/0012-distribution-strategy-hybrid.md
   - Contributing: contributing.md
