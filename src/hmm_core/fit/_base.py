@@ -52,6 +52,99 @@ def _apply_mask(transmat: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return out
 
 
+def _apply_label_clamp(log_prob: np.ndarray, label_clamp: np.ndarray) -> np.ndarray:
+    """Force ``log_prob[t, k] = -inf`` at every labelled position where ``k != label``.
+
+    Used by the semi-supervised EM path (Phase A.7.1): when a Constrained*HMM
+    is given a ``_label_clamp`` attribute, its overridden
+    ``_compute_log_likelihood`` injects -inf at the forbidden states at
+    labelled positions. Forward-backward then naturally produces
+    ``alpha[t, k] = 0`` for every wrong state at a labelled position, giving
+    an argmax-style E-step there while leaving unlabelled positions free.
+
+    Parameters
+    ----------
+    log_prob
+        ``(T_sub, K)`` float array of emission log-likelihoods for the
+        current sub-sequence. Modified in place AND returned (caller-friendly).
+    label_clamp
+        ``(T_sub,)`` int array. ``-1`` at unlabelled positions; ``k in [0, K)``
+        at labelled positions. Must match ``log_prob.shape[0]`` exactly; the
+        caller (the ``_compute_log_likelihood`` override on each
+        ``Constrained*HMM``) is responsible for slicing the full-length clamp
+        by sub-sequence boundaries before passing it in.
+
+    Returns
+    -------
+    np.ndarray
+        The same ``log_prob`` array (mutated) for chaining convenience.
+    """
+    if label_clamp.shape[0] != log_prob.shape[0]:
+        raise ValueError(
+            f"label_clamp length {label_clamp.shape[0]} does not match "
+            f"log_prob length {log_prob.shape[0]}"
+        )
+    labelled = label_clamp >= 0
+    if not labelled.any():
+        return log_prob
+    K = log_prob.shape[1]
+    idx_t = np.where(labelled)[0]
+    labels = label_clamp[idx_t]
+    for i, t in enumerate(idx_t):
+        true_k = int(labels[i])
+        for k in range(K):
+            if k != true_k:
+                log_prob[t, k] = -np.inf
+    return log_prob
+
+
+def _resolve_clamp_slice(
+    full_clamp: np.ndarray,
+    segments: list[np.ndarray] | None,
+    cursor: list[int],
+    T_sub: int,
+) -> np.ndarray:
+    """Pop the next per-sequence clamp slice, falling back to a length-match.
+
+    The clamp may have been pre-split into one slice per sub-sequence
+    (``segments``). We advance ``cursor[0]`` to consume them in order.
+    If no segments were provided (single-sequence path), we return the
+    full clamp when its length matches ``T_sub`` — otherwise raise, to
+    catch silent misuse from downstream calls (e.g. ``.score()`` while
+    the clamp is still attached).
+    """
+    if segments is not None:
+        if not segments:
+            raise RuntimeError(
+                "label_clamp segments exhausted; an extra call to "
+                "_compute_log_likelihood was made beyond the EM E-step."
+            )
+        # Pop the cursor-th segment. Wrap around at the end of each EM
+        # iteration via the _estep_begin reset on the model.
+        i = cursor[0]
+        if i >= len(segments):
+            raise RuntimeError(
+                "label_clamp cursor exceeds segment count; missed an "
+                "_estep_begin reset between EM iterations."
+            )
+        seg = segments[i]
+        if seg.shape[0] != T_sub:
+            raise RuntimeError(
+                f"label_clamp segment {i} has length {seg.shape[0]} but "
+                f"sub-sequence has length {T_sub} — lengths mismatch."
+            )
+        cursor[0] = i + 1
+        return seg
+    # Single-sequence path: the full clamp must match T_sub exactly.
+    if full_clamp.shape[0] != T_sub:
+        raise RuntimeError(
+            f"label_clamp length {full_clamp.shape[0]} does not match "
+            f"sub-sequence length {T_sub}; pass lengths= and pre-split "
+            f"segments for multi-sequence semi-supervised fits."
+        )
+    return full_clamp
+
+
 def _map_update(
     transmat: np.ndarray,
     prior: np.ndarray | None,

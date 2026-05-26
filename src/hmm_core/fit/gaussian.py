@@ -5,7 +5,12 @@ from __future__ import annotations
 import numpy as np
 from hmmlearn.hmm import GaussianHMM
 
-from hmm_core.fit._base import _apply_mask, _map_update
+from hmm_core.fit._base import (
+    _apply_label_clamp,
+    _apply_mask,
+    _map_update,
+    _resolve_clamp_slice,
+)
 
 
 class ConstrainedGaussianHMM(GaussianHMM):
@@ -43,3 +48,23 @@ class ConstrainedGaussianHMM(GaussianHMM):
             self.transmat_ = _map_update(self.transmat_, self.transmat_prior, self.transmat_mask)
         if self.transmat_mask is not None:
             self.transmat_ = _apply_mask(self.transmat_, self.transmat_mask)
+
+    def _estep_begin(self):
+        # Reset the per-sequence clamp cursor at the start of every E-step.
+        cursor = getattr(self, "_label_clamp_cursor", None)
+        if cursor is not None:
+            cursor[0] = 0
+        super()._estep_begin()
+
+    def _compute_log_likelihood(self, X):
+        log_prob = super()._compute_log_likelihood(X)
+        clamp = getattr(self, "_label_clamp", None)
+        if clamp is not None:
+            seg = _resolve_clamp_slice(
+                clamp,
+                getattr(self, "_label_clamp_segments", None),
+                getattr(self, "_label_clamp_cursor", [0]),
+                log_prob.shape[0],
+            )
+            log_prob = _apply_label_clamp(log_prob, seg)
+        return log_prob

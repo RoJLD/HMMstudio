@@ -147,13 +147,18 @@ def fit(
         backend (``"hmmlearn"`` today). Pass a string (``"hmmlearn"``) to look
         up a registered backend by name, or an instance to use it directly.
     states : ndarray, optional
-        Observed state labels (Phase A.7). When omitted (default), training is
-        unsupervised via Baum-Welch EM. When provided as a fully-labeled
-        integer array of shape ``(len(X),)`` with values in ``[0, n_states)``,
-        training is **supervised**: closed-form MLE (count-based transitions
-        and per-state emission statistics), one pass, deterministic. Partial
-        labels (NaN positions) are reserved for semi-supervised training
-        (Phase A.7.1, not yet implemented).
+        Observed state labels of shape ``(len(X),)``.
+
+        - **Omitted (default)** → unsupervised Baum-Welch EM (Phase A).
+        - **Fully labelled** integer array, all values in ``[0, n_states)``
+          → **supervised** closed-form MLE (Phase A.7): count-based
+          transitions, per-state emission statistics, one pass, deterministic.
+        - **Partially labelled** → **semi-supervised** EM (Phase A.7.1).
+          Mark unlabelled positions with ``NaN`` in a float array or with
+          the sentinel ``-1`` in an int array. The backend runs a
+          constrained Baum-Welch where the E-step is clamped to the known
+          labels at labelled positions and free elsewhere. Initial
+          parameters come from the supervised MLE on the labelled subset.
     progress_callback : callable, optional
         Called periodically during unsupervised (Baum-Welch) training with
         the current ``monitor_.history`` list.  Signature::
@@ -176,19 +181,26 @@ def fit(
         states_arr = np.asarray(states)
         if states_arr.shape != (len(X),):
             raise ValueError(f"states must have shape ({len(X)},), got {states_arr.shape}")
-        if states_arr.dtype.kind == "f" and np.isnan(states_arr).any():
-            raise NotImplementedError(
-                "semi-supervised mode (states with NaN entries) is planned "
-                "for Phase A.7.1; for now provide a fully-labeled states "
-                "array or omit it to run unsupervised Baum-Welch."
-            )
-        states_int = states_arr.astype(int)
+
+        # Detect semi-supervised vs fully-supervised. NaN entries (float) or
+        # -1 sentinels (int / float) flag unlabelled positions and route to
+        # the backend's semi-supervised EM (Phase A.7.1). Fully-int arrays
+        # with all values in [0, K) take the closed-form supervised path.
+        if states_arr.dtype.kind == "f":
+            # Pass the float array through as-is — the backend treats NaN as
+            # unlabelled. Out-of-range values are validated downstream.
+            states_to_pass: np.ndarray = states_arr
+        else:
+            # Integer-ish array. -1 is the sentinel; other values must be in
+            # [0, K). We let the backend handle range validation so the
+            # error message lives in one place.
+            states_to_pass = states_arr
 
         t0 = time.perf_counter()
         result = backend_impl.fit_supervised(
             topology,
             X,
-            states_int,
+            states_to_pass,
             seed=actual_seed,
             lengths=lengths,
             mask=mask,

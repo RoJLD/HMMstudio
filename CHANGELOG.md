@@ -16,6 +16,11 @@ surfaces.
 
 ### Added — engine (`hmm_core`)
 
+- **A.7.1 supervised GMM + semi-supervised training**: closed-form per-state
+  `GaussianMixture` fit closes the supervised-GMM gap (was `NotImplementedError`).
+  Pass `states` with NaN (float) or `-1` (int) entries at unlabelled positions
+  to trigger semi-supervised EM with E-step clamped at labelled positions.
+  Initial parameters come from supervised MLE on the labelled subset.
 - **GMM-NHMM** (Phase A.10, `fit_gmm_nhmm`): GMM emissions with
   covariate-dependent transitions via a 2-stage decomposition (GMM-HMM
   base + per-state logistic regression on the Viterbi-derived

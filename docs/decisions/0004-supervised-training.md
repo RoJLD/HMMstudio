@@ -45,7 +45,7 @@ puis construit un `Constrained*HMM` avec les paramètres pré-posés et
 | Gaussian | counts `(states[t], states[t+1])` normalisés par état, mask appliqué | per-state means + covariances empiriques (helper `_empirical_covars` réutilisé de l'init) |
 | Multinomial | idem transitions | per-state empirical `emissionprob_` avec Laplace `+1e-6` smoothing |
 | Poisson | idem transitions | per-state mean count, clip à `1e-6` |
-| GMM | non implémenté | NotImplementedError → prévu Phase **A.7.1** |
+| GMM | idem transitions | per-state `sklearn.mixture.GaussianMixture` fit, M composantes (fallback uniforme si état avec < M observations) |
 
 ### Garanties
 
@@ -57,12 +57,39 @@ puis construit un `Constrained*HMM` avec les paramètres pré-posés et
 - **Idempotence** : appel `fit(topo, X, states=labels)` deux fois donne
   un résultat byte-identical (déterministe par construction).
 
-### Semi-supervised (Phase A.7.1, futur)
+### Semi-supervised (Phase A.7.1, shipped 2026-05-23)
 
-Si `states` contient des NaN (positions non-labellées), comportement à
-définir : EM contraint sur les positions NaN + counts fixes sur les
-positions labellées. **Pas implémenté**; lève `NotImplementedError` avec
-message clair.
+Si `states` contient des positions non-labellées (`NaN` dans un tableau
+`float`, ou sentinelle `-1` dans un tableau `int`), `fit_supervised`
+dispatch vers un **EM contraint** au lieu du chemin closed-form.
+
+**Mécanisme — clamp the E-step.** Plutôt que de réécrire forward-backward,
+on injecte une contrainte locale dans la log-vraisemblance d'émission :
+chaque `Constrained*HMM` (Gaussian, GMM, Multinomial, Poisson) override
+`_compute_log_likelihood(X)` pour appliquer un attribut optionnel
+`_label_clamp: (T,) int`. Aux positions labellées, on force
+`log_prob[t, k] = -inf` pour tout `k != label[t]`. Forward-backward de
+hmmlearn produit alors naturellement `α[t][k] = 0` aux mauvais états des
+positions labellées (équivalent argmax-style), tout en laissant les
+positions non-labellées libres pour la convergence EM. À la fin du fit,
+le clamp est retiré avant l'appel `.score()` final pour que la
+log-vraisemblance reportée reflète bien la donnée, pas la contrainte.
+
+**Initialisation.** Les paramètres initiaux viennent du MLE supervisé
+appliqué uniquement au sous-ensemble labellé (mêmes helpers
+`_supervised_emission_mle` / `_supervised_*transmat` que la branche
+closed-form, mais filtrés sur les positions labellées). Les transitions
+adjacentes (labelled, labelled) qui violeraient le masque topologique
+lèvent `ValueError` **avant** EM ; les transitions qui traversent une
+position non-labellée sont laissées à EM (route libre via les états
+intermédiaires permis).
+
+**API publique.** `fit(topo, X, states=...)` accepte :
+- `int[T]` sans `-1` → closed-form supervisé (inchangé).
+- `int[T]` avec `-1` aux positions non-labellées → semi-supervisé EM.
+- `float[T]` avec `NaN` aux positions non-labellées → semi-supervisé EM.
+- `float[T]` sans `NaN` → équivalent au chemin closed-form (cast safe).
+- Tous unlabelled → `ValueError` clair pointant vers `fit()` sans `states`.
 
 ## Alternatives considérées
 
@@ -99,12 +126,22 @@ message clair.
 
 ## Tests qui valident cette décision
 
-- `tests/test_supervised.py` (Phase A.7) :
+- `tests/test_supervised.py` (Phases A.7 + A.7.1) :
   - Gaussian/Multinomial/Poisson — paramètres recouvrent bien les
     statistiques empiriques.
   - Mask respect — observation d'une transition interdite → `ValueError`.
   - Multi-séquences avec `lengths` — boundaries respectées.
-  - GMM → `NotImplementedError` (test explicite).
+  - GMM supervisé (A.7.1) — recovery des moyennes par état, fallback
+    uniforme si état dégénéré, log-likelihood finie.
+- `tests/test_semi_supervised.py` (Phase A.7.1) :
+  - `all labels matches supervised` (régression byte-équivalente).
+  - Recovery Gaussian 50% et 10% labellés.
+  - Multinomial 30% labellé.
+  - Multi-séquences semi-supervisé.
+  - Transition interdite entre deux positions labellées → `ValueError`.
+  - Transition interdite traversant une position NaN → autorisé.
+  - Sentinelle `-1` (int) équivalent à `NaN` (float).
+  - Tout unlabelled → `ValueError` clair.
 
 ## Revisit triggers
 

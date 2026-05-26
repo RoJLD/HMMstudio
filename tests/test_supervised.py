@@ -157,14 +157,19 @@ def test_supervised_rejects_states_out_of_range():
         fit(topo, X, states=states)
 
 
-def test_semisupervised_not_yet_implemented():
-    """Until A.7.1 ships, partial labels (NaN) must raise NotImplementedError
-    with an explicit pointer to the future phase."""
+def test_semisupervised_dispatches_to_em_when_labels_missing():
+    """Partial labels (NaN entries) trigger semi-supervised EM (Phase A.7.1).
+
+    No NotImplementedError is raised any more — the backend runs a
+    constrained Baum-Welch with the E-step clamped at labelled positions.
+    """
     topo = _gaussian_topo(K=2)
-    X = np.array([[0.0], [1.0], [2.0]])
-    states = np.array([0.0, np.nan, 1.0])
-    with pytest.raises(NotImplementedError, match="A.7.1|semi-supervised"):
-        fit(topo, X, states=states)
+    X = _well_separated_data(np.array([0, 0, 1, 1, 0, 1, 0, 1]))
+    states = np.array([0.0, np.nan, 1.0, np.nan, np.nan, 1.0, 0.0, np.nan])
+    result = fit(topo, X, states=states)
+    # Semi-supervised path runs EM, so converged + n_iter_actual >= 1.
+    assert result.n_iter_actual >= 1
+    assert np.isfinite(result.log_likelihood)
 
 
 # ---------------------------------------------------------------------------
@@ -227,8 +232,12 @@ def test_backend_fit_supervised_returns_BackendFitResult():
 # ---------------------------------------------------------------------------
 
 
-def test_supervised_gmm_raises_not_implemented():
-    """GMM supervised is punted to A.7.1; surface a clear error pointing there."""
+def test_supervised_gmm_now_supported_after_a71():
+    """GMM supervised was punted to A.7.1; it now fits per-state GaussianMixture.
+
+    Smoke test: should not raise NotImplementedError, should return a usable
+    model with finite log-likelihood.
+    """
     topo = Topology(
         name="sup-gmm",
         n_states=2,
@@ -239,19 +248,34 @@ def test_supervised_gmm_raises_not_implemented():
         init=InitSpec(strategy="uniform", seed=0),
         fit=FitSpec(algorithm="baum_welch", n_iter=50, tol=1e-3),
     )
-    states = np.array([0, 1, 0, 1])
+    states = np.repeat([0, 1], 30)
     X = _well_separated_data(states)
-    with pytest.raises(NotImplementedError, match="A.7.1|GMM"):
-        fit(topo, X, states=states)
+    result = fit(topo, X, states=states)
+    assert result.n_iter_actual == 1
+    assert np.isfinite(result.log_likelihood)
 
 
-def test_supervised_rejects_negative_state_label():
-    """Negative state values are out of range and must raise explicitly."""
+def test_supervised_rejects_negative_state_label_below_minus_one():
+    """Negative state values (other than the -1 semi-supervised sentinel) are out of range.
+
+    -1 is now reserved (semi-supervised sentinel for int arrays), but -2 and
+    below remain plain invalid labels.
+    """
     topo = _gaussian_topo(K=2)
-    X = np.array([[0.0], [1.0], [2.0]])
-    states = np.array([0, -1, 1])
+    X = np.array([[0.0], [1.0], [2.0], [3.0]])
+    states = np.array([0, -2, 1, 0])
     with pytest.raises(ValueError, match="range|valid|n_states"):
         fit(topo, X, states=states)
+
+
+def test_supervised_int_minus_one_dispatches_to_semi_supervised():
+    """Int array with -1 entries triggers semi-supervised EM (not a range error)."""
+    topo = _gaussian_topo(K=2)
+    states_true = np.array([0, 0, 1, 1, 0, 1])
+    X = _well_separated_data(states_true)
+    states = np.array([0, -1, 1, -1, -1, 1])
+    result = fit(topo, X, states=states)
+    assert np.isfinite(result.log_likelihood)
 
 
 def test_protocol_declares_progress_callback():
@@ -285,3 +309,91 @@ def test_supervised_with_lengths_no_cross_sequence_transition():
     # row 1: 1->0 count = 1, 1->1 = 0.                       Total row 1 = 1.
     expected = np.array([[2.0 / 3.0, 1.0 / 3.0], [1.0, 0.0]])
     assert np.allclose(result.model.transmat_, expected, atol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# GMM supervised (Phase A.7.1)
+# ---------------------------------------------------------------------------
+
+
+def _gmm_topo(K: int = 3, n_mix: int = 2, n_features: int = 2, cov: str = "diag") -> Topology:
+    return Topology(
+        name="sup-gmm",
+        n_states=K,
+        state_names=[f"s{i}" for i in range(K)],
+        emission=EmissionSpec(type="gmm", covariance_type=cov, n_features=n_features, n_mix=n_mix),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="uniform", seed=0),
+        fit=FitSpec(algorithm="baum_welch", n_iter=50, tol=1e-3),
+    )
+
+
+def _gmm_well_separated(K: int, n_mix: int, n_per: int, seed: int = 0):
+    """Generate GMM-distributed data with per-state, per-mixture means well separated.
+
+    Returns (X, states, true_means_per_state).
+    """
+    rng = np.random.default_rng(seed)
+    # State k's mixtures live around (10*k, 10*k) and (10*k+3, 10*k+3) — far
+    # from any other state's modes.
+    true_means = np.zeros((K, n_mix, 2))
+    for k in range(K):
+        for m in range(n_mix):
+            true_means[k, m] = [10.0 * k + 3.0 * m, 10.0 * k + 3.0 * m]
+    states_list = []
+    X_list = []
+    for k in range(K):
+        for _ in range(n_per):
+            m = int(rng.integers(0, n_mix))
+            X_list.append(rng.multivariate_normal(true_means[k, m], 0.2 * np.eye(2)))
+            states_list.append(k)
+    return np.array(X_list), np.array(states_list), true_means
+
+
+def test_gmm_supervised_recovers_means():
+    """K=3, M=2, well-separated sub-modes — recovered means within 0.3 of truth."""
+    K, M = 3, 2
+    X, states, true_means = _gmm_well_separated(K, M, n_per=80, seed=11)
+    topo = _gmm_topo(K=K, n_mix=M, n_features=2, cov="diag")
+    result = fit(topo, X, states=states)
+    means = np.asarray(result.model.means_)  # (K, M, D)
+    # For each state, allow permutation of mixture components.
+    for k in range(K):
+        # Sort by first feature to align with sorted truth.
+        rec_sorted = means[k][np.argsort(means[k][:, 0])]
+        true_sorted = true_means[k][np.argsort(true_means[k][:, 0])]
+        assert np.allclose(rec_sorted, true_sorted, atol=0.3), (
+            f"state {k}: recovered {rec_sorted} vs true {true_sorted}"
+        )
+
+
+def test_gmm_supervised_handles_degenerate_state():
+    """A state with < M observations falls back to uniform weights, no crash."""
+    K, M = 2, 3  # 3 mixtures per state but state 1 only gets 2 observations
+    topo = _gmm_topo(K=K, n_mix=M, n_features=2, cov="diag")
+    # State 0 gets lots of points, state 1 only gets 2 (< M=3).
+    X = np.vstack(
+        [
+            np.random.RandomState(0).randn(50, 2),
+            np.array([[10.0, 10.0], [11.0, 11.0]]),
+        ]
+    )
+    states = np.concatenate([np.zeros(50, dtype=int), np.ones(2, dtype=int)])
+    result = fit(topo, X, states=states)
+    weights = np.asarray(result.model.weights_)  # (K, M)
+    # State 1 should have uniform weights (the fallback path).
+    assert np.allclose(weights[1], 1.0 / M, atol=1e-6)
+
+
+def test_gmm_supervised_log_likelihood_is_finite():
+    """Sanity: model.score returns finite, and predict works after supervised fit."""
+    K, M = 3, 2
+    X, states, _ = _gmm_well_separated(K, M, n_per=40, seed=3)
+    topo = _gmm_topo(K=K, n_mix=M, n_features=2, cov="diag")
+    result = fit(topo, X, states=states)
+    assert np.isfinite(result.log_likelihood)
+    # Model is usable for downstream prediction.
+    pred = result.model.predict(X)
+    assert pred.shape == (len(X),)
+    assert pred.min() >= 0 and pred.max() < K
