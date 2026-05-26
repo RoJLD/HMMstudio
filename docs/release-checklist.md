@@ -33,3 +33,33 @@ When publishing a new version of hmm-studio:
 - [ ] Bump versions to the next pre-release (e.g., 1.1.0-dev) in dev branch
 - [ ] Update `docs/roadmap.md` to reflect what shipped
 - [ ] Announce (Twitter / blog / lab Slack)
+
+---
+
+## Outstanding for v1.1.0 (2026-05-23)
+
+The `v1.1.0` tag was pushed on 2026-05-23 and the `release.yml` workflow
+**built the wheel successfully but the publish step failed** because the
+PyPI Trusted Publisher has never been registered for this repo. The wheel
+artifact is on the GitHub Actions run but not on PyPI.
+
+**To finish the v1.1.0 release** (do once, then every future tag publishes
+automatically):
+
+1. Go to <https://pypi.org/manage/account/publishing/>
+2. Add a **Pending Publisher** with:
+   - PyPI Project Name: `hmm-studio`
+   - Owner: `RoJLD`
+   - Repository name: `HMMstudio`
+   - Workflow filename: `release.yml`
+   - Environment name: *(leave blank)*
+3. Open the failed run at
+   <https://github.com/RoJLD/HMMstudio/actions/runs/26445194484>
+4. Click **Re-run failed jobs** (re-runs only `publish`; `build` is cached)
+5. Verify: `pip install hmm-studio==1.1.0` in a fresh venv
+6. Create a GitHub Release at
+   <https://github.com/RoJLD/HMMstudio/releases/new?tag=v1.1.0>
+   with the `[1.1.0]` CHANGELOG entry as body
+
+If step 4 fails again, inspect the run logs for the OIDC / Trusted
+Publisher error — usually it's a typo in the Pending Publisher form.
