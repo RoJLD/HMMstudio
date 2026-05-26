@@ -211,10 +211,8 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
          (gated on A.6 ship)                                         (gated comme A.6)
    A.6   BayesianHMMBackend (PyMC/NumPyro) OPTION         A.5, B,     conditionnel
          — option défendue, pas engagement                signal ext. (voir gating)
-   D     Migration dashboard crypto        VALIDATED      A           regression test
-                                           (regression               passe, ADR ajoutée
-                                           + ADR, pas               dans crypto repo,
-                                           swap)                     non commitée
+   D     Migration dashboard crypto        SHIPPED        A, A.1      livré 2026-05-22 PM
+         (fit_hmm + fit_nhmm délégués)                                 9 tests régression verts
    Z.1   GitHub Actions CI + pre-commit    SHIPPED        —           livré 2026-05-22
    Z.5   Licence MIT + CITATION.cff        SHIPPED        —           livré 2026-05-22
    B     hmm-studio web UI                 SPEC DRAFTED   A, A.1      ~6-8 semaines
