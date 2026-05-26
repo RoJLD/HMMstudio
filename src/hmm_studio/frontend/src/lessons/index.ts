@@ -6,6 +6,11 @@ import { Lesson4Viterbi } from "./lesson-4-viterbi";
 import { Lesson5BaumWelch } from "./lesson-5-baum-welch";
 import { Lesson6ConstrainedTopologies } from "./lesson-6-constrained-topologies";
 import { Lesson7Nhmm } from "./lesson-7-nhmm";
+import { Lesson8GmmHmm } from "./lesson-8-gmm-hmm";
+import { Lesson9FactorialNhmm } from "./lesson-9-factorial-nhmm";
+import { Lesson10BayesianHmm } from "./lesson-10-bayesian-hmm";
+import { Lesson11SemiSupervised } from "./lesson-11-semi-supervised";
+import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
 
 export interface LessonMeta {
   id: string;
@@ -160,6 +165,56 @@ startprob: uniform
 init: {strategy: kmeans, seed: 42}
 fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
 `,
+  },
+  {
+    id: "lesson-8-gmm-hmm",
+    title: "GMM-HMM : sub-modes inside each regime",
+    estimatedMinutes: 15,
+    difficulty: "Advanced",
+    description:
+      "When a single Gaussian per state isn't enough : Gaussian-mixture emissions, covariate-driven transitions, and when the extra parameters pay for themselves.",
+    status: "published",
+    content: Lesson8GmmHmm,
+  },
+  {
+    id: "lesson-9-factorial-nhmm",
+    title: "Factorial NHMM : independent regime dimensions",
+    estimatedMinutes: 18,
+    difficulty: "Advanced",
+    description:
+      "When the hidden state is a tuple : D parallel chains, K_joint = product of K_d, parameter savings vs the flat joint HMM.",
+    status: "published",
+    content: Lesson9FactorialNhmm,
+  },
+  {
+    id: "lesson-10-bayesian-hmm",
+    title: "Bayesian HMM : credible intervals on parameters",
+    estimatedMinutes: 18,
+    difficulty: "Advanced",
+    description:
+      "Posterior distributions instead of point estimates. PyMC NUTS sampler, full arviz InferenceData, when to reach for it vs Baum-Welch.",
+    status: "published",
+    content: Lesson10BayesianHmm,
+  },
+  {
+    id: "lesson-11-semi-supervised",
+    title: "Semi-supervised training : partial labels",
+    estimatedMinutes: 15,
+    difficulty: "Intermediate",
+    description:
+      "Some states known, others unlabelled. NaN / -1 sentinel API, E-step clamp, when to use it over pure Baum-Welch.",
+    status: "published",
+    content: Lesson11SemiSupervised,
+  },
+  {
+    id: "lesson-12-hierarchical-hmm",
+    title: "Hierarchical HMM (theory only)",
+    estimatedMinutes: 12,
+    difficulty: "Advanced",
+    description:
+      "Multi-scale sequences : a regime inside a regime. Fine-Singer-Tishby 1998. Code gated on external signal — concept lesson only.",
+    status: "published",
+    content: Lesson12HierarchicalHmm,
   },
 ];
 

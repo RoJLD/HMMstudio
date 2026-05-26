@@ -137,6 +137,35 @@ All notable changes to `hmm-studio` are documented here. This project follows
   `hmm-studio` CLI from a local venv, or "should I rebuild before
   pushing ?" checks) — just no longer called by the Docker launchers.
 
+### Added — 5 advanced Academy lessons (8 → 12)
+
+Extends the Academy from 7 to 12 lessons, covering the variants
+hmm-studio has shipped over the post-v1.0 wave :
+
+- **Lesson 8 — GMM-HMM : sub-modes inside each regime** (Advanced,
+  ~15 min). When a single Gaussian per state isn't enough ; 2-stage
+  decomposition rationale ; pointer to notebook 05.
+- **Lesson 9 — Factorial NHMM : independent regime dimensions**
+  (Advanced, ~18 min). D parallel chains, K_joint = ∏K_d,
+  27× parameter savings calc ; pointer to notebook 06.
+- **Lesson 10 — Bayesian HMM : credible intervals on parameters**
+  (Advanced, ~18 min). PyMC NUTS sampler, priors, when to reach for
+  it ; pointer to notebook 09 and the `[bayesian]` extra.
+- **Lesson 11 — Semi-supervised training : partial labels**
+  (Intermediate, ~15 min). NaN / -1 sentinel API, E-step clamp,
+  multi-sequence handling, edge cases.
+- **Lesson 12 — Hierarchical HMM (theory only)** (Advanced,
+  ~12 min). Concept lesson with explicit "code gated, spec only"
+  banner ; references Fine-Singer-Tishby 1998 for self-study.
+
+All five include a "Further reading" section sourcing the corresponding
+Tier 3 (variant-specific) entries in
+`docs/sources/academy-references.md` — Reynolds GMM tutorial + Columbia
+E6870 (lesson 8) ; Ghahramani-Jordan 1997 (lesson 9) ; Damiano Stan
+HMM + arXiv 2509.17806 Bayesian NHMM (lesson 10) ; Tamposis 2019 +
+BMC 2021 + Springer PHMM (lesson 11) ; Fine-Singer-Tishby 1998
+(lesson 12).
+
 ### Added — Academy "Further reading" + sourced bibliography
 
 - New `docs/sources/academy-references.md`: 4-tier bibliography (~20
