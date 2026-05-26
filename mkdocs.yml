@@ -85,6 +85,12 @@ nav:
           - "Phase A.13: Factorial NHMM": specs/2026-05-22-phase-a13-factorial-nhmm.md
           - "Phase B.10: Data warehouse": specs/2026-05-22-phase-b10-data-warehouse.md
           - "Phase E: Academy": specs/2026-05-22-phase-e-academy.md
+  - Guides:
+      - "Data warehouse": guides/data-warehouse.md
+      - "Settings": guides/settings.md
+      - "GMM-NHMM (multi-modal regimes)": guides/gmm-nhmm.md
+      - "Factorial NHMM (multi-factor regimes)": guides/factorial-nhmm.md
+      - "Drop-in with scikit-learn": guides/sklearn-integration.md
   - Decisions:
       - "ADR-0001: hmmlearn patch": decisions/0001-backend-hmmlearn-patch.md
       - "ADR-0002: B stack decisions": decisions/0002-b-stack-decisions.md
