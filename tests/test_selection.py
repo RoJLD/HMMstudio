@@ -99,3 +99,51 @@ def test_failed_candidate_excluded_not_fatal():
     bad_result = [c for c in cmp.candidates if c.error is not None]
     assert len(bad_result) == 1
     assert np.isnan(bad_result[0].bic)
+
+
+def test_nhmm_flagged_and_never_best():
+    rng = np.random.default_rng(1)
+    X = _three_regime_data(1)
+    Z = rng.normal(0, 1, (len(X), 1))
+    cands = [
+        TopologyCandidate(_gaussian_topo("g3", 3)),
+        NHMMCandidate(_gaussian_topo("nhmm3", 3), Z=Z, covariate_names=["z"]),
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    nhmm = [c for c in cmp.candidates if c.kind == "nhmm"][0]
+    assert nhmm.comparable is False
+    assert nhmm.note and "P(X|Z)" in nhmm.note
+    # best is always the comparable Gaussian, never the NHMM
+    assert cmp.best_by_bic == "gaussian K=3"
+    assert cmp.best_by_aic == "gaussian K=3"
+    assert cmp.best_by_hqic == "gaussian K=3"
+
+
+def test_factorial_flagged_not_comparable():
+    from hmm_core.factorial_nhmm import FactorialChainSpec
+    rng = np.random.default_rng(2)
+    X = rng.normal(0, 1, (300, 2))
+    chains = [FactorialChainSpec(name="a", n_states=2), FactorialChainSpec(name="b", n_states=2)]
+    fc = FactorialCandidate(
+        chains=chains,
+        covariates_per_chain={"a": rng.normal(0, 1, (300, 1)), "b": rng.normal(0, 1, (300, 1))},
+        emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=2),
+    )
+    cands = [TopologyCandidate(_gaussian_topo("g2", 2)), fc]
+    # NOTE: g2 topo is 1-feature; make a 2-feature one to match X
+    cands[0] = TopologyCandidate(Topology(
+        name="g2d", n_states=2, state_names=["a", "b"],
+        emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=2),
+        allowed_transitions=None, startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=0),
+        fit=FitSpec(algorithm="baum_welch", n_iter=20, tol=1e-3),
+    ))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    fac = [c for c in cmp.candidates if c.kind == "factorial"]
+    assert len(fac) == 1
+    assert fac[0].comparable is False
+    assert fac[0].note and "joint" in fac[0].note.lower()
