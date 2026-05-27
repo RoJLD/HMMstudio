@@ -16,6 +16,7 @@ import {
   type NhmmInfoResponse,
 } from "../api/client";
 import { TransmatHeatmap } from "../components/results/TransmatHeatmap";
+import { TransmatGraph } from "../components/results/TransmatGraph";
 import { ViterbiTimeline } from "../components/results/ViterbiTimeline";
 import { EmissionsPanel } from "../components/results/EmissionsPanel";
 import { ProgressCurve } from "../components/results/ProgressCurve";
@@ -165,6 +166,18 @@ export default function ResultsPage() {
               value={currentT}
               onChange={setCurrentT}
             />
+          )}
+          {transmat && (
+            <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                Transition graph
+              </h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Arrows show direction; the bubble is the learned probability and
+                thicker edges are more likely. A self-loop means staying in that regime.
+              </p>
+              <TransmatGraph data={transmat} />
+            </div>
           )}
           {transmat && (
             <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">

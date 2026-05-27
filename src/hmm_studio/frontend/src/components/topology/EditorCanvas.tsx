@@ -4,6 +4,7 @@ import ReactFlow, {
   Controls,
   Connection,
   Edge,
+  MarkerType,
   Node,
   NodeChange,
   applyNodeChanges,
@@ -36,6 +37,10 @@ export function EditorCanvas() {
     source: t.source,
     target: t.target,
     type: "default",
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
+    },
     style: {
       strokeWidth: t.prior_weight !== undefined ? 3 : 2,
       stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
