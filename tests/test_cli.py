@@ -307,3 +307,17 @@ fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}
     out = result.stdout.lower()
     assert "hqic" in out
     assert "k=2" in out and "k=3" in out
+
+
+def test_compare_in_app_help(runner):
+    """compare is listed in the top-level --help."""
+    result = runner.invoke(app, ["--help"])
+    assert "compare" in result.stdout.lower()
+
+
+def test_compare_help_notes_nhmm_limitation(runner):
+    """compare --help mentions that NHMM / Factorial are Python-API only."""
+    result = runner.invoke(app, ["compare", "--help"])
+    assert result.exit_code == 0
+    out = result.stdout.lower()
+    assert "nhmm" in out or "factorial" in out
