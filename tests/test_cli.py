@@ -262,3 +262,16 @@ fit: {{algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}}
     assert "best:" in out
     assert "bic" in out
     assert "k=2" in out and "k=3" in out and "k=4" in out
+
+
+def test_compare_cli_no_candidates_exits_nonzero(runner, tmp_path):
+    """An empty spec_dir exits non-zero with a clear message."""
+    spec_dir = tmp_path / "empty"
+    spec_dir.mkdir()
+    data_csv = tmp_path / "data.csv"
+    pd.DataFrame({"f0": [0.1, 0.2, 0.3], "f1": [0.3, 0.4, 0.5]}).to_csv(data_csv, index=False)
+
+    result = runner.invoke(app, ["compare", str(spec_dir), str(data_csv)])
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "no candidate" in combined.lower()
