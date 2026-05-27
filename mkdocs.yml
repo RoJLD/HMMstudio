@@ -102,4 +102,5 @@ nav:
       - "ADR-0010: data warehouse scope": decisions/0010-data-warehouse-scope.md
       - "ADR-0012: distribution strategy (hybrid)": decisions/0012-distribution-strategy-hybrid.md
       - "ADR-0013: JaxBackend scope (gated)": decisions/0013-jax-backend-scope.md
+      - "ADR-0014: Student-t emissions (gated)": decisions/0014-student-t-emissions-scope.md
   - Contributing: contributing.md
