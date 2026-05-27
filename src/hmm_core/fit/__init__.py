@@ -26,6 +26,8 @@ class FittedModel:
     log_likelihood: float
     bic: float
     aic: float
+    hqic: float
+    n_obs: int
     n_iter_actual: int
     converged: bool
     seed: int
@@ -42,10 +44,9 @@ class FittedModel:
 
         Notes
         -----
-        ``n_params`` is derived from the topology (BIC/AIC convention used by
-        the dispatcher). ``n_obs`` is not stored on ``FittedModel`` (it would
-        require keeping a reference to the training data) and is therefore not
-        included here.
+        ``n_params`` is derived from the topology (BIC/AIC/HQIC convention used
+        by the dispatcher). ``n_obs`` is the training-sequence length captured
+        at fit time (needed for BIC and HQIC ; HQIC = -2·LL + 2·k·ln(ln(n))).
         """
         e = self.topology.emission
         return {
@@ -58,6 +59,8 @@ class FittedModel:
             "log_likelihood": float(self.log_likelihood),
             "bic": float(self.bic),
             "aic": float(self.aic),
+            "hqic": float(self.hqic),
+            "n_obs": int(self.n_obs),
             "n_iter_actual": int(self.n_iter_actual),
             "converged": bool(self.converged),
             "n_params": int(_n_params(self.topology.n_states, e)),
@@ -92,6 +95,7 @@ class FittedModel:
             ("Log-likelihood", f"{self.log_likelihood:.3f}"),
             ("BIC", f"{self.bic:.3f}"),
             ("AIC", f"{self.aic:.3f}"),
+            ("HQIC", f"{self.hqic:.3f}"),
             ("Converged", converged_html),
             ("Iterations", f"{self.n_iter_actual} / {self.topology.fit.n_iter}"),
             ("Seed", self.seed),
@@ -281,6 +285,14 @@ def fit(
     n_obs = len(X)
     bic = float(-2.0 * result.log_likelihood + n_params * np.log(max(n_obs, 1)))
     aic = float(-2.0 * result.log_likelihood + 2.0 * n_params)
+    # Hannan-Quinn : -2·LL + 2·k·ln(ln(n)). Penalty grows slower than BIC
+    # (ln ln n vs ln n) but faster than AIC ; favoured for model-order
+    # selection on long sequences where BIC over-penalises. ln(ln(n))
+    # needs n ≥ 3 to stay positive ; clamp below that.
+    hqic = float(
+        -2.0 * result.log_likelihood
+        + 2.0 * n_params * np.log(np.log(max(n_obs, 3)))
+    )
 
     return FittedModel(
         model=result.model,
@@ -288,6 +300,8 @@ def fit(
         log_likelihood=result.log_likelihood,
         bic=bic,
         aic=aic,
+        hqic=hqic,
+        n_obs=n_obs,
         n_iter_actual=result.n_iter_actual,
         converged=result.converged,
         seed=actual_seed,

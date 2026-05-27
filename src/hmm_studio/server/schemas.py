@@ -50,6 +50,7 @@ class FitJobResult(BaseModel):
     log_likelihood: float | None = None
     bic: float | None = None
     aic: float | None = None
+    hqic: float | None = None
     n_iter_actual: int | None = None
     converged: bool | None = None
     result_path: str | None = None
@@ -78,6 +79,7 @@ class ScanChildStatus(BaseModel):
     log_likelihood: float | None = None
     bic: float | None = None
     aic: float | None = None
+    hqic: float | None = None
     converged: bool | None = None
     n_iter_actual: int | None = None
     error: str | None = None
@@ -91,6 +93,7 @@ class ScanResult(BaseModel):
     children: list[ScanChildStatus]
     best_k_by_bic: int | None = None
     best_k_by_aic: int | None = None
+    best_k_by_hqic: int | None = None
 
 
 class AnnotationOut(BaseModel):

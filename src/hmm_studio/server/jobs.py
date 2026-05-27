@@ -220,6 +220,7 @@ class JobRunner:
                 "log_likelihood": _safe_get(summary, "fit", "log_likelihood", as_=float),
                 "bic": _safe_get(summary, "fit", "bic", as_=float),
                 "aic": _safe_get(summary, "fit", "aic", as_=float),
+                "hqic": _safe_get(summary, "fit", "hqic", as_=float),
                 "n_iter_actual": _safe_get(summary, "fit", "n_iter_actual", as_=int),
                 "converged": _safe_get(summary, "fit", "converged", as_=bool),
                 "result_path": job.result_path,

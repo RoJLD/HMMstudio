@@ -55,6 +55,12 @@ export default function ScanPage() {
             <strong className="font-mono">K={scan.best_k_by_aic}</strong>
           </span>
         )}
+        {scan.best_k_by_hqic !== null && (
+          <span className="ml-3 text-sm">
+            Best by HQIC:{" "}
+            <strong className="font-mono">K={scan.best_k_by_hqic}</strong>
+          </span>
+        )}
       </p>
 
       <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
@@ -76,6 +82,7 @@ export default function ScanPage() {
               <th className="text-right px-3 py-2 font-medium text-slate-700">log-lik</th>
               <th className="text-right px-3 py-2 font-medium text-slate-700">BIC</th>
               <th className="text-right px-3 py-2 font-medium text-slate-700">AIC</th>
+              <th className="text-right px-3 py-2 font-medium text-slate-700">HQIC</th>
               <th className="text-right px-3 py-2 font-medium text-slate-700">iters</th>
               <th className="px-3 py-2"></th>
             </tr>
@@ -105,6 +112,14 @@ export default function ScanPage() {
                   }
                 >
                   {fmt(c.aic)}
+                </td>
+                <td
+                  className={
+                    "px-3 py-2 text-right font-mono " +
+                    (c.k === scan.best_k_by_hqic ? "text-green-700 font-bold" : "")
+                  }
+                >
+                  {fmt(c.hqic)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono">
                   {c.n_iter_actual ?? "—"}

@@ -149,6 +149,8 @@ def save_model(fitted, output_dir: str | Path) -> None:
             "log_likelihood": fitted.log_likelihood,
             "bic": fitted.bic,
             "aic": fitted.aic,
+            "hqic": fitted.hqic,
+            "n_obs": fitted.n_obs,
             "n_iter_actual": fitted.n_iter_actual,
             "converged": fitted.converged,
             "mask_violation_norm": violation,

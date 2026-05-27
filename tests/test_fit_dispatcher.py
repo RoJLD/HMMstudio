@@ -116,6 +116,8 @@ def test_fitted_model_to_summary_dict_basic_gaussian(synthetic_gaussian_left_rig
         "log_likelihood",
         "bic",
         "aic",
+        "hqic",
+        "n_obs",
         "n_iter_actual",
         "converged",
         "n_params",
@@ -135,12 +137,33 @@ def test_fitted_model_to_summary_dict_basic_gaussian(synthetic_gaussian_left_rig
     assert isinstance(d["log_likelihood"], float)
     assert isinstance(d["bic"], float)
     assert isinstance(d["aic"], float)
+    assert isinstance(d["hqic"], float)
+    assert isinstance(d["n_obs"], int)
+    assert d["n_obs"] == len(X)
     assert isinstance(d["n_iter_actual"], int)
     assert isinstance(d["converged"], bool)
     assert isinstance(d["n_params"], int)
     assert d["n_params"] > 0
     assert isinstance(d["seed"], int)
     assert isinstance(d["duration_seconds"], float)
+
+
+def test_hqic_ordering_between_aic_and_bic(synthetic_gaussian_left_right):
+    """HQIC penalty sits between AIC and BIC for any n_obs >= 16.
+
+    AIC penalty = 2k ; HQIC = 2k·ln(ln n) ; BIC = k·ln n. For ln(ln n) in
+    (1, ln n / 2) — i.e. roughly 16 <= n — the HQIC penalty is strictly
+    between the AIC and BIC penalties, so the same ordering holds on the
+    scores (all share the -2·LL term).
+    """
+    topo = _gaussian_left_right_topo()
+    X = synthetic_gaussian_left_right["X"]  # n = 1000 >> 16
+    result = fit(topo, X)
+    assert result.n_obs == len(X)
+    # All three are -2LL + penalty ; penalty_aic < penalty_hqic < penalty_bic
+    assert result.aic < result.hqic < result.bic
+    # And HQIC is finite
+    assert np.isfinite(result.hqic)
 
 
 def test_fitted_model_to_summary_dict_converged_flag_matches_real_fit(

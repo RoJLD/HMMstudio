@@ -476,17 +476,20 @@ def create_app() -> FastAPI:
                     log_likelihood=ch.get("log_likelihood"),
                     bic=ch.get("bic"),
                     aic=ch.get("aic"),
+                    hqic=ch.get("hqic"),
                     converged=ch.get("converged"),
                     n_iter_actual=ch.get("n_iter_actual"),
                     error=ch.get("error"),
                 )
             )
 
-        # Best K by BIC / AIC (lower is better) among done children
+        # Best K by BIC / AIC / HQIC (lower is better) among done children
         done = [c for c in child_statuses if c.status == "done" and c.bic is not None]
         best_bic = min(done, key=lambda c: c.bic).k if done else None
         done_a = [c for c in child_statuses if c.status == "done" and c.aic is not None]
         best_aic = min(done_a, key=lambda c: c.aic).k if done_a else None
+        done_h = [c for c in child_statuses if c.status == "done" and c.hqic is not None]
+        best_hqic = min(done_h, key=lambda c: c.hqic).k if done_h else None
 
         # Derive overall status from children (may be more up-to-date than parent row)
         if parent_status == FitJobStatus.RUNNING:
@@ -508,6 +511,7 @@ def create_app() -> FastAPI:
             children=child_statuses,
             best_k_by_bic=best_bic,
             best_k_by_aic=best_aic,
+            best_k_by_hqic=best_hqic,
         )
 
     @app.post("/api/data/{dataset_id}/annotations/upload", response_model=AnnotationsResponse)

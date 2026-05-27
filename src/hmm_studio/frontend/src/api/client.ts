@@ -26,6 +26,7 @@ export interface FitJobResult {
   log_likelihood: number | null;
   bic: number | null;
   aic: number | null;
+  hqic: number | null;
   n_iter_actual: number | null;
   converged: boolean | null;
   result_path: string | null;
@@ -174,6 +175,7 @@ export interface ScanChildStatus {
   log_likelihood: number | null;
   bic: number | null;
   aic: number | null;
+  hqic: number | null;
   converged: boolean | null;
   n_iter_actual: number | null;
   error: string | null;
@@ -187,6 +189,7 @@ export interface ScanResult {
   children: ScanChildStatus[];
   best_k_by_bic: number | null;
   best_k_by_aic: number | null;
+  best_k_by_hqic: number | null;
 }
 
 export async function startScan(params: {

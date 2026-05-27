@@ -6,6 +6,21 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ## [Unreleased]
 
+### Added — HQIC model-selection criterion
+
+- `FittedModel` now carries `hqic` (Hannan-Quinn Information Criterion,
+  `-2·LL + 2·k·ln(ln n)`) and `n_obs` (training-sequence length) alongside
+  the existing `bic` / `aic`. HQIC's penalty grows slower than BIC
+  (`ln ln n` vs `ln n`) but faster than AIC — it's the criterion several
+  HMM-in-finance papers prefer for regime-count selection on long series
+  where BIC over-penalises. Surfaced in `to_summary_dict()`,
+  `to_summary_json()`, the `_repr_html_` stats table, and `summary.json`
+  on disk.
+- K-scan exposes `best_k_by_hqic` next to `best_k_by_bic` / `_aic`. The
+  Scan page shows an HQIC column and a "Best by HQIC: K=…" badge.
+  (Surfaced from the Nathan/Robin crypto research `ModelFinder` — the
+  in-scope, HMM-only slice of their model-selection tooling.)
+
 ### Added — engine (`hmm_core.prep`)
 
 - Two new prep ops:
