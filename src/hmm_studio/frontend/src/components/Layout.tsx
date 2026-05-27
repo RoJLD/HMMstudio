@@ -54,7 +54,7 @@ export default function Layout() {
         </nav>
         <div className="mt-auto">
           <div className="mb-2"><ThemeToggle /></div>
-          <div className="text-xs text-slate-500">v0.1 · skeleton</div>
+          <div className="text-xs text-slate-500">v{__APP_VERSION__}</div>
         </div>
       </aside>
       <main className="flex-1 p-8 overflow-auto dark:bg-slate-900 dark:text-slate-200">

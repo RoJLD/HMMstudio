@@ -1,5 +1,15 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+// Single source of truth for the app version: package.json. The footer reads
+// the injected __APP_VERSION__, so bumping the package version at release time
+// updates the UI automatically (no second place to edit).
+const pkg = JSON.parse(
+  readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf-8"),
+) as { version: string };
 
 // Manual chunk splitting strategy:
 //   - react-vendor: react + react-dom + react-router-dom (core runtime, rarely changes)
@@ -42,6 +52,9 @@ function manualChunks(id: string): string | undefined {
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     port: 5173,
     proxy: {
