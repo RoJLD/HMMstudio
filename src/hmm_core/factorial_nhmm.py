@@ -40,7 +40,6 @@ from sklearn.linear_model import LogisticRegression
 from hmm_core.fit import FittedModel, fit
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology, TopologyError
 
-
 # ---------------------------------------------------------------------------
 # Public dataclasses
 # ---------------------------------------------------------------------------
@@ -141,9 +140,7 @@ class FactorialNHMMFittedModel:
                 "chain_covariate_names": {
                     k: list(v) for k, v in self.chain_covariate_names.items()
                 },
-                "n_classifiers_per_chain": {
-                    k: len(v) for k, v in self.chain_classifiers.items()
-                },
+                "n_classifiers_per_chain": {k: len(v) for k, v in self.chain_classifiers.items()},
             }
         )
         return d
@@ -300,15 +297,13 @@ def fit_factorial_nhmm(
     extra = set(covariates_per_chain) - set(chain_names)
     if missing or extra:
         raise ValueError(
-            f"covariates_per_chain keys mismatch chain names. "
-            f"missing={missing}, extra={extra}"
+            f"covariates_per_chain keys mismatch chain names. " f"missing={missing}, extra={extra}"
         )
     T = len(X)
     for name, Z_d in covariates_per_chain.items():
         if Z_d.shape[0] != T:
             raise ValueError(
-                f"covariates for chain {name!r} have {Z_d.shape[0]} rows, "
-                f"expected T={T}"
+                f"covariates for chain {name!r} have {Z_d.shape[0]} rows, " f"expected T={T}"
             )
 
     if covariate_names_per_chain is None:
@@ -320,7 +315,9 @@ def fit_factorial_nhmm(
     # Stage 1 : fit a joint Gaussian HMM on K_joint states (ergodic).
     actual_seed = seed if seed is not None else 0
     joint_state_names = [
-        "_".join(f"{chain.name}{idx}" for chain, idx in zip(chains, np.unravel_index(k, K_per_chain)))
+        "_".join(
+            f"{chain.name}{idx}" for chain, idx in zip(chains, np.unravel_index(k, K_per_chain))
+        )
         for k in range(K_joint)
     ]
     joint_topo = Topology(
@@ -438,9 +435,7 @@ def _sequence_boundaries(lengths: np.ndarray | None, total: int) -> set[int]:
     return out
 
 
-def _empirical_chain_transmat(
-    z_chain: np.ndarray, K_d: int, boundary_idx: set[int]
-) -> np.ndarray:
+def _empirical_chain_transmat(z_chain: np.ndarray, K_d: int, boundary_idx: set[int]) -> np.ndarray:
     """Empirical (homogeneous) transition matrix from a single chain's Viterbi.
 
     Used as fallback when too few transitions are observed for a source state.

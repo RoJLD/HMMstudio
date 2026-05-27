@@ -24,7 +24,6 @@ from hmm_core.factorial_nhmm import (
 )
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, TopologyError
 
-
 # ---------------------------------------------------------------------------
 # Synthetic data : 2 chains × 2 states with chain-specific covariate signal
 # ---------------------------------------------------------------------------
@@ -65,10 +64,10 @@ def _synth_factorial_2x2(seed: int = 42, T: int = 1500):
 
     joint_means = np.array(
         [
-            [0.0, 0.0],   # (0,0)
-            [0.0, 5.0],   # (0,1)
-            [5.0, 0.0],   # (1,0)
-            [5.0, 5.0],   # (1,1)
+            [0.0, 0.0],  # (0,0)
+            [0.0, 5.0],  # (0,1)
+            [5.0, 0.0],  # (1,0)
+            [5.0, 5.0],  # (1,1)
         ]
     )
 
@@ -220,9 +219,7 @@ def test_factorial_nhmm_chain_independence():
         # Same trend covariates + same Viterbi → coefficients must match exactly
         # (Viterbi may differ on a few timesteps due to slight EM drift, so we
         # tolerate a small numerical envelope)
-        if np.array_equal(
-            result.decode_chain(X, "trend"), result_perm.decode_chain(X, "trend")
-        ):
+        if np.array_equal(result.decode_chain(X, "trend"), result_perm.decode_chain(X, "trend")):
             np.testing.assert_allclose(coef_orig, coef_perm, atol=1e-10)
 
 
@@ -297,9 +294,7 @@ def test_factorial_nhmm_rejects_non_gaussian_emission():
             chains,
             X,
             covariates_per_chain={"trend": Z_trend, "vol": Z_vol},
-            emission=EmissionSpec(
-                type="gmm", covariance_type="diag", n_features=2, n_mix=2
-            ),
+            emission=EmissionSpec(type="gmm", covariance_type="diag", n_features=2, n_mix=2),
         )
 
 

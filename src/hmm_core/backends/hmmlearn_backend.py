@@ -287,15 +287,9 @@ class HmmlearnBackend:
 
         # 2. Initial parameters from supervised MLE on the labelled subset.
         labelled_idx = np.where(labelled_mask)[0]
-        emission_kwargs = _supervised_emission_mle(
-            topology, X[labelled_idx], labelled_int, K
-        )
-        initial_transmat = _semi_supervised_initial_transmat(
-            label_clamp, K, mask, lengths
-        )
-        initial_startprob = _semi_supervised_initial_startprob(
-            label_clamp, K, lengths
-        )
+        emission_kwargs = _supervised_emission_mle(topology, X[labelled_idx], labelled_int, K)
+        initial_transmat = _semi_supervised_initial_transmat(label_clamp, K, mask, lengths)
+        initial_startprob = _semi_supervised_initial_startprob(label_clamp, K, lengths)
 
         # 3. Build the model with initial params + label clamp.
         cls = _CLASS_BY_EMISSION[topology.emission.type]
@@ -340,9 +334,7 @@ class HmmlearnBackend:
 
         monitor = getattr(model, "monitor_", None)
         converged = bool(monitor.converged) if monitor is not None else False
-        n_iter_actual = (
-            int(monitor.iter) if monitor is not None else topology.fit.n_iter
-        )
+        n_iter_actual = int(monitor.iter) if monitor is not None else topology.fit.n_iter
 
         return BackendFitResult(
             model=model,

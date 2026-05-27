@@ -97,8 +97,7 @@ def assert_summary_matches_reference(
     for key, ref_val in ref.items():
         if key not in actual:
             raise AssertionError(
-                f"reference key {key!r} missing from actual summary "
-                f"(keys: {sorted(actual)})"
+                f"reference key {key!r} missing from actual summary " f"(keys: {sorted(actual)})"
             )
         act_val = actual[key]
 
@@ -109,16 +108,15 @@ def assert_summary_matches_reference(
                 int(ref_val) * reference.iter_range_factor,
             )
             assert lo <= int(act_val) <= hi, (
-                f"{key}: got {act_val}, expected within [{lo}, {hi}] "
-                f"(reference {ref_val})"
+                f"{key}: got {act_val}, expected within [{lo}, {hi}] " f"(reference {ref_val})"
             )
             continue
 
         # Exact match for booleans and strings
         if isinstance(ref_val, bool) or isinstance(ref_val, str):
-            assert act_val == ref_val, (
-                f"{key}: got {act_val!r}, expected exact match to {ref_val!r}"
-            )
+            assert (
+                act_val == ref_val
+            ), f"{key}: got {act_val!r}, expected exact match to {ref_val!r}"
             continue
 
         # None expected -> actual must be None too
@@ -131,9 +129,7 @@ def assert_summary_matches_reference(
         ref_abs = abs(float(ref_val))
         if ref_abs == 0:
             # ref is exactly 0 -> require actual within absolute tol
-            assert abs(float(act_val)) <= tol, (
-                f"{key}: got {act_val}, expected ~0 (abs tol {tol})"
-            )
+            assert abs(float(act_val)) <= tol, f"{key}: got {act_val}, expected ~0 (abs tol {tol})"
         else:
             rel_err = abs(float(act_val) - float(ref_val)) / ref_abs
             assert rel_err < tol, (

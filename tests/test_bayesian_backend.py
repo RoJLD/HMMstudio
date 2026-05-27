@@ -22,7 +22,6 @@ import pytest
 from hmm_core.fit import fit as core_fit
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -117,9 +116,7 @@ def test_bayesian_backend_idata_populated_after_fit(two_regime_data, small_topol
 
 
 @pytest.mark.slow
-def test_bayesian_recovers_synthetic_means_within_tolerance(
-    two_regime_data, small_topology
-):
+def test_bayesian_recovers_synthetic_means_within_tolerance(two_regime_data, small_topology):
     """Posterior mean of mus should be close to the true {0, 5}."""
     pytest.importorskip("pymc", reason="pymc not installed")
     from hmm_core.backends import BayesianHMMBackend

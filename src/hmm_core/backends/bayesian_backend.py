@@ -192,9 +192,7 @@ class BayesianHMMBackend:
             "supervised MLE, or call fit_supervised on the result post-hoc."
         )
 
-    def decode(
-        self, model: Any, X: np.ndarray, lengths: np.ndarray | None = None
-    ) -> np.ndarray:
+    def decode(self, model: Any, X: np.ndarray, lengths: np.ndarray | None = None) -> np.ndarray:
         _, states = model.decode(X, lengths=lengths, algorithm="viterbi")
         return states
 
@@ -241,7 +239,9 @@ def _sample_bayesian_gaussian_hmm(
 
     T, D = np.asarray(X).shape
 
-    with pm.Model() as model:  # noqa: F841 — PyMC context manager binds `model`; used implicitly by downstream pm.*
+    # PyMC context manager binds `model`; downstream pm.* reads it implicitly.
+    # F841 is silenced at the per-file level in pyproject.toml [tool.ruff.lint.per-file-ignores].
+    with pm.Model() as model:
         # --- Priors ---
         # Transmat : K rows, each a Dirichlet over K simplex
         transmat = pm.Dirichlet(
@@ -281,9 +281,7 @@ def _sample_bayesian_gaussian_hmm(
 
         def step(log_b_t, log_alpha_prev, log_A):
             # log_alpha_t[j] = log_b_t[j] + logsumexp_i(log_alpha_prev[i] + log_A[i, j])
-            log_alpha_t = log_b_t + pm.math.logsumexp(
-                log_alpha_prev[:, None] + log_A, axis=0
-            )
+            log_alpha_t = log_b_t + pm.math.logsumexp(log_alpha_prev[:, None] + log_A, axis=0)
             return log_alpha_t
 
         result, _ = scan(

@@ -625,7 +625,9 @@ def create_app() -> FastAPI:
             )
 
         def _best(attr: str) -> str | None:
-            done = [c for c in child_statuses if c.status == "done" and getattr(c, attr) is not None]
+            done = [
+                c for c in child_statuses if c.status == "done" and getattr(c, attr) is not None
+            ]
             return min(done, key=lambda c: getattr(c, attr)).label if done else None
 
         if parent_status == FitJobStatus.RUNNING:

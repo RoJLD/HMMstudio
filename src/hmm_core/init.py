@@ -293,9 +293,7 @@ def _kmeans_emission_params(
                     else:
                         covars_[k, m] = 1.0
                 else:  # "diag"
-                    covars_[k, m] = (
-                        sub_pts.var(axis=0) + 1e-3 if len(sub_pts) > 1 else 1.0
-                    )
+                    covars_[k, m] = sub_pts.var(axis=0) + 1e-3 if len(sub_pts) > 1 else 1.0
         return {"means_": means_, "covars_": covars_, "weights_": weights_}
 
     if e.type == "multinomial":

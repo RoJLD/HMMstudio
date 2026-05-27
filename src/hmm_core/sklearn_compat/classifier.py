@@ -134,7 +134,9 @@ class HMMClassifier(BaseEstimator, ClassifierMixin):
         # Build topology from sklearn-compatible parameters
         emission = EmissionSpec(
             type=self.emission_type,
-            covariance_type=self.covariance_type if self.emission_type in ("gaussian", "gmm") else None,
+            covariance_type=(
+                self.covariance_type if self.emission_type in ("gaussian", "gmm") else None
+            ),
             n_features=self.n_features,
             n_mix=self.n_mix,
             n_symbols=self.n_symbols,
@@ -210,7 +212,7 @@ class HMMClassifier(BaseEstimator, ClassifierMixin):
         # Tells sklearn that this estimator handles sequential data, not iid.
         # Helps avoid spurious failures in some estimator checks.
         return {
-            "requires_y": False,         # y is optional (unsupervised mode)
+            "requires_y": False,  # y is optional (unsupervised mode)
             "X_types": ["2darray"],
             "_skip_test": False,
             "no_validation": False,
@@ -226,6 +228,7 @@ class HMMClassifier(BaseEstimator, ClassifierMixin):
         except Exception:
             # Not yet fitted — show a minimal representation
             from hmm_core._jupyter import render_stats_table, wrap_html
+
             params = self.get_params()
             return wrap_html(
                 "<h4>HMMClassifier (not fitted)</h4>",

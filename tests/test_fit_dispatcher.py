@@ -258,9 +258,7 @@ def test_gmm_nhmm_to_summary_dict_includes_n_mix_and_covariates(
         name="gmm_nhmm_summary",
         n_states=3,
         state_names=["a", "b", "c"],
-        emission=EmissionSpec(
-            type="gmm", n_features=2, covariance_type="diag", n_mix=2
-        ),
+        emission=EmissionSpec(type="gmm", n_features=2, covariance_type="diag", n_mix=2),
         allowed_transitions=None,
         startprob="uniform",
         init=InitSpec(strategy="kmeans", seed=42),

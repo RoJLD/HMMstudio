@@ -68,9 +68,7 @@ class FeatureSelectionResult:
     medoid_per_cluster: dict[int, str]
 
 
-def _entropy_diagonal(
-    standardized: np.ndarray, n_neighbors: int, seed: int
-) -> np.ndarray:
+def _entropy_diagonal(standardized: np.ndarray, n_neighbors: int, seed: int) -> np.ndarray:
     """Per-variable entropy proxy ``H(x_i)`` via diagonal MI.
 
     Estimates ``MI(x_i, x_i + jitter)`` with the same k-NN estimator as
@@ -166,9 +164,7 @@ def unsupervised_feature_selection(
     if features.shape[1] == 0:
         raise ValueError("features DataFrame has zero columns")
     if n_clusters > features.shape[1]:
-        raise ValueError(
-            f"n_clusters={n_clusters} > number of features ({features.shape[1]})"
-        )
+        raise ValueError(f"n_clusters={n_clusters} > number of features ({features.shape[1]})")
 
     rng = np.random.default_rng(random_state)
     columns = list(features.columns)
@@ -177,9 +173,7 @@ def unsupervised_feature_selection(
     standardized = StandardScaler().fit_transform(features.values).astype(np.float64)
     standardized = standardized + rng.normal(0.0, jitter_std, size=standardized.shape)
 
-    entropy = _entropy_diagonal(
-        standardized, n_neighbors=n_neighbors, seed=random_state
-    )
+    entropy = _entropy_diagonal(standardized, n_neighbors=n_neighbors, seed=random_state)
     entropy = np.where(entropy < 1e-12, 1e-12, entropy)
 
     mi_matrix = np.zeros((n_vars, n_vars))
@@ -202,9 +196,7 @@ def unsupervised_feature_selection(
     distance = 1.0 - nmi_matrix
     np.fill_diagonal(distance, 0.0)
     distance = 0.5 * (distance + distance.T)
-    linkage = hierarchy.linkage(
-        squareform(distance, checks=False), method=linkage_method
-    )
+    linkage = hierarchy.linkage(squareform(distance, checks=False), method=linkage_method)
     cluster_ids = hierarchy.fcluster(linkage, n_clusters, criterion="maxclust")
 
     clusters: dict[int, list[str]] = defaultdict(list)

@@ -21,7 +21,6 @@ from typing import Sequence
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Inline CSS shared by every _repr_html_
 # ---------------------------------------------------------------------------
@@ -88,14 +87,9 @@ def render_stats_table(rows: Sequence[tuple[str, object]]) -> str:
     body = []
     for label, value in rows:
         body.append(
-            f'<tr><td class="label">{_esc(label)}</td>'
-            f'<td class="value">{_esc(value)}</td></tr>'
+            f'<tr><td class="label">{_esc(label)}</td>' f'<td class="value">{_esc(value)}</td></tr>'
         )
-    return (
-        '<table class="stats-table"><tbody>'
-        + "".join(body)
-        + "</tbody></table>"
-    )
+    return '<table class="stats-table"><tbody>' + "".join(body) + "</tbody></table>"
 
 
 def render_matrix_heatmap(
@@ -172,8 +166,18 @@ def render_sequence_strip(
     if palette is None:
         # 12 distinguishable colors (Tableau / colorblind-friendly-ish)
         palette = [
-            "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948",
-            "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac", "#5b9bd5", "#a5a5a5",
+            "#4e79a7",
+            "#f28e2b",
+            "#e15759",
+            "#76b7b2",
+            "#59a14f",
+            "#edc948",
+            "#b07aa1",
+            "#ff9da7",
+            "#9c755f",
+            "#bab0ac",
+            "#5b9bd5",
+            "#a5a5a5",
         ]
     pal = list(palette)
 
@@ -198,9 +202,7 @@ def render_sequence_strip(
         out.append(f"<h5>{_esc(title)}</h5>")
     out.append('<div style="white-space:nowrap;line-height:0">' + "".join(cells) + "</div>")
     if truncated:
-        out.append(
-            f'<div class="small">… truncated, showing {max_display} of {n} steps</div>'
-        )
+        out.append(f'<div class="small">… truncated, showing {max_display} of {n} steps</div>')
     return "".join(out)
 
 
@@ -212,9 +214,7 @@ def render_chip_list(items: Sequence[str], *, kind: str = "chip") -> str:
         "display:inline-block;background:#eef;color:#225;padding:2px 6px;"
         "margin:1px;border-radius:10px;font-size:11px"
     )
-    return "".join(
-        f'<span style="{chip_css}">{_esc(item)}</span>' for item in items
-    )
+    return "".join(f'<span style="{chip_css}">{_esc(item)}</span>' for item in items)
 
 
 def wrap_html(*parts: str) -> str:
