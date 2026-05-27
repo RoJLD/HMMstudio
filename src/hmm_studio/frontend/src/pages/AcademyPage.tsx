@@ -5,6 +5,7 @@ import { useAcademyStore } from "../store/academyStore";
 export default function AcademyPage() {
   const completed = useAcademyStore((s) => s.completedLessons);
   const bookmarked = useAcademyStore((s) => s.bookmarkedLessons);
+  const quizResults = useAcademyStore((s) => s.quizResults);
 
   const published = LESSONS.filter((l) => l.status === "published");
   const planned = LESSONS.filter((l) => l.status === "planned");
@@ -52,6 +53,14 @@ export default function AcademyPage() {
                   step={stepById.get(lesson.id)}
                   completed={completed.includes(lesson.id)}
                   bookmarked={bookmarked.includes(lesson.id)}
+                  quizScore={
+                    quizResults[lesson.id]
+                      ? {
+                          bestCorrect: quizResults[lesson.id].bestCorrect,
+                          total: quizResults[lesson.id].total,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>

@@ -7,6 +7,8 @@ interface LessonCardProps {
   bookmarked: boolean;
   // Global step number (1..N) across the ordered curriculum, shown before the title.
   step?: number;
+  // Best quiz result so far (if the user has taken this lesson's quiz).
+  quizScore?: { bestCorrect: number; total: number };
 }
 
 const DIFF_COLORS: Record<LessonMeta["difficulty"], string> = {
@@ -15,7 +17,7 @@ const DIFF_COLORS: Record<LessonMeta["difficulty"], string> = {
   Advanced: "bg-orange-100 text-orange-800",
 };
 
-export function LessonCard({ lesson, completed, bookmarked, step }: LessonCardProps) {
+export function LessonCard({ lesson, completed, bookmarked, step, quizScore }: LessonCardProps) {
   const planned = lesson.status === "planned";
   const className =
     "block p-4 border rounded-md transition-colors " +
@@ -49,6 +51,11 @@ export function LessonCard({ lesson, completed, bookmarked, step }: LessonCardPr
           {lesson.difficulty}
         </span>
         <span className="text-slate-500">{lesson.estimatedMinutes} min</span>
+        {quizScore && !planned && (
+          <span className="px-2 py-0.5 rounded font-medium bg-indigo-100 text-indigo-800">
+            Quiz {quizScore.bestCorrect}/{quizScore.total}
+          </span>
+        )}
         {planned && (
           <span className="text-slate-500 italic ml-auto">Planned</span>
         )}

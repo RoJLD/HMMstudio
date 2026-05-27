@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { NotebookLink } from "../components/academy/NotebookLink";
+import { LessonAssessment } from "../components/academy/LessonAssessment";
 import { getLessonById, LESSONS } from "../lessons";
 import { useAcademyStore } from "../store/academyStore";
 import { useTopologyStore } from "../store/topologyStore";
@@ -98,6 +99,8 @@ export default function LessonPage() {
       </div>
 
       {lesson.notebookLink && <NotebookLink notebook={lesson.notebookLink} />}
+
+      <LessonAssessment lessonId={lesson.id} />
 
       <div className="mt-8 pt-6 border-t border-slate-200 flex items-center justify-between gap-4">
         <button
