@@ -212,6 +212,52 @@ export async function getScan(parentId: string): Promise<ScanResult> {
   return jsonFetch<ScanResult>(`/api/fit/scan/${parentId}`);
 }
 
+export interface CompareChildStatus {
+  job_id: string;
+  label: string;
+  emission: string;
+  k: number;
+  n_mix: number | null;
+  status: string;
+  log_likelihood: number | null;
+  bic: number | null;
+  aic: number | null;
+  hqic: number | null;
+  converged: boolean | null;
+  n_iter_actual: number | null;
+  error: string | null;
+}
+
+export interface CompareResult {
+  parent_id: string;
+  overall_status: string;
+  children: CompareChildStatus[];
+  best_label_by_bic: string | null;
+  best_label_by_aic: string | null;
+  best_label_by_hqic: string | null;
+}
+
+export async function startCompare(params: {
+  topology_yaml: string;
+  dataset_id: string;
+  k_min: number;
+  k_max: number;
+  emission_types: string[];
+  n_mix?: number;
+  seed?: number;
+  lengths?: number[];
+}): Promise<{ parent_id: string }> {
+  return jsonFetch<{ parent_id: string }>("/api/fit/compare/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+}
+
+export async function getCompare(parentId: string): Promise<CompareResult> {
+  return jsonFetch<CompareResult>(`/api/fit/compare/${parentId}`);
+}
+
 export interface AnnotationOut {
   id: string;
   dataset_id: string;
