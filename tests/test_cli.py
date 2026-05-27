@@ -321,3 +321,152 @@ def test_compare_help_notes_nhmm_limitation(runner):
     assert result.exit_code == 0
     out = result.stdout.lower()
     assert "nhmm" in out or "factorial" in out
+
+
+# ---------------------------------------------------------------------------
+# Phase A.7 — `hmm-fit run --labels` (supervised + semi-supervised)
+# ---------------------------------------------------------------------------
+
+
+def _write_supervised_pair(tmp_path, states_array, *, label_col: str = "state") -> tuple[Path, Path]:
+    """Write a (data.csv, labels.csv) pair where X is trivially state-separable.
+
+    Returns (data_path, labels_path). Mirrors the `_well_separated_data` pattern
+    used in tests/test_supervised.py — Gaussians at means {0.0, 5.0, 10.0, ...}.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    centers = {k: 5.0 * float(k) for k in np.unique(states_array)}
+    X = np.array([rng.normal(centers[s], 0.3) for s in states_array]).reshape(-1, 1)
+    data_path = tmp_path / "data.csv"
+    labels_path = tmp_path / "labels.csv"
+    pd.DataFrame(X, columns=["f0"]).to_csv(data_path, index=False)
+    pd.DataFrame({label_col: states_array}).to_csv(labels_path, index=False)
+    return data_path, labels_path
+
+
+@pytest.fixture
+def _supervised_topology_yaml(tmp_path):
+    """Minimal Gaussian K=3 topology with n_features=1, ergodic."""
+    p = tmp_path / "topo_sup.yaml"
+    p.write_text(
+        """
+name: cli_supervised_demo
+n_states: 3
+state_names: [low, mid, high]
+emission: {type: gaussian, covariance_type: diag, n_features: 1}
+startprob: uniform
+init: {strategy: uniform, seed: 0}
+fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-3}
+""",
+        encoding="utf-8",
+    )
+    return p
+
+
+def test_run_with_labels_dispatches_to_supervised(runner, tmp_path, _supervised_topology_yaml):
+    """`hmm-fit run --labels states.csv` writes a fit whose `n_iter_actual == 1`
+    (the closed-form supervised signature — Baum-Welch would iterate)."""
+    import json
+
+    import numpy as np
+
+    states = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 1, 2, 0, 1, 2, 2, 2, 0, 1, 1])
+    data_path, labels_path = _write_supervised_pair(tmp_path, states)
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(_supervised_topology_yaml),
+            str(data_path),
+            "--labels",
+            str(labels_path),
+            "--output",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    summary = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
+    # Supervised closed-form MLE = one pass, deterministic
+    assert summary["fit"]["n_iter_actual"] == 1
+    assert summary["fit"]["converged"] is True
+
+
+def test_run_with_labels_csv_must_have_single_column(runner, tmp_path, _supervised_topology_yaml):
+    """A multi-column labels CSV is ambiguous → BadParameter."""
+    import numpy as np
+
+    states = np.array([0, 1, 2, 0, 1, 2])
+    data_path, _ = _write_supervised_pair(tmp_path, states)
+
+    bad_labels = tmp_path / "labels_bad.csv"
+    pd.DataFrame({"state": states, "extra": np.zeros_like(states)}).to_csv(
+        bad_labels, index=False
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(_supervised_topology_yaml),
+            str(data_path),
+            "--labels",
+            str(bad_labels),
+            "--output",
+            str(tmp_path / "out"),
+        ],
+    )
+    assert result.exit_code != 0
+    # typer.BadParameter renders to stderr ; click.exceptions.UsageError stays
+    # on the Result.output (which CliRunner merges stdout+stderr by default).
+    combined = (result.output or "") + str(result.exception or "")
+    assert "single" in combined.lower() or "column" in combined.lower()
+
+
+def test_run_with_labels_semi_supervised_via_minus_one(
+    runner, tmp_path, _supervised_topology_yaml
+):
+    """An int labels CSV with -1 sentinels for unlabelled positions dispatches
+    to semi-supervised EM (not closed-form). We just check the run succeeds
+    and the fit completes — convergence may need >1 iteration."""
+    import numpy as np
+
+    # 30 obs : 15 labelled, 15 with -1 sentinel
+    base = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 1, 2, 0, 1, 2])
+    states_full = np.array(list(base) + [-1] * 15)
+    rng = np.random.default_rng(0)
+    centers = {0: 0.0, 1: 5.0, 2: 10.0}
+    # Use the original (labelled-only) base for sampling the unlabelled tail
+    full_seq = np.array(list(base) + list(rng.choice([0, 1, 2], size=15)))
+    X = np.array([rng.normal(centers[s], 0.3) for s in full_seq]).reshape(-1, 1)
+
+    data_path = tmp_path / "data.csv"
+    labels_path = tmp_path / "labels.csv"
+    pd.DataFrame(X, columns=["f0"]).to_csv(data_path, index=False)
+    pd.DataFrame({"state": states_full}).to_csv(labels_path, index=False)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(_supervised_topology_yaml),
+            str(data_path),
+            "--labels",
+            str(labels_path),
+            "--output",
+            str(tmp_path / "out"),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+
+
+def test_run_help_documents_labels(runner):
+    """`hmm-fit run --help` lists --labels and mentions supervised."""
+    result = runner.invoke(app, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "--labels" in result.stdout
+    out = result.stdout.lower()
+    assert "supervised" in out or "label" in out

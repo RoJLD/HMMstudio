@@ -187,8 +187,10 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
    A.1   NHMM dans le core (fit_nhmm)      SHIPPED v0.2   A           livré 2026-05-22
    A.5   HMMBackend abstraction layer      SHIPPED        A           livré 2026-05-22
          (decouple from hmmlearn)
-   A.7   Modes supervisé + semi-supervisé  PLANNED        A.5         ~1 semaine
-         (fit avec états labelés)                                     prioritaire avant A.6
+   A.7   Modes supervisé + semi-supervisé  SHIPPED        A.5         livré 2026-05-27
+         (fit avec états labelés)                                     41 tests engine +
+                                                                     4 tests CLI --labels
+                                                                     + examples + README
    A.10  GMM-NHMM (GMM emissions +         PLANNED        A.1, A.5,   ~1-2 semaines
          covariate-dependent transitions)                 V           use case crypto direct
                                                                      pas de gating signal ext.
@@ -342,9 +344,33 @@ suite existante).
 
 ## Phase A.7 — Modes supervisé et semi-supervisé
 
-**Status** : PLANNED · prioritaire avant A.6
+**Status** : ✅ **SHIPPED 2026-05-27**
 **Dépend de** : A.5 (abstraction backend, livrée)
-**Effort estimé** : ~1 semaine
+**Effort réel** : engine livré antérieurement (audit révèle 41 tests verts dans
+`test_supervised.py` + `test_semi_supervised.py`) ; ~1 jour pour fermer la
+surface user-facing (CLI `--labels`, examples canon, README correction du
+drift `state_labels=` → `states=`).
+
+### Ce qui a été livré
+
+**Engine (déjà présent à l'audit)** :
+- `fit(topology, X, *, states=None, ...)` dispatcher dans
+  [src/hmm_core/fit/\_\_init\_\_.py](../../src/hmm_core/fit/__init__.py)
+- `fit_supervised(...)` au `HMMBackend` Protocol +
+  implémentation `HmmlearnBackend` (closed-form MLE pour Gaussian / GMM /
+  Multinomial / Poisson)
+- Détection NaN (float) ou `-1` (int) → routing semi-supervised EM
+
+**Surface user-facing (livrée 2026-05-27)** :
+- CLI `hmm-fit run --labels states.csv` ([src/hmm_core/cli.py](../../src/hmm_core/cli.py))
+- Helper `_read_state_labels()` qui valide single-column + length match
+- Examples canon : `examples/topology_supervised_3state.yaml` +
+  `data_supervised.csv` + `states_supervised.csv` + `states_semi_supervised.csv`
+- Generator `examples/generate_demo_data.py::_write_supervised_3state()`
+- README "Supervised & semi-supervised training" section avec table 3-modes
+  + snippet Python correct + snippet CLI
+
+**Tests** : 41 engine (préexistants) + 4 CLI (livrés) = 45 verts.
 
 ### Pourquoi maintenant
 
