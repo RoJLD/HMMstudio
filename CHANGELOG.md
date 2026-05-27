@@ -6,6 +6,15 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Docker builds no longer silently serve stale code. The launcher (`start.ps1`)
+  now passes a `CACHEBUST` build-arg (the commit short-SHA) that invalidates the
+  image's source-`COPY` layers on every commit, so a cached layer can't mask
+  source changes. Heavy layers (`npm ci`, apt) stay cached. Verify a deploy via
+  the OpenAPI route list + the served bundle hash — a route returning 200 is not
+  proof (the SPA fallback answers 200 for any path).
+
 ### Added
 
 - Topology visualization: editor transition edges now render directional

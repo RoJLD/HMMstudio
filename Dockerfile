@@ -3,6 +3,10 @@ FROM node:20-slim AS frontend-builder
 WORKDIR /build
 COPY src/hmm_studio/frontend/package.json src/hmm_studio/frontend/package-lock.json ./
 RUN npm ci
+# CACHEBUST (passed by start.ps1 as the git SHA) invalidates the source COPY +
+# build below whenever the commit changes, so the image can't serve stale code.
+# `npm ci` above stays cached.
+ARG CACHEBUST
 COPY src/hmm_studio/frontend/ ./
 RUN npm run build
 
@@ -19,6 +23,9 @@ WORKDIR /app
 
 # Copy package metadata first to leverage Docker layer cache on deps
 COPY pyproject.toml README.md ./
+# CACHEBUST invalidates the source COPY + editable reinstall on a new commit.
+# apt deps + pyproject copy above stay cached.
+ARG CACHEBUST
 COPY src/ ./src/
 
 # Install hmm-studio with the [web] extra (FastAPI + uvicorn + sqlmodel etc.)

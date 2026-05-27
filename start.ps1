@@ -74,7 +74,15 @@ if ($exists) {
 Write-Host "Checking image freshness..." -ForegroundColor Cyan
 $beforeId = (docker images -q hmm-studio:latest 2>$null | Select-Object -First 1)
 
-docker compose build *>$null
+# Cachebust the image's source-copy layers so a new commit always yields a
+# fresh image. Works around `docker compose build` not reliably invalidating
+# the COPY-src layers on this setup (which silently served stale code). The
+# heavy cached layers (npm ci, apt) stay cached; only the source copies, the
+# vite build, and the editable reinstall re-run when HEAD changes.
+$cachebust = (git rev-parse --short HEAD 2>$null)
+if (-not $cachebust) { $cachebust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds().ToString() }
+
+docker compose build --build-arg CACHEBUST=$cachebust *>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  docker compose build failed. Check 'docker compose build' output." -ForegroundColor Red
     Read-Host "Press Enter to exit"
