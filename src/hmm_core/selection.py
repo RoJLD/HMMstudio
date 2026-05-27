@@ -75,6 +75,72 @@ class ModelComparison:
     best_by_aic: str | None
     best_by_hqic: str | None
 
+    def ranked(self, criterion: str = "bic") -> list[CandidateResult]:
+        """Comparable candidates sorted ascending by ``criterion``; errored
+        and non-comparable candidates appended after, in original order."""
+        if criterion not in ("bic", "aic", "hqic"):
+            raise ValueError(f"criterion must be bic/aic/hqic, got {criterion!r}")
+        ok = [c for c in self.candidates if c.comparable and c.error is None]
+        rest = [c for c in self.candidates if not (c.comparable and c.error is None)]
+        ok_sorted = sorted(ok, key=lambda c: getattr(c, criterion))
+        return ok_sorted + rest
+
+    def to_summary_dict(self) -> dict:
+        return {
+            "best_by_bic": self.best_by_bic,
+            "best_by_aic": self.best_by_aic,
+            "best_by_hqic": self.best_by_hqic,
+            "candidates": [
+                {
+                    "label": c.label,
+                    "kind": c.kind,
+                    "log_likelihood": c.log_likelihood,
+                    "bic": c.bic,
+                    "aic": c.aic,
+                    "hqic": c.hqic,
+                    "n_params": c.n_params,
+                    "comparable": c.comparable,
+                    "note": c.note,
+                    "error": c.error,
+                }
+                for c in self.candidates
+            ],
+        }
+
+    def _repr_html_(self) -> str:
+        import html as _html
+
+        def fmt(v: float) -> str:
+            return "—" if v != v else f"{v:.2f}"  # v!=v catches NaN
+
+        rows = []
+        for c in self.ranked("bic"):
+            cls = "" if (c.comparable and c.error is None) else ' style="color:#999"'
+            best = " ★" if c.label == self.best_by_bic else ""
+            note = c.error or c.note or ""
+            mark = "" if (c.comparable and c.error is None) else " ⚠"
+            rows.append(
+                f"<tr{cls}><td>{_html.escape(c.label)}{best}{mark}</td>"
+                f"<td>{_html.escape(c.kind)}</td>"
+                f"<td style='text-align:right'>{fmt(c.bic)}</td>"
+                f"<td style='text-align:right'>{fmt(c.aic)}</td>"
+                f"<td style='text-align:right'>{fmt(c.hqic)}</td>"
+                f"<td>{_html.escape(note)}</td></tr>"
+            )
+        header = (
+            "<tr><th>candidate</th><th>kind</th><th>BIC</th>"
+            "<th>AIC</th><th>HQIC</th><th>note</th></tr>"
+        )
+        caption = (
+            f"<caption style='text-align:left;font-weight:600'>"
+            f"Model comparison — best by BIC: {self.best_by_bic or '—'} "
+            f"(★ ; ⚠ = not directly comparable)</caption>"
+        )
+        return (
+            "<table style='border-collapse:collapse' border='1' cellpadding='4'>"
+            + caption + header + "".join(rows) + "</table>"
+        )
+
 
 def _default_label(kind: str, topology: Topology | None, suffix: str = "") -> str:
     if topology is None:

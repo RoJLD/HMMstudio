@@ -165,3 +165,37 @@ def test_auto_grid_generates_emission_x_k():
     # gmm candidates carry n_mix
     gmm = [c for c in grid if c.topology.emission.type == "gmm"]
     assert all(c.topology.emission.n_mix == 2 for c in gmm)
+
+
+import json
+
+
+def test_to_summary_dict_is_json_serialisable():
+    X = _three_regime_data()
+    cands = auto_grid(_gaussian_topo("base", 3), range(2, 4), ["gaussian"])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    d = cmp.to_summary_dict()
+    assert "candidates" in d and "best_by_bic" in d
+    assert len(d["candidates"]) == 2
+    # round-trips through json
+    json.loads(json.dumps(d))
+
+
+def test_repr_html_marks_noncomparable():
+    rng = np.random.default_rng(3)
+    X = _three_regime_data(3)
+    Z = rng.normal(0, 1, (len(X), 1))
+    cands = [
+        TopologyCandidate(_gaussian_topo("g3", 3)),
+        NHMMCandidate(_gaussian_topo("nhmm3", 3), Z=Z, covariate_names=["z"]),
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    html = cmp._repr_html_()
+    assert isinstance(html, str) and len(html) > 50
+    assert "<table" in html
+    # the non-comparable row carries a visible marker
+    assert "not directly comparable" in html or "⚠" in html
