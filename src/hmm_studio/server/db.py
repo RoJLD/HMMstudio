@@ -15,20 +15,25 @@ from hmm_studio.server.models import FitJob
 
 
 def _ensure_fitjob_columns(engine) -> None:
-    """Additively add compare-mode columns to an existing fitjob table.
+    """Additively add any FitJob columns missing from an existing table.
 
     SQLModel.create_all() creates missing TABLES but never alters existing
-    ones, so a DB created before the compare feature lacks emission_override /
-    n_mix_override. SQLite supports cheap additive ALTERs; add any missing.
-    Idempotent: a no-op once the columns exist.
+    ones, so a DB created under an older schema is missing every column added
+    since it was first created — e.g. ``covariate_names`` / ``lengths`` /
+    ``parent_id`` / ``k_override`` (K-scan) and ``emission_override`` /
+    ``n_mix_override`` (compare). SQLite supports cheap additive ALTERs; add
+    any column the model declares but the table lacks, as NULLable (existing
+    rows get NULL — the app's readers already treat empty/None as the default).
+    Idempotent: a no-op once every column exists.
     """
-    table = FitJob.__tablename__
-    wanted = {"emission_override": "VARCHAR", "n_mix_override": "INTEGER"}
+    table = FitJob.__table__
     with engine.begin() as conn:
-        existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
-        for name, sqltype in wanted.items():
-            if name not in existing:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sqltype}"))
+        existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table.name})"))}
+        for col in table.columns:
+            if col.name in existing:
+                continue
+            sqltype = col.type.compile(dialect=engine.dialect)
+            conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {sqltype}'))
 
 
 def create_db_engine(db_path: str | Path):
