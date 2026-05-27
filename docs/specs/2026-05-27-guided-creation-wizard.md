@@ -187,3 +187,11 @@ la topology assemblée (sortie de `buildTopologyYaml`) en plus du récap en
 langage clair — transparence + apprentissage. Helpers purs séparés
 (`allowedTransitionsForShape`, `suggestEmission`, `buildTopologyYaml`) pour la
 testabilité et l'évolutivité.
+
+## 10. Update 2026-05-27 — shipped
+
+Implémenté : `lib/buildTopologyYaml.ts` (helpers purs), `pages/WizardPage.tsx`
+(5 étapes + progress + validation + aperçu YAML), route `/topology/new`, bouton
+« ✨ New guided model » sur `TopologyPage`, entrée `topology.allowed_transitions`
+ajoutée à `paramHelp`. `npm run build` vert (tsc strict). Le cœur pur reste
+unit-test-ready si Vitest est introduit (gap §5 maintenu).

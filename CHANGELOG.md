@@ -8,6 +8,13 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added
 
+- Guided model creation: a "✨ New guided model" wizard (`/topology/new`) walks
+  you through Emission → States → Transitions → Training → Review — with a
+  data-aware emission suggestion (reads the loaded dataset's dtypes), transition-
+  shape presets (ergodic / left-right / Bakis), sensible training defaults, and a
+  YAML preview — then loads the result into the editor pre-filled (or jumps to
+  Fit). Reuses the topology-load path and the param-help copy; coexists with the
+  free-form editor.
 - Academy organization: lessons are now grouped into ordered thematic sections
   (Foundations, Inference, Learning, Structure & topology, Emission variants,
   Bayesian & model choice) with a global step number (1–13) on each card. Driven
