@@ -154,3 +154,36 @@ Demande utilisateur (2026-05-27) : « Lors de l'initialisation d'un HMM et sa
 création, le faire en plusieurs étapes guidées ? 1—2—3—… ». Décisions de design
 (coexistence wizard→éditeur ; 5 étapes après analyse du process ; data-aware
 gracieux) validées le même jour (« Parfaitement allons y »).
+
+## 9. Update 2026-05-27 — open questions resolved
+
+L'utilisateur a délégué la résolution des 3 questions (« réponds à tes propres
+questions, fais le plus complet »). Vérifié dans le code, tranché :
+
+1. **dtype exposé : OUI.** `DatasetPreview` porte `dtypes: Record<string,string>`
+   ET `head: Array<Record<string,unknown>>`. → Suggestion de type **complète**
+   (pas seulement `n_features`) :
+   - colonnes toutes flottantes → **gaussian**, `n_features = n_cols` ;
+   - **une seule** colonne entière → **multinomial**, `n_symbols = max(head)+1`
+     (≥ 2) ;
+   - toutes colonnes entières et valeurs `head` ≥ 0 → **poisson**,
+     `n_features = n_cols` ;
+   - sinon → gaussian.
+   Toujours surchargeable par l'utilisateur. Avertissement non bloquant si, une
+   fois choisi, `n_features` (gaussian/gmm/poisson) ≠ `n_cols`, ou si multinomial
+   et `n_cols ≠ 1`.
+2. **Forme graphe : confirmée.** `yamlToTopology` génère `id`+`position`
+   (layout grille `x=80+(i%4)*180, y=80+⌊i/4⌋*140`) pour chaque état et les `id`
+   d'arêtes depuis les paires `allowed_transitions`. → Le wizard n'émet qu'un
+   YAML topology standard ; tout le plumbing graphe est réutilisé. **Ergodic =
+   omettre `allowed_transitions`.** Presets :
+   - left-right : `[s_i,s_i]` ∀i + `[s_i,s_{i+1}]` ∀i<K-1 ;
+   - bakis : left-right + `[s_i,s_{i+2}]` ∀i<K-2.
+3. **Renommage d'états : OUI** (le plus complet). Champ inline optionnel à
+   l'étape States, défaut `s0..s{K-1}`.
+
+Ajout « complétude » retenu : à l'étape **Review**, afficher un aperçu YAML de
+la topology assemblée (sortie de `buildTopologyYaml`) en plus du récap en
+langage clair — transparence + apprentissage. Helpers purs séparés
+(`allowedTransitionsForShape`, `suggestEmission`, `buildTopologyYaml`) pour la
+testabilité et l'évolutivité.
