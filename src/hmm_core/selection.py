@@ -10,11 +10,11 @@ the result table but flagged ``comparable=False`` and never chosen as the
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
-from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+from hmm_core.topology import EmissionSpec, Topology
 
 
 @dataclass(frozen=True)
@@ -251,7 +251,7 @@ def compare_models(
     )
 
 
-from dataclasses import replace as _dc_replace
+from dataclasses import replace as _dc_replace  # noqa: E402 — local import keeps auto_grid colocated
 
 
 def auto_grid(

@@ -241,7 +241,7 @@ def _sample_bayesian_gaussian_hmm(
 
     T, D = np.asarray(X).shape
 
-    with pm.Model() as model:
+    with pm.Model() as model:  # noqa: F841 — PyMC context manager binds `model`; used implicitly by downstream pm.*
         # --- Priors ---
         # Transmat : K rows, each a Dirichlet over K simplex
         transmat = pm.Dirichlet(

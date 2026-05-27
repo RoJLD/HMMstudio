@@ -32,14 +32,12 @@ in a dedicated backend). Strategy B is deferred until a real use case requires i
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 from hmm_core.fit import FittedModel, fit
-from hmm_core.fit._base import _apply_mask
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology, TopologyError
 
 

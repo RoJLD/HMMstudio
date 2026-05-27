@@ -12,7 +12,6 @@ These tests also cover the YAML loader extension and confirm the backend's
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from hmm_core.fit import fit
 from hmm_core.io import load_topology

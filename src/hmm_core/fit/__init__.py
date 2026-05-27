@@ -78,7 +78,6 @@ class FittedModel:
         """Rich HTML representation for Jupyter (Phase I.1)."""
         from hmm_core._jupyter import (
             render_matrix_heatmap,
-            render_sequence_strip,
             render_stats_table,
             wrap_html,
         )

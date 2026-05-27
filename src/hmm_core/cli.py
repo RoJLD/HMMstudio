@@ -67,9 +67,7 @@ def _read_state_labels(labels_path: Path, n_obs: int, n_states: int) -> np.ndarr
             f"({list(df.columns)})"
         )
     if len(df) != n_obs:
-        raise typer.BadParameter(
-            f"labels CSV has {len(df)} rows but data has {n_obs} rows"
-        )
+        raise typer.BadParameter(f"labels CSV has {len(df)} rows but data has {n_obs} rows")
     arr = df.iloc[:, 0].to_numpy()
     # Preserve NaN by routing through float when any NaN is present.
     if arr.dtype.kind == "f" or np.any(pd.isna(arr)):
@@ -160,12 +158,18 @@ def show(model_path: Path) -> None:
 @app.command()
 def batch(
     input_dir: Path,
-    output: Path = typer.Option(..., "--output", "-o", help="Output directory (one subdir per job)"),
+    output: Path = typer.Option(
+        ..., "--output", "-o", help="Output directory (one subdir per job)"
+    ),
     workers: Optional[int] = typer.Option(
-        None, "--workers", "-w",
+        None,
+        "--workers",
+        "-w",
         help="Max parallel fits (default: os.cpu_count() // 2)",
     ),
-    seed: Optional[int] = typer.Option(None, "--seed", help="Override topology.init.seed for all jobs"),
+    seed: Optional[int] = typer.Option(
+        None, "--seed", help="Override topology.init.seed for all jobs"
+    ),
     pattern: str = typer.Option("*.yaml", help="Glob to find topology files in input_dir"),
 ) -> None:
     """Run many fits in parallel from a directory of (topology, data) pairs.
@@ -247,7 +251,9 @@ def batch(
     n_failed = sum(1 for r in results if r["status"] == "failed")
     typer.echo(f"Batch complete: {n_done} done, {n_failed} failed, {len(results)} total")
     if n_failed:
-        typer.echo(f"Failed jobs: {[r['stem'] for r in results if r['status'] == 'failed']}", err=True)
+        typer.echo(
+            f"Failed jobs: {[r['stem'] for r in results if r['status'] == 'failed']}", err=True
+        )
         raise typer.Exit(code=1)
 
 
@@ -303,7 +309,9 @@ def _print_progress_line(result: dict) -> None:
         ll = result["log_likelihood"]
         bic = result["bic"]
         iters = result["n_iter_actual"]
-        typer.echo(f"  [ok] {stem:30s} log_lik={ll:>10.2f}  BIC={bic:>10.2f}  iters={iters:3d}  ({dur})")
+        typer.echo(
+            f"  [ok] {stem:30s} log_lik={ll:>10.2f}  BIC={bic:>10.2f}  iters={iters:3d}  ({dur})"
+        )
     else:
         typer.echo(f"  [FAIL] {stem:30s} FAILED: {result['error']}  ({dur})", err=True)
 
@@ -412,9 +420,7 @@ def compare(
         candidates = _candidates_from_dir(spec_dir, pattern)
 
     if not candidates:
-        typer.echo(
-            f"no candidate topologies found in {spec_dir} (pattern {pattern!r})", err=True
-        )
+        typer.echo(f"no candidate topologies found in {spec_dir} (pattern {pattern!r})", err=True)
         raise typer.Exit(code=1)
 
     df = pd.read_csv(data_path)

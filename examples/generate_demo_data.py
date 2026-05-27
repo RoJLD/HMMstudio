@@ -20,14 +20,15 @@ import pandas as pd
 
 
 def _write_gaussian_4state():
-    A = np.array([[0.85, 0.15, 0.00, 0.00],
-                  [0.00, 0.80, 0.20, 0.00],
-                  [0.05, 0.00, 0.80, 0.15],
-                  [0.30, 0.00, 0.00, 0.70]])
-    means = np.array([[ 0.0,  0.0],
-                      [ 2.0,  1.5],
-                      [ 0.0, -3.0],
-                      [-3.0, -3.0]])
+    A = np.array(
+        [
+            [0.85, 0.15, 0.00, 0.00],
+            [0.00, 0.80, 0.20, 0.00],
+            [0.05, 0.00, 0.80, 0.15],
+            [0.30, 0.00, 0.00, 0.70],
+        ]
+    )
+    means = np.array([[0.0, 0.0], [2.0, 1.5], [0.0, -3.0], [-3.0, -3.0]])
     cov = 0.4 * np.eye(2)
     rng = np.random.default_rng(2026)
     n = 2000
@@ -43,12 +44,14 @@ def _write_gaussian_4state():
 
 def _write_supervised_3state():
     """Generate the supervised / semi-supervised example bundle (Phase A.7)."""
-    A = np.array([
-        [0.85, 0.15, 0.00],
-        [0.05, 0.80, 0.15],
-        [0.00, 0.10, 0.90],
-    ])
-    means = np.array([0.0, 5.0, 10.0])         # trivially separable Gaussians
+    A = np.array(
+        [
+            [0.85, 0.15, 0.00],
+            [0.05, 0.80, 0.15],
+            [0.00, 0.10, 0.90],
+        ]
+    )
+    means = np.array([0.0, 5.0, 10.0])  # trivially separable Gaussians
     sigma = 0.6
     rng = np.random.default_rng(2027)
     n = 600

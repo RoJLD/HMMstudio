@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from sklearn.base import clone
-from sklearn.model_selection import GridSearchCV, KFold, TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 

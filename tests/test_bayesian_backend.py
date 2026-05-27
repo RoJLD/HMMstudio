@@ -88,7 +88,7 @@ def test_bayesian_backend_class_importable():
 def test_bayesian_backend_fit_returns_valid_result(two_regime_data, small_topology):
     """fit() returns a BackendFitResult with finite log-likelihood and right shapes."""
     pytest.importorskip("pymc", reason="pymc not installed")
-    from hmm_core.backends import BackendFitResult, BayesianHMMBackend
+    from hmm_core.backends import BayesianHMMBackend
 
     backend = BayesianHMMBackend(n_samples=200, n_tune=100, n_chains=2)
     result = core_fit(small_topology, two_regime_data, seed=42, backend=backend)

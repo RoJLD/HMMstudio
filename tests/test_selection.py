@@ -48,9 +48,8 @@ def test_candidate_dataclasses_construct():
     assert mc.candidates[0].label == "gaussian K=2"
 
 
-import warnings
-import pytest
-from hmm_core.selection import compare_models
+import warnings  # noqa: E402 — local test imports kept beside their consumers
+from hmm_core.selection import compare_models  # noqa: E402
 
 
 def _three_regime_data(seed=0):
@@ -93,7 +92,6 @@ def test_failed_candidate_excluded_not_fatal():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         cmp = compare_models(X, cands, seed=0)
-    labels = {c.label: c for c in cmp.candidates}
     # the good one ranks; the bad one has an error and is excluded from best
     assert cmp.best_by_bic == "gaussian K=2"
     bad_result = [c for c in cmp.candidates if c.error is not None]
@@ -149,7 +147,7 @@ def test_factorial_flagged_not_comparable():
     assert fac[0].note and "joint" in fac[0].note.lower()
 
 
-from hmm_core.selection import auto_grid
+from hmm_core.selection import auto_grid  # noqa: E402 — local import kept beside its consumers
 
 
 def test_auto_grid_generates_emission_x_k():
@@ -167,7 +165,7 @@ def test_auto_grid_generates_emission_x_k():
     assert all(c.topology.emission.n_mix == 2 for c in gmm)
 
 
-import json
+import json  # noqa: E402 — local import kept beside its consumers
 
 
 def test_to_summary_dict_is_json_serialisable():

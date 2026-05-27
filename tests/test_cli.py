@@ -300,9 +300,7 @@ fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}
         encoding="utf-8",
     )
 
-    result = runner.invoke(
-        app, ["compare", str(spec_dir), str(data_csv), "--criterion", "hqic"]
-    )
+    result = runner.invoke(app, ["compare", str(spec_dir), str(data_csv), "--criterion", "hqic"])
     assert result.exit_code == 0, result.stdout
     out = result.stdout.lower()
     assert "hqic" in out
@@ -328,7 +326,9 @@ def test_compare_help_notes_nhmm_limitation(runner):
 # ---------------------------------------------------------------------------
 
 
-def _write_supervised_pair(tmp_path, states_array, *, label_col: str = "state") -> tuple[Path, Path]:
+def _write_supervised_pair(
+    tmp_path, states_array, *, label_col: str = "state"
+) -> tuple[Path, Path]:
     """Write a (data.csv, labels.csv) pair where X is trivially state-separable.
 
     Returns (data_path, labels_path). Mirrors the `_well_separated_data` pattern
@@ -403,9 +403,7 @@ def test_run_with_labels_csv_must_have_single_column(runner, tmp_path, _supervis
     data_path, _ = _write_supervised_pair(tmp_path, states)
 
     bad_labels = tmp_path / "labels_bad.csv"
-    pd.DataFrame({"state": states, "extra": np.zeros_like(states)}).to_csv(
-        bad_labels, index=False
-    )
+    pd.DataFrame({"state": states, "extra": np.zeros_like(states)}).to_csv(bad_labels, index=False)
 
     result = runner.invoke(
         app,
@@ -426,9 +424,7 @@ def test_run_with_labels_csv_must_have_single_column(runner, tmp_path, _supervis
     assert "single" in combined.lower() or "column" in combined.lower()
 
 
-def test_run_with_labels_semi_supervised_via_minus_one(
-    runner, tmp_path, _supervised_topology_yaml
-):
+def test_run_with_labels_semi_supervised_via_minus_one(runner, tmp_path, _supervised_topology_yaml):
     """An int labels CSV with -1 sentinels for unlabelled positions dispatches
     to semi-supervised EM (not closed-form). We just check the run succeeds
     and the fit completes — convergence may need >1 iteration."""
