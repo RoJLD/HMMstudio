@@ -21,6 +21,10 @@ All notable changes to `hmm-studio` are documented here. This project follows
     the comparable emission × K grid.
   - `ModelComparison` with `.ranked(criterion)`, `.to_summary_dict()`, and a
     Jupyter `_repr_html_` (non-comparable rows greyed + ⚠).
+- `hmm-fit compare <spec_dir> <data.csv> [--criterion bic|aic|hqic]` — fit several
+  candidate topologies on the same data and print a ranked BIC/AIC/HQIC table.
+  Candidates come from a directory of topology YAMLs or an optional `grid.yaml`
+  (`base`, `k_range`, `emission_types`, `n_mix`). NHMM/Factorial remain Python-API only.
 - Phase 1 of `docs/specs/2026-05-27-model-variant-selection.md`. CLI
   (`hmm-fit compare`) and the `/compare` web page are Phases 2-3.
 - The in-scope, HMM-only slice of the Nathan/Robin ModelFinder.
