@@ -74,3 +74,112 @@ class ModelComparison:
     best_by_bic: str | None
     best_by_aic: str | None
     best_by_hqic: str | None
+
+
+def _default_label(kind: str, topology: Topology | None, suffix: str = "") -> str:
+    if topology is None:
+        return f"{kind}{suffix}"
+    base = f"{topology.emission.type} K={topology.n_states}"
+    if topology.emission.type == "gmm" and topology.emission.n_mix:
+        base += f" n_mix={topology.emission.n_mix}"
+    return f"{base}{suffix}"
+
+
+def _metrics_from_base(base) -> tuple[float, float, float, float, int]:
+    """Pull (log_likelihood, bic, aic, hqic, n_params) off a FittedModel."""
+    return (
+        float(base.log_likelihood),
+        float(base.bic),
+        float(base.aic),
+        float(base.hqic),
+        int(base.n_params if hasattr(base, "n_params") else base.to_summary_dict()["n_params"]),
+    )
+
+
+def _fit_candidate(cand: "Candidate", X: np.ndarray, *, seed: int, lengths):
+    """Return (kind, fitted, comparable, note). Raises on fit failure."""
+    from hmm_core.fit import fit
+    from hmm_core.nhmm import fit_nhmm
+    from hmm_core.gmm_nhmm import fit_gmm_nhmm
+    from hmm_core.factorial_nhmm import fit_factorial_nhmm
+
+    if isinstance(cand, TopologyCandidate):
+        fitted = fit(cand.topology, X, seed=seed, lengths=lengths)
+        return cand.topology.emission.type, fitted, True, None
+
+    if isinstance(cand, NHMMCandidate):
+        if cand.topology.emission.type == "gmm":
+            fitted = fit_gmm_nhmm(
+                cand.topology, X, cand.Z,
+                covariate_names=cand.covariate_names, seed=seed, lengths=lengths,
+            )
+            kind = "gmm-nhmm"
+        else:
+            fitted = fit_nhmm(
+                cand.topology, X, cand.Z,
+                covariate_names=cand.covariate_names, seed=seed, lengths=lengths,
+            )
+            kind = "nhmm"
+        return kind, fitted, False, "models P(X|Z); not directly comparable to P(X) candidates"
+
+    if isinstance(cand, FactorialCandidate):
+        fitted = fit_factorial_nhmm(
+            cand.chains, X, cand.covariates_per_chain,
+            emission=cand.emission,
+            covariate_names_per_chain=cand.covariate_names_per_chain,
+            seed=seed, lengths=lengths,
+        )
+        return "factorial", fitted, False, "models a joint product space; n_params differs, not directly comparable"
+
+    raise TypeError(f"unknown candidate type: {type(cand).__name__}")
+
+
+def compare_models(
+    X: np.ndarray,
+    candidates: list["Candidate"],
+    *,
+    lengths: np.ndarray | None = None,
+    seed: int = 42,
+) -> ModelComparison:
+    """Fit each candidate on X and rank the comparable ones by BIC/AIC/HQIC.
+
+    A candidate whose fit raises is captured as a CandidateResult with
+    ``error`` set and NaN metrics; it is excluded from every best-by-*.
+    """
+    results: list[CandidateResult] = []
+    for cand in candidates:
+        try:
+            kind, fitted, comparable, note = _fit_candidate(cand, X, seed=seed, lengths=lengths)
+        except Exception as exc:  # noqa: BLE001 — robustness is the point
+            kind_guess = type(cand).__name__.replace("Candidate", "").lower()
+            label = cand.label or _default_label(kind_guess, getattr(cand, "topology", None))
+            results.append(CandidateResult(
+                label=label, kind=kind_guess, fitted=None,
+                log_likelihood=float("nan"), bic=float("nan"),
+                aic=float("nan"), hqic=float("nan"), n_params=0,
+                comparable=False, note=None, error=str(exc),
+            ))
+            continue
+
+        base = fitted.base if hasattr(fitted, "base") else fitted
+        ll, bic, aic, hqic, n_params = _metrics_from_base(base)
+        topo = getattr(cand, "topology", None)
+        label = cand.label or _default_label(kind, topo)
+        results.append(CandidateResult(
+            label=label, kind=kind, fitted=fitted,
+            log_likelihood=ll, bic=bic, aic=aic, hqic=hqic, n_params=n_params,
+            comparable=comparable, note=note, error=None,
+        ))
+
+    def _best(attr: str) -> str | None:
+        pool = [c for c in results if c.comparable and c.error is None]
+        if not pool:
+            return None
+        return min(pool, key=lambda c: getattr(c, attr)).label
+
+    return ModelComparison(
+        candidates=results,
+        best_by_bic=_best("bic"),
+        best_by_aic=_best("aic"),
+        best_by_hqic=_best("hqic"),
+    )

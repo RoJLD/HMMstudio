@@ -46,3 +46,56 @@ def test_candidate_dataclasses_construct():
     assert r.comparable is True
     mc = ModelComparison(candidates=[r], best_by_bic="gaussian K=2", best_by_aic="gaussian K=2", best_by_hqic="gaussian K=2")
     assert mc.candidates[0].label == "gaussian K=2"
+
+
+import warnings
+import pytest
+from hmm_core.selection import compare_models
+
+
+def _three_regime_data(seed=0):
+    rng = np.random.default_rng(seed)
+    return np.vstack([
+        rng.normal(-3.0, 0.4, (80, 1)),
+        rng.normal(0.0, 0.4, (80, 1)),
+        rng.normal(3.0, 0.4, (80, 1)),
+    ])
+
+
+def test_compare_ranks_comparable_by_bic():
+    X = _three_regime_data()
+    cands = [TopologyCandidate(_gaussian_topo(f"g{k}", k)) for k in (2, 3, 4)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    # all three are comparable Gaussian fits
+    assert all(c.comparable for c in cmp.candidates)
+    # best_by_bic is the label of the minimum-BIC candidate
+    comparable = [c for c in cmp.candidates if c.error is None]
+    expected = min(comparable, key=lambda c: c.bic).label
+    assert cmp.best_by_bic == expected
+
+
+def test_failed_candidate_excluded_not_fatal():
+    X = _three_regime_data()
+    # A multinomial spec on continuous (negative) float data -> the backend's
+    # discrete-emission fit raises ("'list' argument must have no negative
+    # elements"). A genuine fit failure, captured not fatal. (The plan's
+    # original n_features mismatch did NOT raise against the hmmlearn backend.)
+    bad = Topology(
+        name="bad", n_states=2, state_names=["a", "b"],
+        emission=EmissionSpec(type="multinomial", n_symbols=3),
+        allowed_transitions=None, startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=0),
+        fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-3),
+    )
+    cands = [TopologyCandidate(_gaussian_topo("g2", 2)), TopologyCandidate(bad)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cmp = compare_models(X, cands, seed=0)
+    labels = {c.label: c for c in cmp.candidates}
+    # the good one ranks; the bad one has an error and is excluded from best
+    assert cmp.best_by_bic == "gaussian K=2"
+    bad_result = [c for c in cmp.candidates if c.error is not None]
+    assert len(bad_result) == 1
+    assert np.isnan(bad_result[0].bic)
