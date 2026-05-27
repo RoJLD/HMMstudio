@@ -5,6 +5,7 @@ const NAV_MAIN = [
   { to: "/", label: "Home" },
   { to: "/data", label: "Data" },
   { to: "/fit", label: "Fit" },
+  { to: "/compare", label: "Compare" },
   { to: "/topology", label: "Topology editor" },
 ] as const;
 
