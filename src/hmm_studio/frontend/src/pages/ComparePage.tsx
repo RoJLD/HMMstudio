@@ -8,6 +8,7 @@ import {
   getCompare,
   type CompareResult,
 } from "../api/client";
+import { HelpTip } from "../components/help/HelpTip";
 
 const EMISSION_CHOICES = ["gaussian", "gmm", "poisson"] as const;
 
@@ -83,7 +84,10 @@ function CompareForm() {
       </div>
 
       <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-2">Emission families</h3>
+        <h3 className="text-sm font-semibold text-slate-700 mb-2 inline-flex items-center">
+          Emission families
+          <HelpTip paramKey="compare.emission_types" />
+        </h3>
         <div className="flex flex-wrap gap-2 mb-3">
           {EMISSION_CHOICES.map((e) => (
             <label
@@ -101,7 +105,10 @@ function CompareForm() {
         </div>
         {emissions.includes("gmm") && (
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-slate-600">n_mix (GMM)</span>
+            <span className="text-slate-600 inline-flex items-center">
+              n_mix (GMM)
+              <HelpTip paramKey="emission.n_mix" />
+            </span>
             <input
               type="number"
               min={2}
@@ -122,7 +129,10 @@ function CompareForm() {
       <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
         <div className="flex items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
-            <span className="text-slate-600">k_min</span>
+            <span className="text-slate-600 inline-flex items-center">
+              k_min
+              <HelpTip paramKey="scan.k_range" />
+            </span>
             <input
               type="number"
               min={1}
@@ -132,7 +142,10 @@ function CompareForm() {
             />
           </label>
           <label className="flex items-center gap-2">
-            <span className="text-slate-600">k_max</span>
+            <span className="text-slate-600 inline-flex items-center">
+              k_max
+              <HelpTip paramKey="scan.k_range" />
+            </span>
             <input
               type="number"
               min={kMin}
@@ -147,7 +160,10 @@ function CompareForm() {
 
       <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
         <label className="flex items-center gap-3 text-sm">
-          <span className="text-slate-700 w-24">Seed (override)</span>
+          <span className="text-slate-700 w-24 inline-flex items-center">
+            Seed (override)
+            <HelpTip paramKey="init.seed" />
+          </span>
           <input
             type="number"
             value={seed}

@@ -4,6 +4,7 @@ import { useTopologyStore } from "../store/topologyStore";
 import { useDatasetStore } from "../store/datasetStore";
 import { topologyToYAML } from "../lib/yaml";
 import { startFit, startScan } from "../api/client";
+import { HelpTip } from "../components/help/HelpTip";
 
 export default function FitPage() {
   const dataset = useDatasetStore((s) => s.current);
@@ -99,7 +100,10 @@ export default function FitPage() {
 
       <div className="border border-slate-200 rounded-md p-4 bg-white mb-4">
         <label className="flex items-center gap-3 text-sm">
-          <span className="text-slate-700 w-24">Seed (override)</span>
+          <span className="text-slate-700 w-24 inline-flex items-center">
+            Seed (override)
+            <HelpTip paramKey="init.seed" />
+          </span>
           <input
             type="number"
             value={seed}
@@ -124,7 +128,10 @@ export default function FitPage() {
         {scanMode && (
           <div className="flex items-center gap-3 text-sm">
             <label className="flex items-center gap-2">
-              <span className="text-slate-600">k_min</span>
+              <span className="text-slate-600 inline-flex items-center">
+                k_min
+                <HelpTip paramKey="scan.k_range" />
+              </span>
               <input
                 type="number"
                 min={1}
@@ -134,7 +141,10 @@ export default function FitPage() {
               />
             </label>
             <label className="flex items-center gap-2">
-              <span className="text-slate-600">k_max</span>
+              <span className="text-slate-600 inline-flex items-center">
+                k_max
+                <HelpTip paramKey="scan.k_range" />
+              </span>
               <input
                 type="number"
                 min={kMin}
