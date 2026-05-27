@@ -123,3 +123,21 @@ flèches + bulles de proba + épaisseur ∝ p, seuil 0.01, nœud read-only dédi
 panneau « Transition graph » dans `ResultsPage` à côté du heatmap, nourri par le
 `transmat` déjà chargé. `npm run build` vert, aucun backend. Phase 2 (animation
 via `currentT` + endpoint des séries pour les courbes) reste spec-only.
+
+## 10. Update 2026-05-27 — Phase 2 shipped
+
+Implémenté :
+- **Animation du graphe** : `TransmatGraph` reçoit `decoded` + `currentT` (déjà
+  fournis par `TimelinePlayer`) → état courant `viterbi[idx]` **ringé**,
+  remplissage des nœuds = `posterior[idx]` (couleur d'état × proba), arête active
+  `viterbi[idx-1]→viterbi[idx]` surlignée + `animated`. Mapping
+  `idx = floor(currentT/step)` (comme `ViterbiTimeline`). Frontend pur.
+- **Courbes de données (#3)** : nouvel endpoint `GET /api/fit/{id}/series`
+  (colonnes numériques du dataset, downsamplées au **même `step`** que `/decoded`)
+  + composant `DataCurves` (lignes min–max normalisées, curseur synchronisé à
+  `currentT`) + panneau « Observed data » dans `ResultsPage`. Test backend
+  `test_get_fit_series_done` vert ; `npm run build` vert.
+
+Les 4 demandes initiales sont couvertes : flèches (éditeur + graphe), bulles de
+proba (graphe), courbes de variables (DataCurves), et play/évolution
+states-proba + chemin (graphe animé via le player existant).
