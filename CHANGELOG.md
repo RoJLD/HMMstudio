@@ -6,6 +6,38 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ## [Unreleased]
 
+### Added — unsupervised feature selection
+
+- New `hmm_core.features` module (exported at package top level):
+  - `unsupervised_feature_selection(features, n_clusters=10, ...)` — clusters
+    candidate feature columns by normalised mutual information (NMI) and keeps
+    one representative (the *medoid*) per cluster, returning a decorrelated
+    strict subset of the input columns ready to feed `fit()`. Pipeline:
+    `StandardScaler` + jitter → diagonal-MI entropy → pairwise NMI
+    (`sklearn.feature_selection.mutual_info_regression`, the Kraskov et al.
+    2004 k-NN estimator) → `1 - NMI` distance → scipy agglomerative
+    hierarchical clustering → medoid per cluster. **Zero new dependencies**
+    (sklearn + scipy already present).
+  - `FeatureSelectionResult` frozen dataclass — bundles the selected subset
+    with the full p×p NMI matrix (for a diagnostic heatmap), the cluster
+    membership dict, and the medoid-per-cluster mapping.
+  - Answers the "which features should the HMM see?" question that sits just
+    before the fit — collapses correlated/redundant indicator panels (e.g.
+    30-40 on-chain crypto columns) into a decorrelated set. Ported from the
+    Robin crypto research `cmex_crypto/features/unsupervised_selection.py`.
+- New prep op **`select_features_unsupervised`** — thin recipe-friendly
+  `df -> df` wrapper that returns only the selected columns (the rich NMI
+  metadata is available by calling the function directly). Usable from YAML
+  recipes, e.g. `- op: select_features_unsupervised` / `n_clusters: 8`.
+- 10 tests in `tests/test_features.py` (subset/exact-count, correlated
+  collapse, independent-all-kept, NMI matrix shape/diag/symmetry, medoid
+  centrality, validation errors, prep-op standalone + in-Pipeline,
+  reproducibility under a fixed seed).
+- Scope (per spec `docs/specs/2026-05-27-unsupervised-feature-selection.md`):
+  unsupervised only. Supervised mRMR (target-aware), the `dcor`
+  distance-correlation variant, PCA, and NHMM-covariate causality selection
+  are explicitly out of scope / deferred.
+
 ### Added — HQIC model-selection criterion
 
 - `FittedModel` now carries `hqic` (Hannan-Quinn Information Criterion,

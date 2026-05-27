@@ -212,6 +212,42 @@ def log_transform(
     return out
 
 
+@register_op("select_features_unsupervised")
+def select_features_unsupervised(
+    df: pd.DataFrame,
+    *,
+    n_clusters: int = 10,
+    n_neighbors: int = 5,
+    linkage_method: str = "average",
+    jitter_std: float = 1e-8,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """Keep one medoid feature per NMI-cluster (unsupervised selection).
+
+    Thin recipe-friendly wrapper around
+    :func:`hmm_core.features.unsupervised_feature_selection` : clusters the
+    candidate columns by normalised mutual information and returns only the
+    selected (decorrelated) subset of columns — a ``df -> df`` op.
+
+    The rich metadata (NMI matrix, clusters) is not exposed in the pipeline ;
+    call ``unsupervised_feature_selection`` directly to inspect it. NaN rows
+    must be dropped upstream (e.g. a preceding ``dropna`` step) — the k-NN MI
+    estimator needs clean input.
+    """
+    # Imported lazily: pulls sklearn/scipy, which we keep out of the
+    # module-load path for the prep package.
+    from hmm_core.features import unsupervised_feature_selection
+
+    return unsupervised_feature_selection(
+        df,
+        n_clusters=n_clusters,
+        n_neighbors=n_neighbors,
+        linkage_method=linkage_method,
+        jitter_std=jitter_std,
+        random_state=random_state,
+    ).selected
+
+
 @register_op("drop_low_variance")
 def drop_low_variance(
     df: pd.DataFrame,

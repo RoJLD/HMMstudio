@@ -2,6 +2,7 @@
 
 __version__ = "1.1.0"
 
+from hmm_core.features import FeatureSelectionResult, unsupervised_feature_selection
 from hmm_core.fit import FittedModel, fit
 from hmm_core.gmm_nhmm import GMMNHMMFittedModel, fit_gmm_nhmm
 from hmm_core.io import load_model, load_topology, save_decoded, save_model
@@ -17,6 +18,7 @@ from hmm_core.topology import (
 
 __all__ = [
     "EmissionSpec",
+    "FeatureSelectionResult",
     "FitSpec",
     "FittedModel",
     "GMMNHMMFittedModel",
@@ -33,4 +35,5 @@ __all__ = [
     "regime_order_by_feature_mean",
     "save_decoded",
     "save_model",
+    "unsupervised_feature_selection",
 ]
