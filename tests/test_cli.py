@@ -231,3 +231,34 @@ def test_batch_help(runner):
     """The CLI surfaces the batch command in --help."""
     result = runner.invoke(app, ["--help"])
     assert "batch" in result.stdout.lower()
+
+
+def test_compare_cli_ranks_dir(runner, tmp_path, synthetic_gaussian_left_right):
+    """compare fits a dir of gaussian topologies and prints a ranked table."""
+    spec_dir = tmp_path / "candidates"
+    spec_dir.mkdir()
+    X = synthetic_gaussian_left_right["X"]
+    data_csv = tmp_path / "data.csv"
+    pd.DataFrame(X, columns=["f0", "f1"]).to_csv(data_csv, index=False)
+
+    def topo_yaml(k: int) -> str:
+        names = ", ".join(f"s{i}" for i in range(k))
+        return f"""
+name: cand_k{k}
+n_states: {k}
+state_names: [{names}]
+emission: {{type: gaussian, covariance_type: full, n_features: 2}}
+startprob: uniform
+init: {{strategy: kmeans, seed: 42}}
+fit: {{algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}}
+"""
+
+    for k in (2, 3, 4):
+        (spec_dir / f"k{k}.yaml").write_text(topo_yaml(k), encoding="utf-8")
+
+    result = runner.invoke(app, ["compare", str(spec_dir), str(data_csv)])
+    assert result.exit_code == 0, result.stdout
+    out = result.stdout.lower()
+    assert "best:" in out
+    assert "bic" in out
+    assert "k=2" in out and "k=3" in out and "k=4" in out

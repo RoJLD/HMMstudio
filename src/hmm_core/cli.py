@@ -257,5 +257,103 @@ def _print_progress_line(result: dict) -> None:
         typer.echo(f"  [FAIL] {stem:30s} FAILED: {result['error']}  ({dur})", err=True)
 
 
+def _candidates_from_dir(spec_dir: Path, pattern: str) -> list:
+    """Load every matching *.yaml in spec_dir as a comparable TopologyCandidate.
+
+    A `grid.yaml` (if any) is skipped here — it is handled by the grid path.
+    """
+    from hmm_core.selection import TopologyCandidate
+
+    out: list = []
+    for ypath in sorted(spec_dir.glob(pattern)):
+        if ypath.name == "grid.yaml":
+            continue
+        topo = load_topology(ypath)
+        out.append(TopologyCandidate(topology=topo))
+    return out
+
+
+def _candidates_from_grid(grid_path: Path, spec_dir: Path) -> list:
+    raise typer.BadParameter("grid.yaml support is added in Task 3")
+
+
+def _print_comparison(comp, criterion: str) -> None:
+    """Print a ranked, fixed-width comparison table (batch-style plain echo)."""
+    best = getattr(comp, f"best_by_{criterion}")
+
+    def fmt(v: float) -> str:
+        return f"{'-':>12s}" if v != v else f"{v:>12.2f}"  # v != v catches NaN
+
+    typer.echo(f"Model comparison (ranked by {criterion.upper()}) - best: {best or '-'}")
+    typer.echo(
+        f"  {'candidate':30s} {'kind':10s} "
+        f"{'log_lik':>12s} {'BIC':>12s} {'AIC':>12s} {'HQIC':>12s}  note"
+    )
+    for c in comp.ranked(criterion):
+        ok = c.comparable and c.error is None
+        star = " *" if c.label == best else ""
+        mark = "" if ok else " !"
+        note = c.error or c.note or ""
+        label = f"{c.label}{star}{mark}"
+        typer.echo(
+            f"  {label:30s} {c.kind:10s} "
+            f"{fmt(c.log_likelihood)} {fmt(c.bic)} {fmt(c.aic)} {fmt(c.hqic)}  {note}"
+        )
+
+
+@app.command()
+def compare(
+    spec_dir: Path,
+    data_path: Path,
+    criterion: str = typer.Option(
+        "bic", "--criterion", "-c", help="Ranking criterion: bic | aic | hqic"
+    ),
+    seed: Optional[int] = typer.Option(
+        None, "--seed", help="Override init seed for all candidate fits"
+    ),
+    pattern: str = typer.Option("*.yaml", help="Glob for candidate topology files in spec_dir"),
+) -> None:
+    """Fit several candidate topologies on the SAME data and rank them by criterion.
+
+    spec_dir holds one *.yaml topology per comparable candidate (Gaussian / GMM /
+    Poisson - they model P(X)). Alternatively, a `grid.yaml` in spec_dir describes
+    an auto-generated emission x K grid (keys: base, k_range, emission_types, n_mix).
+
+    NHMM / Factorial candidates are NOT available via the CLI - they need explicit
+    covariates / chain specs. Use the Python API (hmm_core.compare_models) for those.
+    """
+    from hmm_core.selection import compare_models
+
+    if criterion not in ("bic", "aic", "hqic"):
+        raise typer.BadParameter("criterion must be one of: bic, aic, hqic")
+
+    spec_dir = spec_dir.resolve()
+    if not spec_dir.exists() or not spec_dir.is_dir():
+        typer.echo(f"spec_dir does not exist or is not a directory: {spec_dir}", err=True)
+        raise typer.Exit(code=1)
+
+    grid_path = spec_dir / "grid.yaml"
+    if grid_path.exists():
+        candidates = _candidates_from_grid(grid_path, spec_dir)
+    else:
+        candidates = _candidates_from_dir(spec_dir, pattern)
+
+    if not candidates:
+        typer.echo(
+            f"no candidate topologies found in {spec_dir} (pattern {pattern!r})", err=True
+        )
+        raise typer.Exit(code=1)
+
+    df = pd.read_csv(data_path)
+    X = df.to_numpy(dtype=float)
+
+    comp = compare_models(X, candidates, seed=(seed if seed is not None else 42))
+    _print_comparison(comp, criterion)
+
+    if getattr(comp, f"best_by_{criterion}") is None:
+        typer.echo("no comparable candidate converged", err=True)
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
