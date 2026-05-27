@@ -8,6 +8,12 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added
 
+- Academy lesson 14 "Comparing models honestly" — a regime-detection case study
+  (adapted from Nathan Berbinau's research, credited in `CONTRIBUTORS.md`) teaching
+  honest model comparison: benchmark don't assume, simpler can win, negative results
+  count, and why log-likelihoods aren't comparable across model families. Includes a
+  flashcard deck + quiz, and the `/compare` page now spells out the comparability rule
+  with a link to the lesson.
 - Academy quiz & flashcards: every lesson now ends with a "Check your
   understanding" section — a flip-card **study deck** plus a **graded MCQ quiz**.
   Questions are tagged by cognitive level (Recall / Apply / Analyze); the quiz
