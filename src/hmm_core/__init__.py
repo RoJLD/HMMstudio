@@ -6,6 +6,7 @@ from hmm_core.fit import FittedModel, fit
 from hmm_core.gmm_nhmm import GMMNHMMFittedModel, fit_gmm_nhmm
 from hmm_core.io import load_model, load_topology, save_decoded, save_model
 from hmm_core.nhmm import NHMMFittedModel, fit_nhmm
+from hmm_core.regimes import regime_labels, regime_order_by_feature_mean
 from hmm_core.topology import (
     EmissionSpec,
     FitSpec,
@@ -28,6 +29,8 @@ __all__ = [
     "fit_nhmm",
     "load_model",
     "load_topology",
+    "regime_labels",
+    "regime_order_by_feature_mean",
     "save_decoded",
     "save_model",
 ]

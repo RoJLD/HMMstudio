@@ -21,6 +21,27 @@ All notable changes to `hmm-studio` are documented here. This project follows
   (Surfaced from the Nathan/Robin crypto research `ModelFinder` — the
   in-scope, HMM-only slice of their model-selection tooling.)
 
+### Added — Giudici 2020 regime preset + state labelling
+
+- `examples/giudici_2020_btc_regimes.yaml` : the canonical 3-state
+  Gaussian HMM (diagonal covariance, single log-return feature) from
+  Giudici & Abu Hashish (2020), "A hidden Markov model to detect regime
+  changes in cryptoasset markets". A published-paper preset, loadable in
+  the topology editor / `load_topology`.
+- New `hmm_core.regimes` module with two generic state-labelling helpers
+  (exported at package top level):
+  - `regime_order_by_feature_mean(fitted, feature=0)` — state indices
+    sorted ascending by their emission mean on a feature (works on
+    Gaussian / GMM / Poisson ; raises on Multinomial where a numeric
+    mean is undefined).
+  - `regime_labels(fitted, ["bear", "stable", "bull"], feature=0)` —
+    maps each raw EM state index to a human label, lowest-mean → first
+    label. Resolves the "EM states have arbitrary order" interpretation
+    problem. Ported from the Nathan/Robin crypto research `regimes/giudici.py`.
+- 6 tests in `tests/test_regimes.py` (Gaussian ordering, bear/stable/bull
+  labelling, Poisson, Multinomial-raises, wrong-label-count, example YAML
+  loads-and-fits).
+
 ### Added — engine (`hmm_core.prep`)
 
 - Two new prep ops:

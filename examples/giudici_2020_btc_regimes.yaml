@@ -1,0 +1,35 @@
+name: giudici_2020_btc_regimes
+n_states: 3
+state_names: [bear, stable, bull]
+
+# Giudici & Abu Hashish (2020) — "A hidden Markov model to detect regime
+# changes in cryptoasset markets", Quality and Reliability Engineering
+# International 36(6), 2057-2065. https://doi.org/10.1002/qre.2660
+#
+# The paper's empirical conclusion : a 3-state Gaussian HMM with DIAGONAL
+# covariance, fit on log-returns ALONE, dominates a full-covariance
+# specification by parsimony (fewer parameters, comparable likelihood).
+# A single observation feature (the log-return) is enough to separate the
+# three regimes.
+#
+# States have no intrinsic order after EM — use
+# hmm_core.regimes.regime_order_by_feature_mean(result) to sort them by
+# mean log-return so the lowest-mean state is "bear" and the highest is
+# "bull" (matches state_names above once canonicalised).
+emission:
+  type: gaussian
+  covariance_type: diag
+  n_features: 1
+
+# Ergodic : the paper allows any regime to follow any other (no structural
+# zeros). Bull can crash straight to bear, bear can rally straight to bull.
+startprob: uniform
+
+init:
+  strategy: kmeans
+  seed: 42
+
+fit:
+  algorithm: baum_welch
+  n_iter: 200
+  tol: 1.0e-4
