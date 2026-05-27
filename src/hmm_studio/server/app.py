@@ -337,6 +337,44 @@ def create_app() -> FastAPI:
             "state_names": list(fitted.topology.state_names),
         }
 
+    @app.get("/api/fit/{job_id}/series")
+    def get_fit_series(job_id: str):
+        """Return the observed data series (downsampled) for the timeline curves.
+
+        Same downsample step as /decoded so the curves align with the player.
+        """
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(
+                status_code=409,
+                detail=f"job status is {status['status']!r}, not done",
+            )
+        with get_session(engine) as session:
+            job = session.get(FitJob, job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="job not found")
+            dataset = session.get(Dataset, job.dataset_id)
+            if dataset is None:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"original dataset {job.dataset_id} missing",
+                )
+            dataset_path = dataset.path
+        df = pd.read_csv(dataset_path)
+        numeric = df.select_dtypes(include="number")
+        n = len(df)
+        step = max(1, n // 2000)
+        ds = numeric.iloc[::step]
+        return {
+            "columns": list(numeric.columns),
+            "series": [ds[c].astype(float).tolist() for c in numeric.columns],
+            "n_total": n,
+            "step": step,
+        }
+
     @app.get("/api/fit/{job_id}/emissions")
     def get_fit_emissions(job_id: str):
         """Return per-state emission parameters for display."""

@@ -272,6 +272,32 @@ def test_get_fit_transmat_done(client):
     assert len(body["state_names"]) == 3
 
 
+def test_get_fit_series_done(client):
+    """After a fit, /api/fit/{id}/series returns the observed columns + values."""
+    csv_bytes = _make_csv_bytes()
+    r = client.post("/api/data/upload", files={"file": ("d.csv", csv_bytes, "text/csv")})
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/start",
+        json={"topology_yaml": VALID_TOPOLOGY, "dataset_id": dataset_id, "seed": 42},
+    )
+    job_id = r.json()["id"]
+    for _ in range(60):
+        r = client.get(f"/api/fit/{job_id}")
+        if r.json()["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    assert r.json()["status"] == "done"
+    r = client.get(f"/api/fit/{job_id}/series")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["columns"] == ["f0", "f1"]
+    assert len(body["series"]) == 2
+    assert body["n_total"] == 300
+    assert len(body["series"][0]) == len(body["series"][1])
+    assert all(isinstance(v, float) for v in body["series"][0][:5])
+
+
 def test_get_fit_decoded_done(client):
     csv_bytes = _make_csv_bytes()
     r = client.post("/api/data/upload", files={"file": ("d.csv", csv_bytes, "text/csv")})

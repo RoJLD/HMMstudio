@@ -122,6 +122,13 @@ export interface DecodedResponse {
   state_names: string[];
 }
 
+export interface SeriesResponse {
+  columns: string[];
+  series: number[][]; // one downsampled array per column
+  n_total: number;
+  step: number;
+}
+
 export interface EmissionsResponse {
   type: "gaussian" | "gmm" | "multinomial" | "poisson";
   state_names: string[];
@@ -137,6 +144,10 @@ export async function getFitTransmat(jobId: string): Promise<TransmatResponse> {
 
 export async function getFitDecoded(jobId: string): Promise<DecodedResponse> {
   return jsonFetch<DecodedResponse>(`/api/fit/${jobId}/decoded`);
+}
+
+export async function getFitSeries(jobId: string): Promise<SeriesResponse> {
+  return jsonFetch<SeriesResponse>(`/api/fit/${jobId}/series`);
 }
 
 export async function getFitEmissions(jobId: string): Promise<EmissionsResponse> {

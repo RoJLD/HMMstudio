@@ -4,6 +4,7 @@ import {
   getFitStatus,
   getFitTransmat,
   getFitDecoded,
+  getFitSeries,
   getFitEmissions,
   getNhmmInfo,
   listAnnotations,
@@ -12,11 +13,13 @@ import {
   type FitJobResult,
   type TransmatResponse,
   type DecodedResponse,
+  type SeriesResponse,
   type EmissionsResponse,
   type NhmmInfoResponse,
 } from "../api/client";
 import { TransmatHeatmap } from "../components/results/TransmatHeatmap";
 import { TransmatGraph } from "../components/results/TransmatGraph";
+import { DataCurves } from "../components/results/DataCurves";
 import { ViterbiTimeline } from "../components/results/ViterbiTimeline";
 import { EmissionsPanel } from "../components/results/EmissionsPanel";
 import { ProgressCurve } from "../components/results/ProgressCurve";
@@ -34,6 +37,7 @@ export default function ResultsPage() {
   const [progress, setProgress] = useState<number[]>([]);
   const [transmat, setTransmat] = useState<TransmatResponse | null>(null);
   const [decoded, setDecoded] = useState<DecodedResponse | null>(null);
+  const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [emissions, setEmissions] = useState<EmissionsResponse | null>(null);
   const [nhmmInfo, setNhmmInfo] = useState<NhmmInfoResponse | null>(null);
   const [currentT, setCurrentT] = useState<number | null>(null);
@@ -88,11 +92,13 @@ export default function ResultsPage() {
       getFitDecoded(jobId).catch(() => null),
       getFitEmissions(jobId).catch(() => null),
       getNhmmInfo(jobId).catch(() => null),
-    ]).then(([t, d, e, n]) => {
+      getFitSeries(jobId).catch(() => null),
+    ]).then(([t, d, e, n, s]) => {
       setTransmat(t);
       setDecoded(d);
       setEmissions(e);
       setNhmmInfo(n);
+      setSeries(s);
     });
   }, [jobId, status?.status]);
 
@@ -175,8 +181,9 @@ export default function ResultsPage() {
               <p className="text-xs text-slate-500 mb-3">
                 Arrows show direction; the bubble is the learned probability and
                 thicker edges are more likely. A self-loop means staying in that regime.
+                Press ▶ above to light up the current state, its posterior, and the active transition.
               </p>
-              <TransmatGraph data={transmat} />
+              <TransmatGraph data={transmat} decoded={decoded} currentT={currentT} />
             </div>
           )}
           {transmat && (
@@ -193,6 +200,14 @@ export default function ResultsPage() {
                 Viterbi path
               </h3>
               <ViterbiTimeline data={decoded} currentT={currentT} annotations={annotations} />
+            </div>
+          )}
+          {series && series.columns.length > 0 && (
+            <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                Observed data
+              </h3>
+              <DataCurves data={series} currentT={currentT} />
             </div>
           )}
           {emissions && (
