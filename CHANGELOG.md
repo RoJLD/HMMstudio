@@ -8,6 +8,12 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added
 
+- Topology visualization: editor transition edges now render directional
+  **arrowheads**, and the Results page gains a **transition graph** — a node-graph
+  of the learned transition matrix with arrows, probability bubbles, and edge
+  thickness ∝ probability (complementing the precise heatmap). Phase 1; the
+  animated player (posteriors + path over time) and data curves are specced as
+  Phase 2 in `docs/specs/2026-05-27-topology-visualization.md`.
 - Academy lesson 14 "Comparing models honestly" — a regime-detection case study
   (adapted from Nathan Berbinau's research, credited in `CONTRIBUTORS.md`) teaching
   honest model comparison: benchmark don't assume, simpler can win, negative results
