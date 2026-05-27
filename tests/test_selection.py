@@ -147,3 +147,21 @@ def test_factorial_flagged_not_comparable():
     assert len(fac) == 1
     assert fac[0].comparable is False
     assert fac[0].note and "joint" in fac[0].note.lower()
+
+
+from hmm_core.selection import auto_grid
+
+
+def test_auto_grid_generates_emission_x_k():
+    base = _gaussian_topo("base", 3)
+    grid = auto_grid(base, k_range=range(2, 5), emission_types=["gaussian", "gmm"], n_mix=2)
+    # 3 K values x 2 emission types = 6 candidates
+    assert len(grid) == 6
+    assert all(isinstance(c, TopologyCandidate) for c in grid)
+    ks = sorted({c.topology.n_states for c in grid})
+    assert ks == [2, 3, 4]
+    types = {c.topology.emission.type for c in grid}
+    assert types == {"gaussian", "gmm"}
+    # gmm candidates carry n_mix
+    gmm = [c for c in grid if c.topology.emission.type == "gmm"]
+    assert all(c.topology.emission.n_mix == 2 for c in gmm)

@@ -183,3 +183,46 @@ def compare_models(
         best_by_aic=_best("aic"),
         best_by_hqic=_best("hqic"),
     )
+
+
+from dataclasses import replace as _dc_replace
+
+
+def auto_grid(
+    base_topology: Topology,
+    k_range,
+    emission_types: list[str] | None = None,
+    *,
+    n_mix: int = 2,
+) -> list[TopologyCandidate]:
+    """Generate the comparable emission × K grid from a base topology.
+
+    Produces only TopologyCandidate (comparable, P(X)). NHMM / Factorial are
+    not generated — they need covariates / chain specs the user supplies.
+
+    For each (emission_type, k): a copy of ``base_topology`` with n_states=k,
+    state_names s0..s{k-1}, allowed_transitions cleared (ergodic — the grid
+    compares model order/family, not topology shape), and the emission type
+    swapped. ``n_mix`` is set on gmm candidates.
+    """
+    emission_types = emission_types or ["gaussian"]
+    out: list[TopologyCandidate] = []
+    for etype in emission_types:
+        for k in k_range:
+            e = base_topology.emission
+            new_e = _dc_replace(
+                e,
+                type=etype,
+                n_mix=(n_mix if etype == "gmm" else None),
+            )
+            topo = _dc_replace(
+                base_topology,
+                n_states=k,
+                state_names=[f"s{i}" for i in range(k)],
+                allowed_transitions=None,
+                emission=new_e,
+                emissions=None,  # drop per-state emission hints (K-dependent)
+                transmat_prior_matrix=None,  # K-dependent
+            )
+            out.append(TopologyCandidate(topology=topo))
+    return out
