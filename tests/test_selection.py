@@ -199,3 +199,11 @@ def test_repr_html_marks_noncomparable():
     assert "<table" in html
     # the non-comparable row carries a visible marker
     assert "not directly comparable" in html or "⚠" in html
+
+
+def test_top_level_exports():
+    import hmm_core
+    assert hasattr(hmm_core, "compare_models")
+    assert hasattr(hmm_core, "auto_grid")
+    assert hasattr(hmm_core, "ModelComparison")
+    assert hasattr(hmm_core, "TopologyCandidate")

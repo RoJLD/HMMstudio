@@ -6,6 +6,25 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ## [Unreleased]
 
+### Added — model-variant selection (Phase 1: Python core)
+
+- New `hmm_core.selection` module (exported at package top level):
+  - `compare_models(X, candidates, *, lengths=None, seed=42) -> ModelComparison`
+    — fits each candidate HMM spec on the same `X` and ranks the comparable
+    ones by BIC / AIC / HQIC. Robust: a candidate whose fit raises is captured
+    with an `error` and NaN metrics, never fatal to the comparison.
+  - Candidate types: `TopologyCandidate` (comparable, models P(X)),
+    `NHMMCandidate` and `FactorialCandidate` (flagged `comparable=False` —
+    they model P(X|Z) / a joint product space, so they appear in the table
+    but are never chosen as "best by criterion").
+  - `auto_grid(base_topology, k_range, emission_types, n_mix=2)` — generates
+    the comparable emission × K grid.
+  - `ModelComparison` with `.ranked(criterion)`, `.to_summary_dict()`, and a
+    Jupyter `_repr_html_` (non-comparable rows greyed + ⚠).
+- Phase 1 of `docs/specs/2026-05-27-model-variant-selection.md`. CLI
+  (`hmm-fit compare`) and the `/compare` web page are Phases 2-3.
+- The in-scope, HMM-only slice of the Nathan/Robin ModelFinder.
+
 ### Added — unsupervised feature selection
 
 - New `hmm_core.features` module (exported at package top level):
