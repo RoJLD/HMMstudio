@@ -159,3 +159,46 @@ def test_migration_adds_compare_columns_to_legacy_table(tmp_path):
     with eng.connect() as conn:
         cols = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
     assert "emission_override" in cols and "n_mix_override" in cols
+
+
+def test_submit_compare_creates_grid_children(setup_env):
+    import time
+    from sqlmodel import select
+    from hmm_studio.server.models import FitJob
+
+    runner = JobRunner(setup_env["engine"], setup_env["results_dir"])
+    try:
+        parent_id = runner.submit_compare(
+            topology_yaml=VALID_TOPOLOGY_YAML,
+            dataset_id=setup_env["dataset_id"],
+            k_min=2,
+            k_max=3,
+            emission_types=["gaussian", "gmm"],
+            n_mix=2,
+            seed=42,
+        )
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            with get_session(setup_env["engine"]) as s:
+                children = list(
+                    s.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
+                )
+                done = children and all(
+                    str(getattr(c.status, "value", c.status)) in ("done", "failed")
+                    for c in children
+                )
+            if done:
+                break
+            time.sleep(0.25)
+
+        with get_session(setup_env["engine"]) as s:
+            children = list(s.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all())
+            combos = {(c.emission_override, c.k_override) for c in children}
+            n_mix_by_emission = {
+                c.emission_override: c.n_mix_override for c in children
+            }
+        assert combos == {("gaussian", 2), ("gaussian", 3), ("gmm", 2), ("gmm", 3)}
+        assert n_mix_by_emission["gmm"] == 2
+        assert n_mix_by_emission["gaussian"] is None
+    finally:
+        runner.shutdown()

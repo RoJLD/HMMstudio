@@ -71,6 +71,34 @@ def _topology_with_overridden_k(topology: Topology, new_k: int) -> Topology:
     )
 
 
+def _topology_with_overridden_emission(
+    topology: Topology, emission_type: str, new_k: int, n_mix: int | None
+) -> Topology:
+    """Return a copy of `topology` with emission family + n_states overridden.
+
+    Mirrors hmm_core.selection.auto_grid's per-cell logic: swap emission.type
+    (and n_mix for gmm), set n_states=new_k with ergodic s0..s{k-1} state names,
+    and drop the K-dependent fields (allowed_transitions, per-state emissions,
+    transmat prior). n_features / covariance_type carry over from the base.
+    """
+    from dataclasses import replace
+
+    new_emission = replace(
+        topology.emission,
+        type=emission_type,
+        n_mix=(n_mix if emission_type == "gmm" else None),
+    )
+    return replace(
+        topology,
+        n_states=new_k,
+        state_names=[f"s{i}" for i in range(new_k)],
+        allowed_transitions=None,
+        emission=new_emission,
+        emissions=None,
+        transmat_prior_matrix=None,
+    )
+
+
 def _update_scan_parent_status(engine, parent_id: str) -> None:
     """Recompute parent status from children. Idempotent."""
     from sqlmodel import select
@@ -205,6 +233,71 @@ class JobRunner:
 
         return parent_id
 
+    def submit_compare(
+        self,
+        topology_yaml: str,
+        dataset_id: str,
+        k_min: int,
+        k_max: int,
+        emission_types: list[str],
+        n_mix: int = 2,
+        seed: int | None = None,
+        lengths: list[int] | None = None,
+    ) -> str:
+        """Create a parent + one child per (emission_type, K) cell.
+
+        Each child models P(X) (comparable grid). Children reuse the base
+        topology YAML and override emission family + K at fit time.
+        """
+        if k_min < 1 or k_max < k_min:
+            raise ValueError(f"invalid k range: k_min={k_min}, k_max={k_max}")
+        if not emission_types:
+            raise ValueError("emission_types must be non-empty")
+
+        with get_session(self._engine) as session:
+            parent = FitJob(
+                topology=topology_yaml,
+                dataset_id=dataset_id,
+                seed=seed,
+                status=FitJobStatus.QUEUED,
+                lengths=json.dumps(lengths) if lengths else "",
+            )
+            session.add(parent)
+            session.commit()
+            session.refresh(parent)
+            parent_id = parent.id
+
+        for etype in emission_types:
+            for k in range(k_min, k_max + 1):
+                with get_session(self._engine) as session:
+                    child = FitJob(
+                        topology=topology_yaml,
+                        dataset_id=dataset_id,
+                        seed=seed,
+                        status=FitJobStatus.QUEUED,
+                        lengths=json.dumps(lengths) if lengths else "",
+                        parent_id=parent_id,
+                        k_override=k,
+                        emission_override=etype,
+                        n_mix_override=(n_mix if etype == "gmm" else None),
+                    )
+                    session.add(child)
+                    session.commit()
+                    session.refresh(child)
+                    child_id = child.id
+                future = self._executor.submit(self._run, child_id)
+                with self._lock:
+                    self._futures[child_id] = future
+
+        with get_session(self._engine) as session:
+            parent = session.get(FitJob, parent_id)
+            parent.status = FitJobStatus.RUNNING
+            parent.started_at = utcnow()
+            session.add(parent)
+            session.commit()
+
+        return parent_id
+
     def get_status(self, job_id: str) -> dict:
         """Return the latest persisted status of a job as a dict."""
         with get_session(self._engine) as session:
@@ -246,6 +339,8 @@ class JobRunner:
                 covariate_names_json = job.covariate_names
                 lengths_raw = job.lengths
                 k_override = job.k_override  # NEW: K-scan override
+                emission_override = job.emission_override  # NEW: compare emission override
+                n_mix_override = job.n_mix_override  # NEW: compare gmm n_mix
                 job_parent_id = job.parent_id  # NEW: scan parent tracking (overrides outer None)
                 if dataset is None:
                     job.status = FitJobStatus.FAILED
@@ -258,10 +353,18 @@ class JobRunner:
                     return
                 dataset_path = dataset.path
 
-            # Step 2: validate topology, possibly with overridden K
+            # Step 2: validate topology, possibly with overridden emission / K
             try:
                 topology = _load_topology_from_yaml_str(topology_yaml)
-                if k_override is not None and k_override != topology.n_states:
+                if emission_override is not None:
+                    topology = _topology_with_overridden_emission(
+                        topology,
+                        emission_override,
+                        k_override if k_override is not None else topology.n_states,
+                        n_mix_override,
+                    )
+                    topology.validate()
+                elif k_override is not None and k_override != topology.n_states:
                     topology = _topology_with_overridden_k(topology, k_override)
                     topology.validate()
             except Exception as exc:
