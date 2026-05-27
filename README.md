@@ -494,6 +494,16 @@ First-time setup: register the project at
 <https://pypi.org/manage/account/publishing/> as Pending Publisher with
 owner `RoJLD`, repo `HMMstudio`, workflow `release.yml`.
 
+## Acknowledgements
+
+Parts of `hmm-studio` were informed by **Nathan Berbinau**'s unsupervised crypto
+regime-detection research
+([github.com/NathanBerbinau](https://github.com/NathanBerbinau)) — the HQIC
+criterion, the model-comparison direction (`hmm-fit compare` / `/compare`), the
+Giudici (2020) preset + regime labelling, mutual-information feature selection,
+and the model-selection case study taught in Academy lesson 14. See
+[CONTRIBUTORS.md](CONTRIBUTORS.md) for the full breakdown.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
