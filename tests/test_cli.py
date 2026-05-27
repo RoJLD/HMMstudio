@@ -275,3 +275,35 @@ def test_compare_cli_no_candidates_exits_nonzero(runner, tmp_path):
     assert result.exit_code != 0
     combined = (result.stdout or "") + (result.stderr or "")
     assert "no candidate" in combined.lower()
+
+
+def test_compare_cli_grid_yaml(runner, tmp_path, synthetic_gaussian_left_right):
+    """A grid.yaml expands a base topology into an emission x K grid."""
+    spec_dir = tmp_path / "candidates"
+    spec_dir.mkdir()
+    X = synthetic_gaussian_left_right["X"]
+    data_csv = tmp_path / "data.csv"
+    pd.DataFrame(X, columns=["f0", "f1"]).to_csv(data_csv, index=False)
+
+    base_yaml = """
+name: base
+n_states: 2
+state_names: [s0, s1]
+emission: {type: gaussian, covariance_type: full, n_features: 2}
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 15, tol: 1.0e-3}
+"""
+    (spec_dir / "base.yaml").write_text(base_yaml, encoding="utf-8")
+    (spec_dir / "grid.yaml").write_text(
+        "base: base.yaml\nk_range: [2, 3]\nemission_types: [gaussian]\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app, ["compare", str(spec_dir), str(data_csv), "--criterion", "hqic"]
+    )
+    assert result.exit_code == 0, result.stdout
+    out = result.stdout.lower()
+    assert "hqic" in out
+    assert "k=2" in out and "k=3" in out

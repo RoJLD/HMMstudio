@@ -274,7 +274,29 @@ def _candidates_from_dir(spec_dir: Path, pattern: str) -> list:
 
 
 def _candidates_from_grid(grid_path: Path, spec_dir: Path) -> list:
-    raise typer.BadParameter("grid.yaml support is added in Task 3")
+    """Build an emission x K grid of TopologyCandidates from a grid.yaml.
+
+    grid.yaml keys: base (path to a base topology YAML, relative to spec_dir),
+    k_range (list of ints), emission_types (list, default ["gaussian"]),
+    n_mix (int, default 2 - used only for gmm candidates).
+    """
+    import yaml
+
+    from hmm_core.selection import auto_grid
+
+    spec = yaml.safe_load(grid_path.read_text(encoding="utf-8")) or {}
+    base_ref = spec.get("base")
+    if not base_ref:
+        raise typer.BadParameter("grid.yaml must have a 'base' key (path to a base topology YAML)")
+    base_topo = load_topology(spec_dir / base_ref)
+
+    k_range = spec.get("k_range")
+    if not k_range:
+        raise typer.BadParameter("grid.yaml must have a non-empty 'k_range' list")
+
+    emission_types = spec.get("emission_types") or ["gaussian"]
+    n_mix = int(spec.get("n_mix", 2))
+    return auto_grid(base_topo, list(k_range), emission_types, n_mix=n_mix)
 
 
 def _print_comparison(comp, criterion: str) -> None:
