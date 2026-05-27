@@ -6,6 +6,7 @@ import type {
 import { useTopologyStore } from "../../store/topologyStore";
 import { PerStateEmissionPanel } from "./PerStateEmissionPanel";
 import { PerEdgePriorPanel } from "./PerEdgePriorPanel";
+import { HelpTip } from "../help/HelpTip";
 
 interface SidePanelProps {
   validationError: string | null;
@@ -55,13 +56,18 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
 
   const Row = ({
     label,
+    paramKey,
     children,
   }: {
     label: string;
+    paramKey?: string;
     children: React.ReactNode;
   }) => (
     <label className="flex items-center justify-between gap-2 text-sm">
-      <span className="text-slate-700">{label}</span>
+      <span className="text-slate-700 inline-flex items-center">
+        {label}
+        {paramKey && <HelpTip paramKey={paramKey} align="right" />}
+      </span>
       {children}
     </label>
   );
@@ -72,7 +78,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
   return (
     <div className="w-72 border-l border-slate-200 bg-white p-4 overflow-y-auto">
       <Section title="Model">
-        <Row label="Name">
+        <Row label="Name" paramKey="topology.name">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -82,7 +88,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
       </Section>
 
       <Section title="Emission">
-        <Row label="Type">
+        <Row label="Type" paramKey="emission.type">
           <select
             value={emission.type}
             onChange={(e) =>
@@ -102,7 +108,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
         {(emission.type === "gaussian" ||
           emission.type === "gmm" ||
           emission.type === "poisson") && (
-          <Row label="n_features">
+          <Row label="n_features" paramKey="emission.n_features">
             <input
               type="number"
               min={1}
@@ -118,7 +124,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
           </Row>
         )}
         {(emission.type === "gaussian" || emission.type === "gmm") && (
-          <Row label="covariance">
+          <Row label="covariance" paramKey="emission.covariance_type">
             <select
               value={emission.covariance_type ?? "full"}
               onChange={(e) =>
@@ -137,7 +143,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
           </Row>
         )}
         {emission.type === "gmm" && (
-          <Row label="n_mix">
+          <Row label="n_mix" paramKey="emission.n_mix">
             <input
               type="number"
               min={1}
@@ -153,7 +159,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
           </Row>
         )}
         {emission.type === "multinomial" && (
-          <Row label="n_symbols">
+          <Row label="n_symbols" paramKey="emission.n_symbols">
             <input
               type="number"
               min={2}
@@ -171,7 +177,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
       </Section>
 
       <Section title="Init">
-        <Row label="Strategy">
+        <Row label="Strategy" paramKey="init.strategy">
           <select
             value={init.strategy}
             onChange={(e) =>
@@ -188,7 +194,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
             <option value="data_frequencies">data_frequencies</option>
           </select>
         </Row>
-        <Row label="Seed">
+        <Row label="Seed" paramKey="init.seed">
           <input
             type="number"
             value={init.seed}
@@ -201,7 +207,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
       </Section>
 
       <Section title="Fit">
-        <Row label="n_iter">
+        <Row label="n_iter" paramKey="fit.n_iter">
           <input
             type="number"
             min={1}
@@ -212,7 +218,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
             className={inputCls}
           />
         </Row>
-        <Row label="tol">
+        <Row label="tol" paramKey="fit.tol">
           <input
             type="number"
             step={1e-5}
@@ -226,7 +232,7 @@ function GlobalPanel({ validationError, validationSummary }: SidePanelProps) {
       </Section>
 
       <Section title="Priors (A.9)">
-        <Row label="α (Dirichlet)">
+        <Row label="α (Dirichlet)" paramKey="priors.alpha">
           <input
             type="number"
             step={0.1}
