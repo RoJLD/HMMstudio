@@ -8,6 +8,12 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added
 
+- Academy quiz & flashcards: every lesson now ends with a "Check your
+  understanding" section — a flip-card **study deck** plus a **graded MCQ quiz**.
+  Questions are tagged by cognitive level (Recall / Apply / Analyze); the quiz
+  returns a score, a per-level breakdown, and a gap report of missed concepts.
+  Best scores persist (`academyStore` v2) and show as a badge on each lesson
+  card. Content authored for all 13 lessons.
 - Guided model creation: a "✨ New guided model" wizard (`/topology/new`) walks
   you through Emission → States → Transitions → Training → Review — with a
   data-aware emission suggestion (reads the loaded dataset's dtypes), transition-

@@ -162,3 +162,16 @@ cours et selon plusieurs niveaux à academy pour tester la compréhension ?
 Donner un score à la fin et identifier les lacunes ? ». Décisions (hybride
 deck+quiz ; niveaux cognitifs + difficulté héritée ; 13 leçons lean ; score +
 rapport de lacunes par niveau) validées le même jour.
+
+## 9. Update 2026-05-27 — shipped
+
+Implémenté : `lessonQuiz.ts` (modèle + contenu des **13** leçons : 39 cartes +
+39 QCM), `scoreQuiz.ts` (pur), composants `Flashcard` / `StudyDeck` /
+`QuizRunner` / `LessonAssessment`, section « Check your understanding » sur
+`LessonPage`, `academyStore` v2 (migration + `recordQuizResult`), badge de
+score sur `LessonCard`. `npm run build` vert.
+
+Note d'impl : le composant quiz a été nommé **`QuizRunner`** (pas `LessonQuiz`)
+pour éviter une collision de casse avec le module de données `lessonQuiz.ts` sur
+système de fichiers insensible à la casse (Windows). `scoreQuiz` reste pur →
+unit-test-ready si Vitest est ajouté (gap §5 maintenu).
