@@ -132,3 +132,30 @@ def test_result_path_contains_artifacts(setup_env):
         assert (result_dir / "fit_log.txt").exists()
     finally:
         runner.shutdown()
+
+
+def test_create_db_engine_has_compare_columns(tmp_path):
+    from sqlalchemy import text
+    from hmm_studio.server.db import create_db_engine
+    from hmm_studio.server.models import FitJob
+
+    eng = create_db_engine(tmp_path / "s.db")
+    with eng.connect() as conn:
+        cols = {row[1] for row in conn.execute(text(f"PRAGMA table_info({FitJob.__tablename__})"))}
+    assert {"emission_override", "n_mix_override"} <= cols
+
+
+def test_migration_adds_compare_columns_to_legacy_table(tmp_path):
+    from sqlalchemy import create_engine, text
+    from hmm_studio.server.db import _ensure_fitjob_columns
+    from hmm_studio.server.models import FitJob
+
+    table = FitJob.__tablename__
+    eng = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.begin() as conn:
+        conn.execute(text(f"CREATE TABLE {table} (id VARCHAR PRIMARY KEY, k_override INTEGER)"))
+    _ensure_fitjob_columns(eng)  # should be idempotent + additive
+    _ensure_fitjob_columns(eng)  # second call is a no-op
+    with eng.connect() as conn:
+        cols = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
+    assert "emission_override" in cols and "n_mix_override" in cols

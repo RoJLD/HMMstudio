@@ -53,6 +53,8 @@ class FitJob(SQLModel, table=True):
     lengths: str = ""  # JSON list[int], empty = single sequence
     parent_id: str | None = Field(default=None)  # if set, this is a child of a scan job
     k_override: int | None = None  # if set, this child overrides topology.n_states
+    emission_override: str | None = Field(default=None)  # compare: per-child emission family
+    n_mix_override: int | None = Field(default=None)  # compare: GMM mixture count (gmm children only)
 
 
 class Annotation(SQLModel, table=True):
