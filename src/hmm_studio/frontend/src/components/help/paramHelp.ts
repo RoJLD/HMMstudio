@@ -61,6 +61,11 @@ export const PARAM_HELP: Record<string, ParamHelpEntry> = {
     body: "Smoothing on the transition rows. α > 1 pulls toward uniform; α = 1 (or empty) is plain MLE. Useful when some transitions are rarely observed.",
     lesson: { id: "lesson-10-bayesian-hmm", label: "Bayesian HMM" },
   },
+  "topology.allowed_transitions": {
+    title: "Transition shape",
+    body: "Which state-to-state moves are allowed. Ergodic permits all; left-right / Bakis forbid going back — right for staged processes (speech phonemes, lifecycles) where you never revisit a past regime.",
+    lesson: { id: "lesson-6-constrained-topologies", label: "Constrained topologies" },
+  },
   "scan.k_range": {
     title: "Number of states (K)",
     body: "The hidden-state count to sweep. A scan/compare fits one model per K in [k_min, k_max] and ranks them by information criterion.",

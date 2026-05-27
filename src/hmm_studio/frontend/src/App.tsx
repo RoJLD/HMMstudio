@@ -7,6 +7,7 @@ import FitPage from "./pages/FitPage";
 import ResultsPage from "./pages/ResultsPage";
 import ScanPage from "./pages/ScanPage";
 import ComparePage from "./pages/ComparePage";
+import WizardPage from "./pages/WizardPage";
 import AcademyPage from "./pages/AcademyPage";
 import LessonPage from "./pages/LessonPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -18,6 +19,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="data" element={<DataPage />} />
         <Route path="topology" element={<TopologyPage />} />
+        <Route path="topology/new" element={<WizardPage />} />
         <Route path="fit" element={<FitPage />} />
         <Route path="results/:jobId" element={<ResultsPage />} />
         <Route path="scan/:parentId" element={<ScanPage />} />

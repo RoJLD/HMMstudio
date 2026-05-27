@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { EditorCanvas } from "../components/topology/EditorCanvas";
 import { Toolbar } from "../components/topology/Toolbar";
 import { SidePanel } from "../components/topology/SidePanel";
@@ -74,6 +75,14 @@ export default function TopologyPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] -mx-8 -my-8">
       <div className="flex-1 flex flex-col p-4 min-w-0">
+        <div className="mb-2">
+          <Link
+            to="/topology/new"
+            className="inline-block px-3 py-1.5 rounded text-sm font-medium bg-brand-600 text-white hover:bg-brand-700"
+          >
+            ✨ New guided model
+          </Link>
+        </div>
         <Toolbar
           onValidate={() => {
             // Validation is debounced and runs automatically on every change.
