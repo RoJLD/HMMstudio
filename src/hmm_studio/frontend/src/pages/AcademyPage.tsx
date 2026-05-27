@@ -1,4 +1,4 @@
-import { LESSONS } from "../lessons";
+import { LESSONS, CATEGORIES } from "../lessons";
 import { LessonCard } from "../components/academy/LessonCard";
 import { useAcademyStore } from "../store/academyStore";
 
@@ -9,6 +9,13 @@ export default function AcademyPage() {
   const published = LESSONS.filter((l) => l.status === "published");
   const planned = LESSONS.filter((l) => l.status === "planned");
   const completedCount = published.filter((l) => completed.includes(l.id)).length;
+
+  // Global step number (1..N) in category-then-order sequence, computed so it
+  // stays correct as lessons are added or reordered.
+  const ordered = CATEGORIES.flatMap((cat) =>
+    LESSONS.filter((l) => l.category === cat.id).sort((a, b) => a.order - b.order),
+  );
+  const stepById = new Map(ordered.map((l, i) => [l.id, i + 1] as const));
 
   return (
     <div className="max-w-4xl">
@@ -27,16 +34,30 @@ export default function AcademyPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {LESSONS.map((lesson) => (
-          <LessonCard
-            key={lesson.id}
-            lesson={lesson}
-            completed={completed.includes(lesson.id)}
-            bookmarked={bookmarked.includes(lesson.id)}
-          />
-        ))}
-      </div>
+      {CATEGORIES.map((cat) => {
+        const lessons = LESSONS.filter((l) => l.category === cat.id).sort(
+          (a, b) => a.order - b.order,
+        );
+        if (lessons.length === 0) return null;
+        return (
+          <section key={cat.id} className="mb-8">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
+              {cat.title}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {lessons.map((lesson) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  step={stepById.get(lesson.id)}
+                  completed={completed.includes(lesson.id)}
+                  bookmarked={bookmarked.includes(lesson.id)}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

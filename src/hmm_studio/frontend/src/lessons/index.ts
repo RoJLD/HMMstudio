@@ -14,9 +14,31 @@ import { Lesson11SemiSupervised } from "./lesson-11-semi-supervised";
 import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
 import { Lesson13ChoosingFeatures } from "./lesson-13-choosing-features";
 
+export type LessonCategory =
+  | "foundations"
+  | "inference"
+  | "learning"
+  | "structure"
+  | "variants"
+  | "selection";
+
+// Ordered list of categories — drives the Academy section order.
+export const CATEGORIES: { id: LessonCategory; title: string }[] = [
+  { id: "foundations", title: "Foundations" },
+  { id: "inference", title: "Inference" },
+  { id: "learning", title: "Learning" },
+  { id: "structure", title: "Structure & topology" },
+  { id: "variants", title: "Emission variants" },
+  { id: "selection", title: "Bayesian & model choice" },
+];
+
 export interface LessonMeta {
   id: string;
   title: string;
+  // Thematic group + sort order WITHIN that group. The global step number
+  // shown on cards is derived (category order × intra-order), not stored.
+  category: LessonCategory;
+  order: number;
   estimatedMinutes: number;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
   description: string;
@@ -34,6 +56,8 @@ export interface LessonMeta {
 export const LESSONS: LessonMeta[] = [
   {
     id: "lesson-1-what-is-an-hmm",
+    category: "foundations",
+    order: 1,
     title: "What is an HMM?",
     estimatedMinutes: 10,
     difficulty: "Beginner",
@@ -50,6 +74,8 @@ export const LESSONS: LessonMeta[] = [
   },
   {
     id: "lesson-2-markov-chains",
+    category: "foundations",
+    order: 2,
     title: "Markov chains — the engine inside",
     estimatedMinutes: 12,
     difficulty: "Beginner",
@@ -78,6 +104,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-3-forward-algorithm",
+    category: "inference",
+    order: 1,
     title: "Forward algorithm",
     estimatedMinutes: 15,
     difficulty: "Beginner",
@@ -94,6 +122,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-4-viterbi",
+    category: "inference",
+    order: 2,
     title: "Viterbi: most likely state path",
     estimatedMinutes: 12,
     difficulty: "Beginner",
@@ -120,6 +150,8 @@ fit: {algorithm: baum_welch, n_iter: 30, tol: 1.0e-4}
   },
   {
     id: "lesson-5-baum-welch",
+    category: "learning",
+    order: 1,
     title: "Baum-Welch: learning the parameters",
     estimatedMinutes: 18,
     difficulty: "Intermediate",
@@ -147,6 +179,8 @@ fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-5}
   },
   {
     id: "lesson-6-constrained-topologies",
+    category: "structure",
+    order: 1,
     title: "Constrained topologies (Bakis, left-right)",
     estimatedMinutes: 15,
     difficulty: "Intermediate",
@@ -182,6 +216,8 @@ fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-5}
   },
   {
     id: "lesson-7-nhmm",
+    category: "variants",
+    order: 2,
     title: "Non-homogeneous HMM (NHMM)",
     estimatedMinutes: 15,
     difficulty: "Advanced",
@@ -209,6 +245,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-8-gmm-hmm",
+    category: "variants",
+    order: 1,
     title: "GMM-HMM : sub-modes inside each regime",
     estimatedMinutes: 15,
     difficulty: "Advanced",
@@ -225,6 +263,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-9-factorial-nhmm",
+    category: "variants",
+    order: 3,
     title: "Factorial NHMM : independent regime dimensions",
     estimatedMinutes: 18,
     difficulty: "Advanced",
@@ -241,6 +281,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-10-bayesian-hmm",
+    category: "selection",
+    order: 1,
     title: "Bayesian HMM : credible intervals on parameters",
     estimatedMinutes: 18,
     difficulty: "Advanced",
@@ -257,6 +299,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-11-semi-supervised",
+    category: "learning",
+    order: 2,
     title: "Semi-supervised training : partial labels",
     estimatedMinutes: 15,
     difficulty: "Intermediate",
@@ -267,6 +311,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-12-hierarchical-hmm",
+    category: "structure",
+    order: 2,
     title: "Hierarchical HMM (theory only)",
     estimatedMinutes: 12,
     difficulty: "Advanced",
@@ -277,6 +323,8 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
   },
   {
     id: "lesson-13-choosing-features",
+    category: "selection",
+    order: 2,
     title: "Choosing features for your HMM",
     estimatedMinutes: 12,
     difficulty: "Intermediate",

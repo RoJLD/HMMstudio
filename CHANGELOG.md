@@ -8,6 +8,10 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added
 
+- Academy organization: lessons are now grouped into ordered thematic sections
+  (Foundations, Inference, Learning, Structure & topology, Emission variants,
+  Bayesian & model choice) with a global step number (1–13) on each card. Driven
+  by `category` + `order` metadata on each lesson and a `CATEGORIES` list.
 - Parameter help: a `?` next to each parameter on the Topology editor, Fit, and
   Compare pages opens a popover explaining it, with a "Learn more →" deep link to
   the relevant Academy lesson. Backed by a single `paramHelp` content registry.

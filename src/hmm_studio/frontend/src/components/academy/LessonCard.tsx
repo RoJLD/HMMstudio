@@ -5,6 +5,8 @@ interface LessonCardProps {
   lesson: LessonMeta;
   completed: boolean;
   bookmarked: boolean;
+  // Global step number (1..N) across the ordered curriculum, shown before the title.
+  step?: number;
 }
 
 const DIFF_COLORS: Record<LessonMeta["difficulty"], string> = {
@@ -13,7 +15,7 @@ const DIFF_COLORS: Record<LessonMeta["difficulty"], string> = {
   Advanced: "bg-orange-100 text-orange-800",
 };
 
-export function LessonCard({ lesson, completed, bookmarked }: LessonCardProps) {
+export function LessonCard({ lesson, completed, bookmarked, step }: LessonCardProps) {
   const planned = lesson.status === "planned";
   const className =
     "block p-4 border rounded-md transition-colors " +
@@ -24,7 +26,12 @@ export function LessonCard({ lesson, completed, bookmarked }: LessonCardProps) {
   const inner = (
     <>
       <div className="flex items-baseline justify-between gap-3 mb-2">
-        <h3 className="font-semibold text-base">{lesson.title}</h3>
+        <h3 className="font-semibold text-base">
+          {step != null && (
+            <span className="text-slate-400 font-mono mr-1.5">{step}.</span>
+          )}
+          {lesson.title}
+        </h3>
         {completed && !planned && (
           <span className="text-green-700 text-sm">✓</span>
         )}
