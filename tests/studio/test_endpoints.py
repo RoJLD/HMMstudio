@@ -762,3 +762,63 @@ def test_delete_annotation(client):
 
     r = client.get(f"/api/data/{dataset_id}/annotations")
     assert len(r.json()["annotations"]) == 1
+
+
+def test_compare_start_and_status(client):
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("d.csv", _make_csv_bytes(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/compare/start",
+        json={
+            "topology_yaml": VALID_TOPOLOGY,
+            "dataset_id": dataset_id,
+            "k_min": 2,
+            "k_max": 3,
+            "emission_types": ["gaussian", "gmm"],
+            "n_mix": 2,
+            "seed": 42,
+        },
+    )
+    assert r.status_code == 200, r.text
+    parent_id = r.json()["parent_id"]
+
+    cmp = {}
+    for _ in range(200):
+        cmp = client.get(f"/api/fit/compare/{parent_id}").json()
+        if cmp["overall_status"] in ("done", "failed"):
+            break
+        time.sleep(0.25)
+
+    assert cmp["overall_status"] == "done", cmp
+    assert len(cmp["children"]) == 4
+    labels = {c["label"] for c in cmp["children"]}
+    assert "gaussian K=2" in labels
+    assert "gmm K=2 n_mix=2" in labels
+    assert cmp["best_label_by_bic"] in labels
+
+
+def test_compare_grid_generation(client):
+    r = client.post(
+        "/api/data/upload",
+        files={"file": ("d.csv", _make_csv_bytes(), "text/csv")},
+    )
+    dataset_id = r.json()["id"]
+    r = client.post(
+        "/api/fit/compare/start",
+        json={
+            "topology_yaml": VALID_TOPOLOGY,
+            "dataset_id": dataset_id,
+            "k_min": 2,
+            "k_max": 4,
+            "emission_types": ["gaussian"],
+            "seed": 42,
+        },
+    )
+    assert r.status_code == 200, r.text
+    parent_id = r.json()["parent_id"]
+    cmp = client.get(f"/api/fit/compare/{parent_id}").json()
+    assert {c["k"] for c in cmp["children"]} == {2, 3, 4}
+    assert all(c["emission"] == "gaussian" for c in cmp["children"])

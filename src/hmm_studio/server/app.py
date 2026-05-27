@@ -20,6 +20,9 @@ from hmm_studio.server.models import Annotation, Dataset, FitJob, FitJobStatus, 
 from hmm_studio.server.schemas import (
     AnnotationOut,
     AnnotationsResponse,
+    CompareChildStatus,
+    CompareModelCreate,
+    CompareResult,
     DatasetPreview,
     FitJobCreate,
     FitJobResult,
@@ -512,6 +515,99 @@ def create_app() -> FastAPI:
             best_k_by_bic=best_bic,
             best_k_by_aic=best_aic,
             best_k_by_hqic=best_hqic,
+        )
+
+    def _compare_label(emission: str, k: int, n_mix: int | None) -> str:
+        base = f"{emission} K={k}"
+        if emission == "gmm" and n_mix:
+            base += f" n_mix={n_mix}"
+        return base
+
+    @app.post("/api/fit/compare/start", response_model=dict)
+    def start_compare(req: CompareModelCreate):
+        with get_session(engine) as session:
+            ds = session.get(Dataset, req.dataset_id)
+            if ds is None:
+                raise HTTPException(status_code=404, detail="dataset not found")
+        try:
+            parent_id = runner.submit_compare(
+                topology_yaml=req.topology_yaml,
+                dataset_id=req.dataset_id,
+                k_min=req.k_min,
+                k_max=req.k_max,
+                emission_types=req.emission_types,
+                n_mix=req.n_mix,
+                seed=req.seed,
+                lengths=req.lengths,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"parent_id": parent_id}
+
+    @app.get("/api/fit/compare/{parent_id}", response_model=CompareResult)
+    def get_compare(parent_id: str):
+        from sqlmodel import select
+
+        with get_session(engine) as session:
+            parent = session.get(FitJob, parent_id)
+            if parent is None or parent.parent_id is not None:
+                raise HTTPException(status_code=404, detail="compare parent not found")
+            parent_status = parent.status
+            raw_children = [
+                {
+                    "id": c.id,
+                    "k": c.k_override,
+                    "emission": c.emission_override,
+                    "n_mix": c.n_mix_override,
+                }
+                for c in session.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
+            ]
+
+        raw_children.sort(key=lambda x: (x["emission"] or "", x["k"] or 0))
+
+        child_statuses = []
+        for c in raw_children:
+            ch = runner.get_status(c["id"])
+            child_statuses.append(
+                CompareChildStatus(
+                    job_id=c["id"],
+                    label=_compare_label(c["emission"] or "", c["k"] or 0, c["n_mix"]),
+                    emission=c["emission"] or "",
+                    k=c["k"] or 0,
+                    n_mix=c["n_mix"],
+                    status=ch["status"],
+                    log_likelihood=ch.get("log_likelihood"),
+                    bic=ch.get("bic"),
+                    aic=ch.get("aic"),
+                    hqic=ch.get("hqic"),
+                    converged=ch.get("converged"),
+                    n_iter_actual=ch.get("n_iter_actual"),
+                    error=ch.get("error"),
+                )
+            )
+
+        def _best(attr: str) -> str | None:
+            done = [c for c in child_statuses if c.status == "done" and getattr(c, attr) is not None]
+            return min(done, key=lambda c: getattr(c, attr)).label if done else None
+
+        if parent_status == FitJobStatus.RUNNING:
+            statuses = [c.status for c in child_statuses]
+            if not statuses or any(s in ("queued", "running") for s in statuses):
+                overall = "running"
+            elif all(s == "failed" for s in statuses):
+                overall = "failed"
+            else:
+                overall = "done"
+        else:
+            overall = parent_status.value if hasattr(parent_status, "value") else str(parent_status)
+
+        return CompareResult(
+            parent_id=parent_id,
+            overall_status=overall,
+            children=child_statuses,
+            best_label_by_bic=_best("bic"),
+            best_label_by_aic=_best("aic"),
+            best_label_by_hqic=_best("hqic"),
         )
 
     @app.post("/api/data/{dataset_id}/annotations/upload", response_model=AnnotationsResponse)

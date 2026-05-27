@@ -96,6 +96,46 @@ class ScanResult(BaseModel):
     best_k_by_hqic: int | None = None
 
 
+class CompareModelCreate(BaseModel):
+    """Launch a model comparison: one child fit per (emission_type, K) cell."""
+
+    topology_yaml: str
+    dataset_id: str
+    k_min: int
+    k_max: int
+    emission_types: list[str]  # comparable families: gaussian | gmm | poisson
+    n_mix: int = 2  # for gmm candidates
+    seed: int | None = None
+    lengths: list[int] | None = None
+
+
+class CompareChildStatus(BaseModel):
+    """One candidate's status in a comparison."""
+
+    job_id: str
+    label: str  # "gaussian K=3", "gmm K=2 n_mix=2"
+    emission: str
+    k: int
+    n_mix: int | None = None
+    status: str
+    log_likelihood: float | None = None
+    bic: float | None = None
+    aic: float | None = None
+    hqic: float | None = None
+    converged: bool | None = None
+    n_iter_actual: int | None = None
+    error: str | None = None
+
+
+class CompareResult(BaseModel):
+    parent_id: str
+    overall_status: str  # "queued" | "running" | "done" | "failed"
+    children: list[CompareChildStatus]
+    best_label_by_bic: str | None = None
+    best_label_by_aic: str | None = None
+    best_label_by_hqic: str | None = None
+
+
 class AnnotationOut(BaseModel):
     id: str
     dataset_id: str
