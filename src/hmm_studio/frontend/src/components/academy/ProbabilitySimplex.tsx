@@ -2,13 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
 // --- Geometry constants (module-level, stable) ---
+// The triangle is equilateral with circumradius R centred at (CX, CY):
+//   apex (s0) at (CX, CY - R); base vertices at (CX ± R·sin120°, CY + R/2).
+// R is bounded so the triangle AND its vertex labels fit inside W×H — otherwise
+// the base and the "→ s1" / "→ s2" labels spill past the SVG and get clipped:
+//   - vertically: TOP_PAD above the apex label + 1.5·R triangle + BOTTOM_PAD
+//     below the base labels must fit in H.
+//   - horizontally: SIDE_PAD beside the ±R·sin120° base vertices for their labels.
 const W = 320;
-const H = 260;
-const MARGIN = 30;
-const SIDE = Math.min(W - 2 * MARGIN, H - 2 * MARGIN);
+const H = 280;
+const TOP_PAD = 28; // room above the apex for the "→ s0 (prob 1)" label
+const BOTTOM_PAD = 30; // room below the base for the "→ s1" / "→ s2" labels
+const SIDE_PAD = 40; // room beside the base vertices for their labels
 const CX = W / 2;
-const CY = MARGIN + SIDE * 0.95;
-const R = SIDE * 0.5;
+const R = Math.min(
+  (H - TOP_PAD - BOTTOM_PAD) / 1.5,
+  (W / 2 - SIDE_PAD) / Math.sin((Math.PI * 2) / 3),
+);
+const CY = TOP_PAD + R;
 
 // Triangle vertices: top (s0), bottom-right (s1), bottom-left (s2)
 const VA: [number, number] = [CX, CY - R];
