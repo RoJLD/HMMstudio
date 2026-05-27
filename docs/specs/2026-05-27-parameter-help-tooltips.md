@@ -164,3 +164,11 @@ joindre des infos + redirection si besoin vers un cours) à côté de chaque
 paramètre ? Permettrait de comprendre/apprendre et configurer rapidement. »
 Décisions interaction (click popover) + portée (toutes surfaces) validées le
 même jour.
+
+## Update 2026-05-27 — shipped
+
+Implemented. Open questions resolved: (1) the Data page has no model/fit
+parameters, so the wired surfaces are the editor SidePanel + Fit + Compare
+(Data page N/A); (2) `emission.type` links to lesson-1; (3) hand-rolled popover
+with an `align` prop (no new dependency). No JS test runner exists — validated
+via `npm run build` + manual check (gap noted in §5 stands).

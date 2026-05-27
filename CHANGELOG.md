@@ -6,6 +6,12 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ## [Unreleased]
 
+### Added
+
+- Parameter help: a `?` next to each parameter on the Topology editor, Fit, and
+  Compare pages opens a popover explaining it, with a "Learn more →" deep link to
+  the relevant Academy lesson. Backed by a single `paramHelp` content registry.
+
 ### Added — model-variant selection (Phase 1: Python core)
 
 - Web UI **Compare** page (`/compare`): fit a comparable emission × K grid
