@@ -182,6 +182,18 @@ export const LESSON_QUIZZES: Record<string, LessonQuiz> = {
       { level: "Analyze", prompt: "MI is preferred over Pearson correlation because it…", options: ["is faster", "captures nonlinear dependence", "needs no data", "ignores noise"], correct: 1, concept: "nonlinear dependence", explanation: "Pearson only sees linear relationships." },
     ],
   },
+  "lesson-14-comparing-models": {
+    flashcards: [
+      { level: "Recall", front: "Why benchmark candidate models instead of trusting intuition?", back: "Intuition about which model is “better” is unreliable; an information criterion on the same data gives an objective, parameter-penalized comparison." },
+      { level: "Apply", front: "A richer NHMM has a higher log-likelihood but a worse BIC than a GMM-HMM. Which do you ship?", back: "The GMM-HMM — BIC says the NHMM's extra parameters didn't pay for themselves." },
+      { level: "Analyze", front: "Why can't you directly compare a plain HMM's and an rSLDS's log-likelihood?", back: "They describe different supports / latent spaces (discrete states vs continuous latent dynamics), so the likelihoods are on different scales." },
+    ],
+    questions: [
+      { level: "Recall", prompt: "In the regime case study, which model family performed best?", options: ["the most complex (rSLDS)", "a simple GMM-HMM", "the custom Skew-T extension", "none converged"], correct: 1, concept: "simpler can win", explanation: "Added sophistication didn't beat the simple baseline on that data." },
+      { level: "Apply", prompt: "A custom Skew-T emission *lowered* the score vs a plain Student-t. The right takeaway is…", options: ["add more extensions", "a negative result — the extra complexity hurt, so drop it", "ignore it", "the metric must be broken"], correct: 1, concept: "negative results", explanation: "A degradation is real evidence the complexity isn't justified here." },
+      { level: "Analyze", prompt: "/compare flags NHMM and Factorial as comparable=False because…", options: ["they are slow to fit", "their likelihoods aren't on the same scale as P(X) models", "they always lose", "they need a GPU"], correct: 1, concept: "comparability", explanation: "An NHMM conditions on covariates (P(X|Z)); you can't BIC-rank it against P(X) models." },
+    ],
+  },
 };
 
 export function getLessonQuiz(lessonId: string): LessonQuiz | undefined {

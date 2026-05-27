@@ -13,6 +13,7 @@ import { Lesson10BayesianHmm } from "./lesson-10-bayesian-hmm";
 import { Lesson11SemiSupervised } from "./lesson-11-semi-supervised";
 import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
 import { Lesson13ChoosingFeatures } from "./lesson-13-choosing-features";
+import { Lesson14ComparingModels } from "./lesson-14-comparing-models";
 
 export type LessonCategory =
   | "foundations"
@@ -332,6 +333,18 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "Too many candidate indicators? Cluster them by mutual information and keep one representative per cluster — a decorrelated feature set, unsupervised.",
     status: "published",
     content: Lesson13ChoosingFeatures,
+  },
+  {
+    id: "lesson-14-comparing-models",
+    category: "selection",
+    order: 3,
+    title: "Comparing models honestly",
+    estimatedMinutes: 12,
+    difficulty: "Advanced",
+    description:
+      "When does complexity pay? A regime-detection case study: benchmark, don't assume; simpler can win; negative results count; and why you can't compare log-likelihoods across model families.",
+    status: "published",
+    content: Lesson14ComparingModels,
   },
 ];
 

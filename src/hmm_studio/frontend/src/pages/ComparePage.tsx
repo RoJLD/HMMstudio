@@ -195,10 +195,15 @@ function CompareForm() {
       )}
 
       <p className="mt-4 text-xs text-slate-500">
-        NHMM / Factorial variants are not offered here — they need explicit
-        covariates / chain specs. Use the Python API (
+        Only models of <span className="font-mono">P(X)</span> (Gaussian / GMM / Poisson)
+        are directly comparable by BIC / AIC / HQIC. NHMM models{" "}
+        <span className="font-mono">P(X|Z)</span> and Factorial models use a joint space —
+        different scales — so they aren't offered in this grid; use the Python API (
         <span className="font-mono">hmm_core.compare_models</span>) or{" "}
-        <span className="font-mono">hmm-fit compare</span> for those.
+        <span className="font-mono">hmm-fit compare</span> for those.{" "}
+        <Link to="/academy/lesson-14-comparing-models" className="text-brand-700 hover:underline">
+          Why? — read the case study →
+        </Link>
       </p>
     </div>
   );
