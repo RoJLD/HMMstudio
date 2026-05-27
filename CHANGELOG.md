@@ -37,6 +37,11 @@ All notable changes to `hmm-studio` are documented here. This project follows
   unsupervised only. Supervised mRMR (target-aware), the `dcor`
   distance-correlation variant, PCA, and NHMM-covariate causality selection
   are explicitly out of scope / deferred.
+- Academy lesson 13 "Choosing features for your HMM" — concept + code lesson
+  (no D3 demo, no notebook) covering the redundant-features problem, NMI
+  clustering + medoid selection, the function API and the
+  `select_features_unsupervised` prep op, and when to use it vs a curated
+  feature set. Academy now has 13 lessons.
 
 ### Added — HQIC model-selection criterion
 

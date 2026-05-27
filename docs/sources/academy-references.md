@@ -127,6 +127,20 @@ maximum-entropy perspective. Useful as a second-pass read after Bilmes.
 
 - [arXiv PDF](https://arxiv.org/pdf/1406.7002)
 
+### Kraskov, Stögbauer & Grassberger 2004 — *Estimating mutual information*
+
+Alexander Kraskov, Harald Stögbauer and Peter Grassberger.
+*Physical Review E*, vol. 69, no. 6, 066138.
+
+The k-nearest-neighbour estimator of mutual information for continuous
+variables — the estimator that backs
+`sklearn.feature_selection.mutual_info_regression` and, through it, the
+normalised-MI feature clustering in `hmm_core.features`. Background for
+Lesson 13 (unsupervised feature selection).
+
+- [arXiv cond-mat/0305641](https://arxiv.org/abs/cond-mat/0305641)
+- [scikit-learn `mutual_info_regression` docs](https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.mutual_info_regression.html)
+
 ---
 
 ## Tier 3 — Variant-specific
@@ -235,3 +249,4 @@ references map :
 | Bayesian uncertainty | Stan HMM tutorial + arXiv 2509.17806 |
 | Semi-supervised | Tamposis 2019 + BMC 2021 + Springer PHMM |
 | Hierarchical HMM | Fine, Singer & Tishby 1998 |
+| Choosing features | Kraskov et al. 2004 + scikit-learn `mutual_info_regression` |

@@ -12,6 +12,7 @@ import { Lesson9FactorialNhmm } from "./lesson-9-factorial-nhmm";
 import { Lesson10BayesianHmm } from "./lesson-10-bayesian-hmm";
 import { Lesson11SemiSupervised } from "./lesson-11-semi-supervised";
 import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
+import { Lesson13ChoosingFeatures } from "./lesson-13-choosing-features";
 
 export interface LessonMeta {
   id: string;
@@ -273,6 +274,16 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "Multi-scale sequences : a regime inside a regime. Fine-Singer-Tishby 1998. Code gated on external signal — concept lesson only.",
     status: "published",
     content: Lesson12HierarchicalHmm,
+  },
+  {
+    id: "lesson-13-choosing-features",
+    title: "Choosing features for your HMM",
+    estimatedMinutes: 12,
+    difficulty: "Intermediate",
+    description:
+      "Too many candidate indicators? Cluster them by mutual information and keep one representative per cluster — a decorrelated feature set, unsupervised.",
+    status: "published",
+    content: Lesson13ChoosingFeatures,
   },
 ];
 
