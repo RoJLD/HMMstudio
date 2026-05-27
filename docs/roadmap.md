@@ -354,15 +354,14 @@ drift `state_labels=` → `states=`).
 ### Ce qui a été livré
 
 **Engine (déjà présent à l'audit)** :
-- `fit(topology, X, *, states=None, ...)` dispatcher dans
-  [src/hmm_core/fit/\_\_init\_\_.py](../../src/hmm_core/fit/__init__.py)
+- `fit(topology, X, *, states=None, ...)` dispatcher dans `src/hmm_core/fit/__init__.py`
 - `fit_supervised(...)` au `HMMBackend` Protocol +
   implémentation `HmmlearnBackend` (closed-form MLE pour Gaussian / GMM /
   Multinomial / Poisson)
 - Détection NaN (float) ou `-1` (int) → routing semi-supervised EM
 
 **Surface user-facing (livrée 2026-05-27)** :
-- CLI `hmm-fit run --labels states.csv` ([src/hmm_core/cli.py](../../src/hmm_core/cli.py))
+- CLI `hmm-fit run --labels states.csv` (`src/hmm_core/cli.py`)
 - Helper `_read_state_labels()` qui valide single-column + length match
 - Examples canon : `examples/topology_supervised_3state.yaml` +
   `data_supervised.csv` + `states_supervised.csv` + `states_semi_supervised.csv`
