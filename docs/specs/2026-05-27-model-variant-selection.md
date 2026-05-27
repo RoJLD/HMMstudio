@@ -229,3 +229,14 @@ hmm-fit compare <spec_dir> <data.csv> [--criterion bic|aic|hqic]
   (`Model_Selection`, `Compute_HQIC_model`) — la part HMM-only inspire ce
   spec. La part cross-paradigme (SARIMAX/UCM/rSLDS) est explicitement
   exclue (§ 4).
+
+## Update 2026-05-27 — Phase 3 shipped
+
+Phase 3 (web UI `/compare`) implemented. Open question #2 resolved: the jobs
+table is **reused** (no new parent type). Compare children carry two new
+override fields — `emission_override`, `n_mix_override` — alongside the
+existing `k_override`; `_run` applies them via `_topology_with_overridden_emission`
+(mirrors `auto_grid`). `_update_scan_parent_status` is reused for aggregation.
+Best candidate is identified by label (`best_label_by_{bic,aic,hqic}`), since
+K alone is not unique across emission families. Web v1 = comparable grid only,
+as specified.

@@ -8,6 +8,11 @@ All notable changes to `hmm-studio` are documented here. This project follows
 
 ### Added — model-variant selection (Phase 1: Python core)
 
+- Web UI **Compare** page (`/compare`): fit a comparable emission × K grid
+  (Gaussian / GMM / Poisson) on the current dataset and rank candidates by
+  BIC / AIC / HQIC, reusing the K-scan parent/child engine. Backed by
+  `POST /api/fit/compare/start` + `GET /api/fit/compare/{id}`. NHMM/Factorial
+  remain Python-API / `hmm-fit compare` only.
 - New `hmm_core.selection` module (exported at package top level):
   - `compare_models(X, candidates, *, lengths=None, seed=42) -> ModelComparison`
     — fits each candidate HMM spec on the same `X` and ranks the comparable
