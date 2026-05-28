@@ -2,8 +2,31 @@
 
 from __future__ import annotations
 
+import multiprocessing
+
 import numpy as np
 import pytest
+
+
+def pytest_configure(config):  # noqa: ARG001 — pytest hook signature
+    """Force the 'spawn' multiprocessing start method for the test session.
+
+    `ProcessPoolExecutor` (used by `hmm_core.cli.batch`) defaults to `fork()`
+    on Linux. Under `pytest-cov`, the coverage tracer runs background threads;
+    forking a threaded process copies locked mutexes into the child, which then
+    deadlocks — the pool never returns and the whole test job hangs until the
+    CI runner is killed (observed: 25+ min hangs on GitHub Actions, while the
+    same tests pass in ~17s on Windows, which already defaults to `spawn`).
+
+    Forcing `spawn` globally makes the child a clean re-import with no inherited
+    threads/locks. `_run_one_job` is module-level in cli.py, so it pickles fine
+    for spawn. `force=True` is safe to call once at configure time.
+    """
+    try:
+        multiprocessing.set_start_method("spawn", force=True)
+    except RuntimeError:
+        # Start method already set (e.g. nested pytest invocation) — leave it.
+        pass
 
 
 def _generate_gaussian_sequence(
