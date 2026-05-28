@@ -8,16 +8,32 @@ test.describe("Academy — lesson index + Try in editor bridge", () => {
     // Progress summary line should be visible (X / N published lessons)
     await expect(page.getByText(/Completed:.*published lesson/i)).toBeVisible();
 
-    // At least 7 lesson cards present (all 7 lessons in the manifest)
-    // Cards are either <a> (published, clickable) or <div> (planned)
-    // The lesson titles are unique — use them to verify
-    await expect(page.getByText(/What is an HMM\?/i)).toBeVisible();
-    await expect(page.getByText(/Markov chains/i)).toBeVisible();
-    await expect(page.getByText(/Forward algorithm/i)).toBeVisible();
-    await expect(page.getByText(/Viterbi/i)).toBeVisible();
-    await expect(page.getByText(/Baum-Welch/i)).toBeVisible();
-    await expect(page.getByText(/Constrained topologies/i)).toBeVisible();
-    await expect(page.getByText(/Non-homogeneous HMM \(NHMM\)/i)).toBeVisible();
+    // At least 7 lesson cards present (all 7 lessons in the manifest).
+    // Use heading-role locators to target the <h3> titles only — `getByText`
+    // would also match the card description <p> (e.g. "Before HMMs are hidden,
+    // they're Markov chains...") and Playwright strict mode then refuses the
+    // ambiguous match.
+    await expect(
+      page.getByRole("heading", { name: /What is an HMM\?/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Markov chains/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Forward algorithm/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Viterbi/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Baum-Welch/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Constrained topologies/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Non-homogeneous HMM \(NHMM\)/i }),
+    ).toBeVisible();
 
     // Difficulty badges visible
     await expect(page.getByText(/Beginner/i).first()).toBeVisible();

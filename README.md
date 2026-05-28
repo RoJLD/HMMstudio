@@ -269,15 +269,47 @@ A_t_vol = result.A_t("vol")                     # (T, 2, 2)
 Full walkthrough : [notebooks/06_factorial_nhmm_multifactor.ipynb](notebooks/06_factorial_nhmm_multifactor.ipynb).
 See also [docs/guides/factorial-nhmm.md](docs/guides/factorial-nhmm.md) for the user guide.
 
-### Supervised training
+### Supervised & semi-supervised training
 
-When you have ground-truth state annotations on a held-out segment, pass
-them with `state_labels=` to skip Baum-Welch entirely and use closed-form
-MLE for emissions and transitions. Useful for calibration on labeled
-sub-sequences before decoding the unlabeled rest.
+`hmm-studio` ships three training modes selected through a single `states=`
+kwarg on `fit()` (Phase A.7).
+
+| Mode | Data | Algorithm | Convergence |
+|---|---|---|---|
+| Unsupervised (default) | `X` only | Baum-Welch EM | iterative, sensitive to init |
+| **Supervised** | `(X, z)` complete | Closed-form MLE: count transitions, MLE emissions per state | **1 pass**, deterministic |
+| **Semi-supervised** | `(X, z)` with unlabelled positions | Constrained EM (labelled positions clamped, free elsewhere) | iterative, faster than full EM |
 
 ```python
-result = fit(topo, X, state_labels=y)      # y shape (T,), int in [0, K)
+import numpy as np
+from hmm_core.fit import fit
+
+# Fully labelled → closed-form (single pass, no EM)
+result = fit(topo, X, states=y)            # y shape (T,), int in [0, K)
+assert result.n_iter_actual == 1
+
+# Semi-supervised → mark unlabelled positions with NaN (float) or -1 (int)
+y_partial = y.astype(float).copy()
+y_partial[len(y) // 2:] = np.nan            # second half unobserved
+result = fit(topo, X, states=y_partial)
+```
+
+CLI: same flow via `hmm-fit run --labels states.csv`. The labels CSV must
+be a single column. Float `NaN` (or integer `-1` sentinel) marks unlabelled
+positions:
+
+```bash
+# Supervised
+hmm-fit run examples/topology_supervised_3state.yaml \
+    examples/data_supervised.csv \
+    --labels examples/states_supervised.csv \
+    --output results/sup_demo
+
+# Semi-supervised (first third labelled, rest = -1 sentinel)
+hmm-fit run examples/topology_supervised_3state.yaml \
+    examples/data_supervised.csv \
+    --labels examples/states_semi_supervised.csv \
+    --output results/semi_demo
 ```
 
 ## Data prep layer

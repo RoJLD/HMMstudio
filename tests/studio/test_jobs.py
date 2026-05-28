@@ -180,9 +180,7 @@ def test_submit_compare_creates_grid_children(setup_env):
         deadline = time.time() + 90
         while time.time() < deadline:
             with get_session(setup_env["engine"]) as s:
-                children = list(
-                    s.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all()
-                )
+                children = list(s.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all())
                 done = children and all(
                     str(getattr(c.status, "value", c.status)) in ("done", "failed")
                     for c in children
@@ -194,9 +192,7 @@ def test_submit_compare_creates_grid_children(setup_env):
         with get_session(setup_env["engine"]) as s:
             children = list(s.exec(select(FitJob).where(FitJob.parent_id == parent_id)).all())
             combos = {(c.emission_override, c.k_override) for c in children}
-            n_mix_by_emission = {
-                c.emission_override: c.n_mix_override for c in children
-            }
+            n_mix_by_emission = {c.emission_override: c.n_mix_override for c in children}
         assert combos == {("gaussian", 2), ("gaussian", 3), ("gmm", 2), ("gmm", 3)}
         assert n_mix_by_emission["gmm"] == 2
         assert n_mix_by_emission["gaussian"] is None

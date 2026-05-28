@@ -49,17 +49,66 @@ def validate(topology_path: Path) -> None:
     typer.echo(f"valid: {topo.name} (n_states={topo.n_states}, emission={topo.emission.type})")
 
 
+def _read_state_labels(labels_path: Path, n_obs: int, n_states: int) -> np.ndarray:
+    """Read a labels CSV for `--labels`.
+
+    The CSV must have a single column. Float NaN (or integer ``-1`` sentinel)
+    marks an unlabelled position → semi-supervised EM. Otherwise: closed-form
+    supervised MLE (Phase A.7).
+
+    Validation is intentionally minimal here — the dispatcher
+    (``hmm_core.fit.fit``) and backend re-validate range / dtype with the
+    canonical error messages.
+    """
+    df = pd.read_csv(labels_path)
+    if df.shape[1] != 1:
+        raise typer.BadParameter(
+            f"labels CSV must have a single column, got {df.shape[1]} columns "
+            f"({list(df.columns)})"
+        )
+    if len(df) != n_obs:
+        raise typer.BadParameter(f"labels CSV has {len(df)} rows but data has {n_obs} rows")
+    arr = df.iloc[:, 0].to_numpy()
+    # Preserve NaN by routing through float when any NaN is present.
+    if arr.dtype.kind == "f" or np.any(pd.isna(arr)):
+        return arr.astype(float)
+    return arr.astype(int)
+
+
 @app.command()
 def run(
     topology_path: Path,
     data_path: Path,
     output: Path = typer.Option(..., "--output", "-o", help="Output directory"),
     seed: int = typer.Option(None, help="Override topology.init.seed"),
+    labels: Optional[Path] = typer.Option(
+        None,
+        "--labels",
+        help=(
+            "Optional single-column CSV of observed state labels. "
+            "Fully integer → supervised closed-form MLE (Phase A.7). "
+            "With NaN entries or -1 sentinels → semi-supervised EM."
+        ),
+    ),
 ) -> None:
-    """Fit the HMM described by topology on data; write model.pkl + summary.json."""
+    """Fit the HMM described by topology on data; write model.pkl + summary.json.
+
+    Three training modes:
+
+    * **Unsupervised** (default) — Baum-Welch EM. Just pass topology + data.
+    * **Supervised** — pass ``--labels states.csv`` with integer labels in
+      ``[0, n_states)`` for every observation. Closed-form, one pass.
+    * **Semi-supervised** — same flag, but mark unlabelled positions with
+      ``NaN`` (float CSV) or ``-1`` (int CSV). Constrained Baum-Welch.
+    """
     topo = load_topology(topology_path)
     X = _read_observations(data_path, topo)
-    result = fit(topo, X, seed=seed)
+    states = (
+        _read_state_labels(labels, n_obs=len(X), n_states=topo.n_states)
+        if labels is not None
+        else None
+    )
+    result = fit(topo, X, seed=seed, states=states)
     save_model(result, output)
     typer.echo(
         f"fit done: log_lik={result.log_likelihood:.2f} BIC={result.bic:.2f} "
@@ -109,12 +158,18 @@ def show(model_path: Path) -> None:
 @app.command()
 def batch(
     input_dir: Path,
-    output: Path = typer.Option(..., "--output", "-o", help="Output directory (one subdir per job)"),
+    output: Path = typer.Option(
+        ..., "--output", "-o", help="Output directory (one subdir per job)"
+    ),
     workers: Optional[int] = typer.Option(
-        None, "--workers", "-w",
+        None,
+        "--workers",
+        "-w",
         help="Max parallel fits (default: os.cpu_count() // 2)",
     ),
-    seed: Optional[int] = typer.Option(None, "--seed", help="Override topology.init.seed for all jobs"),
+    seed: Optional[int] = typer.Option(
+        None, "--seed", help="Override topology.init.seed for all jobs"
+    ),
     pattern: str = typer.Option("*.yaml", help="Glob to find topology files in input_dir"),
 ) -> None:
     """Run many fits in parallel from a directory of (topology, data) pairs.
@@ -196,7 +251,9 @@ def batch(
     n_failed = sum(1 for r in results if r["status"] == "failed")
     typer.echo(f"Batch complete: {n_done} done, {n_failed} failed, {len(results)} total")
     if n_failed:
-        typer.echo(f"Failed jobs: {[r['stem'] for r in results if r['status'] == 'failed']}", err=True)
+        typer.echo(
+            f"Failed jobs: {[r['stem'] for r in results if r['status'] == 'failed']}", err=True
+        )
         raise typer.Exit(code=1)
 
 
@@ -252,7 +309,9 @@ def _print_progress_line(result: dict) -> None:
         ll = result["log_likelihood"]
         bic = result["bic"]
         iters = result["n_iter_actual"]
-        typer.echo(f"  [ok] {stem:30s} log_lik={ll:>10.2f}  BIC={bic:>10.2f}  iters={iters:3d}  ({dur})")
+        typer.echo(
+            f"  [ok] {stem:30s} log_lik={ll:>10.2f}  BIC={bic:>10.2f}  iters={iters:3d}  ({dur})"
+        )
     else:
         typer.echo(f"  [FAIL] {stem:30s} FAILED: {result['error']}  ({dur})", err=True)
 
@@ -361,9 +420,7 @@ def compare(
         candidates = _candidates_from_dir(spec_dir, pattern)
 
     if not candidates:
-        typer.echo(
-            f"no candidate topologies found in {spec_dir} (pattern {pattern!r})", err=True
-        )
+        typer.echo(f"no candidate topologies found in {spec_dir} (pattern {pattern!r})", err=True)
         raise typer.Exit(code=1)
 
     df = pd.read_csv(data_path)

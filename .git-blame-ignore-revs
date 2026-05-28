@@ -1,0 +1,18 @@
+# Commits to skip in `git blame` output.
+#
+# This file lists SHAs of pure-formatting commits (black, isort, etc.) that
+# would otherwise mask the real authorship of every reformatted line. Both
+# the local `git blame --ignore-revs-file .git-blame-ignore-revs` and the
+# GitHub web UI honour this file automatically.
+#
+# To make the local git CLI use it permanently, run once:
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Format: one SHA per line, full or short. Comments start with `#`. Do NOT
+# append the commit message on the SHA line — git parses that as part of
+# the SHA and errors out.
+
+# Repo-wide black --apply pass after CI hardening landed the `black --check`
+# gate. 34 files reformatted to the configured 100-char line-length; zero
+# behaviour change (verified by the 406-test post-format run).
+bbabfe6b00a37b94ca7639ae5c5cb5b846b3cfd7

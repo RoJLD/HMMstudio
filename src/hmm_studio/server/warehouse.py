@@ -67,8 +67,7 @@ def _read_csv_with_encoding_fallback(path: Path, *, sep: str = ",") -> pd.DataFr
             errors.append(f"{enc}: {e.reason}")
             continue
     raise ValueError(
-        f"could not decode {path.name} ; tried encodings {candidates}. "
-        f"Errors: {errors}"
+        f"could not decode {path.name} ; tried encodings {candidates}. " f"Errors: {errors}"
     )
 
 

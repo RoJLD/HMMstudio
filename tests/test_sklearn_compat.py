@@ -16,12 +16,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from sklearn.base import clone
-from sklearn.model_selection import GridSearchCV, KFold, TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from hmm_core.sklearn_compat import HMMClassifier
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -102,9 +101,18 @@ def test_get_params_returns_all_constructor_args():
     clf = HMMClassifier(n_states=4, n_iter=50, tol=1e-5)
     params = clf.get_params()
     expected = {
-        "n_states", "emission_type", "covariance_type", "n_features",
-        "n_mix", "n_symbols", "allowed_transitions", "startprob",
-        "init_strategy", "init_seed", "n_iter", "tol",
+        "n_states",
+        "emission_type",
+        "covariance_type",
+        "n_features",
+        "n_mix",
+        "n_symbols",
+        "allowed_transitions",
+        "startprob",
+        "init_strategy",
+        "init_seed",
+        "n_iter",
+        "tol",
     }
     assert set(params.keys()) == expected
     assert params["n_states"] == 4
@@ -207,9 +215,17 @@ def test_fitted_attributes_follow_sklearn_convention(two_regime_data):
     X, _ = two_regime_data
     clf = HMMClassifier(n_states=2, n_iter=20).fit(X)
     # All fitted attrs end with _
-    for attr in ["transmat_", "startprob_", "classes_", "n_iter_",
-                 "log_likelihood_", "bic_", "aic_", "converged_",
-                 "n_features_in_"]:
+    for attr in [
+        "transmat_",
+        "startprob_",
+        "classes_",
+        "n_iter_",
+        "log_likelihood_",
+        "bic_",
+        "aic_",
+        "converged_",
+        "n_features_in_",
+    ]:
         assert hasattr(clf, attr), f"missing fitted attribute : {attr}"
 
 
@@ -253,9 +269,7 @@ def test_repr_html_after_fit_delegates_to_fitted_model(two_regime_data):
 def test_multinomial_classifier():
     rng = np.random.default_rng(0)
     X = rng.integers(0, 4, size=(200, 1))
-    clf = HMMClassifier(
-        n_states=2, emission_type="multinomial", n_symbols=4, n_iter=20
-    )
+    clf = HMMClassifier(n_states=2, emission_type="multinomial", n_symbols=4, n_iter=20)
     clf.fit(X)
     states = clf.predict(X)
     assert states.shape == (200,)
@@ -268,6 +282,7 @@ def test_multinomial_classifier():
 
 def test_predict_before_fit_raises():
     from sklearn.exceptions import NotFittedError
+
     clf = HMMClassifier(n_states=2)
     with pytest.raises(NotFittedError):
         clf.predict(np.array([[1.0], [2.0]]))

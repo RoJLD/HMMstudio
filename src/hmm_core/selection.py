@@ -10,11 +10,11 @@ the result table but flagged ``comparable=False`` and never chosen as the
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
-from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+from hmm_core.topology import EmissionSpec, Topology
 
 
 @dataclass(frozen=True)
@@ -138,7 +138,10 @@ class ModelComparison:
         )
         return (
             "<table style='border-collapse:collapse' border='1' cellpadding='4'>"
-            + caption + header + "".join(rows) + "</table>"
+            + caption
+            + header
+            + "".join(rows)
+            + "</table>"
         )
 
 
@@ -176,26 +179,42 @@ def _fit_candidate(cand: "Candidate", X: np.ndarray, *, seed: int, lengths):
     if isinstance(cand, NHMMCandidate):
         if cand.topology.emission.type == "gmm":
             fitted = fit_gmm_nhmm(
-                cand.topology, X, cand.Z,
-                covariate_names=cand.covariate_names, seed=seed, lengths=lengths,
+                cand.topology,
+                X,
+                cand.Z,
+                covariate_names=cand.covariate_names,
+                seed=seed,
+                lengths=lengths,
             )
             kind = "gmm-nhmm"
         else:
             fitted = fit_nhmm(
-                cand.topology, X, cand.Z,
-                covariate_names=cand.covariate_names, seed=seed, lengths=lengths,
+                cand.topology,
+                X,
+                cand.Z,
+                covariate_names=cand.covariate_names,
+                seed=seed,
+                lengths=lengths,
             )
             kind = "nhmm"
         return kind, fitted, False, "models P(X|Z); not directly comparable to P(X) candidates"
 
     if isinstance(cand, FactorialCandidate):
         fitted = fit_factorial_nhmm(
-            cand.chains, X, cand.covariates_per_chain,
+            cand.chains,
+            X,
+            cand.covariates_per_chain,
             emission=cand.emission,
             covariate_names_per_chain=cand.covariate_names_per_chain,
-            seed=seed, lengths=lengths,
+            seed=seed,
+            lengths=lengths,
         )
-        return "factorial", fitted, False, "models a joint product space; n_params differs, not directly comparable"
+        return (
+            "factorial",
+            fitted,
+            False,
+            "models a joint product space; n_params differs, not directly comparable",
+        )
 
     raise TypeError(f"unknown candidate type: {type(cand).__name__}")
 
@@ -219,23 +238,42 @@ def compare_models(
         except Exception as exc:  # noqa: BLE001 — robustness is the point
             kind_guess = type(cand).__name__.replace("Candidate", "").lower()
             label = cand.label or _default_label(kind_guess, getattr(cand, "topology", None))
-            results.append(CandidateResult(
-                label=label, kind=kind_guess, fitted=None,
-                log_likelihood=float("nan"), bic=float("nan"),
-                aic=float("nan"), hqic=float("nan"), n_params=0,
-                comparable=False, note=None, error=str(exc),
-            ))
+            results.append(
+                CandidateResult(
+                    label=label,
+                    kind=kind_guess,
+                    fitted=None,
+                    log_likelihood=float("nan"),
+                    bic=float("nan"),
+                    aic=float("nan"),
+                    hqic=float("nan"),
+                    n_params=0,
+                    comparable=False,
+                    note=None,
+                    error=str(exc),
+                )
+            )
             continue
 
         base = fitted.base if hasattr(fitted, "base") else fitted
         ll, bic, aic, hqic, n_params = _metrics_from_base(base)
         topo = getattr(cand, "topology", None)
         label = cand.label or _default_label(kind, topo)
-        results.append(CandidateResult(
-            label=label, kind=kind, fitted=fitted,
-            log_likelihood=ll, bic=bic, aic=aic, hqic=hqic, n_params=n_params,
-            comparable=comparable, note=note, error=None,
-        ))
+        results.append(
+            CandidateResult(
+                label=label,
+                kind=kind,
+                fitted=fitted,
+                log_likelihood=ll,
+                bic=bic,
+                aic=aic,
+                hqic=hqic,
+                n_params=n_params,
+                comparable=comparable,
+                note=note,
+                error=None,
+            )
+        )
 
     def _best(attr: str) -> str | None:
         pool = [c for c in results if c.comparable and c.error is None]
@@ -251,6 +289,8 @@ def compare_models(
     )
 
 
+# Local import colocated with auto_grid below (see also
+# pyproject.toml [tool.ruff.lint.per-file-ignores]).
 from dataclasses import replace as _dc_replace
 
 

@@ -16,7 +16,6 @@ from scipy.optimize import linear_sum_assignment
 from hmm_core.fit import fit
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

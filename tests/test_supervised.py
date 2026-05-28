@@ -363,9 +363,9 @@ def test_gmm_supervised_recovers_means():
         # Sort by first feature to align with sorted truth.
         rec_sorted = means[k][np.argsort(means[k][:, 0])]
         true_sorted = true_means[k][np.argsort(true_means[k][:, 0])]
-        assert np.allclose(rec_sorted, true_sorted, atol=0.3), (
-            f"state {k}: recovered {rec_sorted} vs true {true_sorted}"
-        )
+        assert np.allclose(
+            rec_sorted, true_sorted, atol=0.3
+        ), f"state {k}: recovered {rec_sorted} vs true {true_sorted}"
 
 
 def test_gmm_supervised_handles_degenerate_state():

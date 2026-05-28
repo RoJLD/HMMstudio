@@ -44,22 +44,28 @@ def test_candidate_dataclasses_construct():
         error=None,
     )
     assert r.comparable is True
-    mc = ModelComparison(candidates=[r], best_by_bic="gaussian K=2", best_by_aic="gaussian K=2", best_by_hqic="gaussian K=2")
+    mc = ModelComparison(
+        candidates=[r],
+        best_by_bic="gaussian K=2",
+        best_by_aic="gaussian K=2",
+        best_by_hqic="gaussian K=2",
+    )
     assert mc.candidates[0].label == "gaussian K=2"
 
 
-import warnings
-import pytest
-from hmm_core.selection import compare_models
+import warnings  # noqa: E402 — local test imports kept beside their consumers
+from hmm_core.selection import compare_models  # noqa: E402
 
 
 def _three_regime_data(seed=0):
     rng = np.random.default_rng(seed)
-    return np.vstack([
-        rng.normal(-3.0, 0.4, (80, 1)),
-        rng.normal(0.0, 0.4, (80, 1)),
-        rng.normal(3.0, 0.4, (80, 1)),
-    ])
+    return np.vstack(
+        [
+            rng.normal(-3.0, 0.4, (80, 1)),
+            rng.normal(0.0, 0.4, (80, 1)),
+            rng.normal(3.0, 0.4, (80, 1)),
+        ]
+    )
 
 
 def test_compare_ranks_comparable_by_bic():
@@ -83,9 +89,12 @@ def test_failed_candidate_excluded_not_fatal():
     # elements"). A genuine fit failure, captured not fatal. (The plan's
     # original n_features mismatch did NOT raise against the hmmlearn backend.)
     bad = Topology(
-        name="bad", n_states=2, state_names=["a", "b"],
+        name="bad",
+        n_states=2,
+        state_names=["a", "b"],
         emission=EmissionSpec(type="multinomial", n_symbols=3),
-        allowed_transitions=None, startprob="uniform",
+        allowed_transitions=None,
+        startprob="uniform",
         init=InitSpec(strategy="kmeans", seed=0),
         fit=FitSpec(algorithm="baum_welch", n_iter=10, tol=1e-3),
     )
@@ -93,7 +102,6 @@ def test_failed_candidate_excluded_not_fatal():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         cmp = compare_models(X, cands, seed=0)
-    labels = {c.label: c for c in cmp.candidates}
     # the good one ranks; the bad one has an error and is excluded from best
     assert cmp.best_by_bic == "gaussian K=2"
     bad_result = [c for c in cmp.candidates if c.error is not None]
@@ -123,6 +131,7 @@ def test_nhmm_flagged_and_never_best():
 
 def test_factorial_flagged_not_comparable():
     from hmm_core.factorial_nhmm import FactorialChainSpec
+
     rng = np.random.default_rng(2)
     X = rng.normal(0, 1, (300, 2))
     chains = [FactorialChainSpec(name="a", n_states=2), FactorialChainSpec(name="b", n_states=2)]
@@ -133,13 +142,18 @@ def test_factorial_flagged_not_comparable():
     )
     cands = [TopologyCandidate(_gaussian_topo("g2", 2)), fc]
     # NOTE: g2 topo is 1-feature; make a 2-feature one to match X
-    cands[0] = TopologyCandidate(Topology(
-        name="g2d", n_states=2, state_names=["a", "b"],
-        emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=2),
-        allowed_transitions=None, startprob="uniform",
-        init=InitSpec(strategy="kmeans", seed=0),
-        fit=FitSpec(algorithm="baum_welch", n_iter=20, tol=1e-3),
-    ))
+    cands[0] = TopologyCandidate(
+        Topology(
+            name="g2d",
+            n_states=2,
+            state_names=["a", "b"],
+            emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=2),
+            allowed_transitions=None,
+            startprob="uniform",
+            init=InitSpec(strategy="kmeans", seed=0),
+            fit=FitSpec(algorithm="baum_welch", n_iter=20, tol=1e-3),
+        )
+    )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         cmp = compare_models(X, cands, seed=0)
@@ -149,7 +163,7 @@ def test_factorial_flagged_not_comparable():
     assert fac[0].note and "joint" in fac[0].note.lower()
 
 
-from hmm_core.selection import auto_grid
+from hmm_core.selection import auto_grid  # noqa: E402 — local import kept beside its consumers
 
 
 def test_auto_grid_generates_emission_x_k():
@@ -167,7 +181,7 @@ def test_auto_grid_generates_emission_x_k():
     assert all(c.topology.emission.n_mix == 2 for c in gmm)
 
 
-import json
+import json  # noqa: E402 — local import kept beside its consumers
 
 
 def test_to_summary_dict_is_json_serialisable():
@@ -203,6 +217,7 @@ def test_repr_html_marks_noncomparable():
 
 def test_top_level_exports():
     import hmm_core
+
     assert hasattr(hmm_core, "compare_models")
     assert hasattr(hmm_core, "auto_grid")
     assert hasattr(hmm_core, "ModelComparison")

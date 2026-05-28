@@ -1,7 +1,26 @@
 name: E2E
 
-# Note: requires GitHub remote + a working studio launch. Will fail until
-# both are set up. Disabled by default — uncomment the on: triggers when ready.
+# Playwright suite. Currently `workflow_dispatch` only — a PR-time enable
+# attempt (commit 5b20bf6, then re-disabled here) surfaced 4 pre-existing
+# UI/test drifts that must be cleaned up before E2E can gate merges:
+#
+#   * e2e/tests/academy.spec.ts:53 — `locator('h1').toContainText("Markov chains")`
+#     hits strict-mode because the page has 2 h1s (sidebar "hmm-studio" + lesson
+#     title). Switch to `locator('h1').nth(1)` or `getByRole("heading", ...)`.
+#   * e2e/tests/golden-path.spec.ts:39 — `getByText(/24 rows/i)` no longer
+#     present; the data preview UI must have been refactored to show row count
+#     differently. Update the locator to match current Preview component output.
+#   * e2e/tests/warehouse.spec.ts:57 — `csvBadges.toHaveCount(3)` receives 4.
+#     The committed warehouse fixture (`e2e/fixtures/warehouse/`) has one more
+#     CSV than the test expects. Either trim the fixture or bump the count.
+#   * e2e/tests/tour-recording.spec.ts:75 — `Launch fit` button remains disabled.
+#     Some upstream form state is no longer auto-filled by the tour script.
+#     Likely missing `await page.getByLabel("Seed").fill("42")` or similar.
+#
+# Track in a dedicated cleanup commit; once green, restore the `push` +
+# `pull_request` triggers below.
+#
+# TODO(e2e-cleanup): re-enable PR triggers after the 4 drifts above are fixed.
 
 on:
   workflow_dispatch:

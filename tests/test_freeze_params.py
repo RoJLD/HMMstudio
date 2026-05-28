@@ -12,7 +12,6 @@ These tests also cover the YAML loader extension and confirm the backend's
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from hmm_core.fit import fit
 from hmm_core.io import load_topology
@@ -142,9 +141,7 @@ def test_fit_with_freeze_startprob_preserves_initial_value(
     )
     X = synthetic_gaussian_left_right["X"]
     result = fit(topo, X)
-    np.testing.assert_allclose(
-        result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-12
-    )
+    np.testing.assert_allclose(result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-12)
 
 
 def test_fit_with_freeze_transmat_preserves_initial_mask_pattern(
@@ -177,13 +174,11 @@ def test_fit_with_freeze_both_still_updates_emissions(
 
     result = fit(topo, X)
     # Startprob frozen exactly.
-    np.testing.assert_allclose(
-        result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-12
-    )
+    np.testing.assert_allclose(result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-12)
     # Means MUST have moved away from the kmeans init through EM.
-    assert not np.allclose(result.model.means_, initial_means, atol=1e-4), (
-        "means_ did not move through EM despite emission params not being frozen"
-    )
+    assert not np.allclose(
+        result.model.means_, initial_means, atol=1e-4
+    ), "means_ did not move through EM despite emission params not being frozen"
 
 
 def test_fit_without_freeze_startprob_does_move(synthetic_gaussian_left_right):
@@ -207,9 +202,7 @@ def test_fit_without_freeze_startprob_does_move(synthetic_gaussian_left_right):
     result = fit(topo, X)
     # Either it moved away from 0.7/0.2/0.1, or the fit was trivially short ;
     # for this fixture (1000 samples, 20 iters) it moves substantially.
-    assert not np.allclose(
-        result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-3
-    )
+    assert not np.allclose(result.model.startprob_, np.array([0.7, 0.2, 0.1]), atol=1e-3)
 
 
 def test_fit_freeze_transmat_uses_hmmlearn_params_translation(
