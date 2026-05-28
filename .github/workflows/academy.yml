@@ -1,0 +1,58 @@
+name: Academy (standalone)
+
+# Builds the standalone Academy, runs its Playwright smoke, and verifies the
+# Docker image + runtime config injection. Scoped to changes under academy/.
+on:
+  workflow_dispatch:
+  push:
+    branches: [academy-standalone]
+    paths: ["academy/**", ".github/workflows/academy.yml"]
+  pull_request:
+    paths: ["academy/**", ".github/workflows/academy.yml"]
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: academy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install app deps
+        run: npm ci
+      - name: Typecheck + build
+        run: npm run build
+      - name: Install e2e deps
+        working-directory: academy/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run smoke
+        working-directory: academy/e2e
+        run: npm test
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: academy-playwright-report
+          path: academy/e2e/playwright-report/
+          retention-days: 7
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t hmm-academy:ci academy
+      - name: Run + verify runtime config injection
+        run: |
+          docker run -d --name acad -e STUDIO_URL=https://studio.example.com -p 8080:80 hmm-academy:ci
+          sleep 3
+          curl -sf http://localhost:8080/config.js | grep 'studio.example.com'
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/academy/lesson-2-markov-chains | grep 200
+          docker rm -f acad
