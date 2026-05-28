@@ -28,8 +28,14 @@ test.describe("Golden path: home → data → topology → fit → results", () 
     await page.goto("/data");
     await expect(page.locator("h2")).toContainText("Data");
 
-    // Trigger the hidden file input by uploading directly
-    const fileInput = page.locator('input[type="file"]').first();
+    // Trigger the dropzone's hidden file input by uploading directly.
+    // Target it by test id, not `input[type=file].first()`: when a warehouse
+    // is configured (HMM_STUDIO_WAREHOUSE_PATH set, as in CI), the sidebar's
+    // "Upload to warehouse" input is first in the DOM, so `.first()` would
+    // mis-route the upload into the warehouse instead of the local dataset
+    // flow — leaving `current` unset (no preview card) and polluting the
+    // warehouse fixture for the warehouse spec.
+    const fileInput = page.getByTestId("dataset-upload-input");
     await fileInput.setInputFiles(FIXTURE_PATH);
 
     // Preview card appears
@@ -39,14 +45,12 @@ test.describe("Golden path: home → data → topology → fit → results", () 
     await expect(page.getByText(/24 rows/i)).toBeVisible();
 
     // ---- 3. Topology editor ----
-    await page.goto("/topology");
-    await expect(page.locator("h2, h1").filter({ hasText: "" })).toHaveCount(
-      // page has multiple headings — just verify we landed somewhere with the toolbar
-      // and that React Flow rendered
-      // (matches at least one)
-      1,
-      { timeout: 2000 },
-    ).catch(() => {});
+    // Navigate via the nav link (client-side routing), NOT page.goto(): a full
+    // reload would reset the in-memory datasetStore (only topologyStore is
+    // persisted to localStorage), dropping the dataset we just uploaded and
+    // leaving "Launch fit" disabled on the Fit page.
+    await page.getByRole("link", { name: "Topology editor" }).click();
+    await expect(page).toHaveURL(/\/topology/);
 
     // Click "+ state" 3 times to create 3 nodes
     const addStateButton = page.getByRole("button", { name: /\+ state/i });
@@ -56,20 +60,16 @@ test.describe("Golden path: home → data → topology → fit → results", () 
     // Give React Flow a beat to render
     await page.waitForTimeout(500);
 
-    // Validation badge — once a node is added with default global emission,
-    // the topology might or might not be fully valid depending on whether
-    // n_features matches the (yet-to-be-loaded) data. We don't strictly
-    // assert green; we just confirm the side panel reports SOMETHING.
-    // (A more brittle test would check for the exact validation summary text.)
-
     // ---- 4. Fit launcher ----
-    await page.goto("/fit");
+    await page.getByRole("link", { name: "Fit", exact: true }).click();
+    await expect(page).toHaveURL(/\/fit/);
     await expect(page.locator("h2")).toContainText("Fit");
 
-    // Topology badge and Dataset badge should both be green (✓)
-    // We assert by counting green status icons in the Status rows.
-    await expect(page.getByText(/Topology/i)).toBeVisible();
-    await expect(page.getByText(/Dataset/i)).toBeVisible();
+    // Status rows: scope to the exact status labels (the word "Topology" also
+    // appears in the nav link "Topology editor" and the page description, so
+    // an unscoped /Topology/i regex hits 3 elements under strict mode).
+    await expect(page.getByText("Topology", { exact: true })).toBeVisible();
+    await expect(page.getByText("Dataset", { exact: true })).toBeVisible();
 
     // Launch fit button enabled — click it
     const launchButton = page.getByRole("button", { name: /Launch fit/i });
