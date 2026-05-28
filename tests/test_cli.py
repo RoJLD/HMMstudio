@@ -460,8 +460,15 @@ def test_run_with_labels_semi_supervised_via_minus_one(runner, tmp_path, _superv
 
 
 def test_run_help_documents_labels(runner):
-    """`hmm-fit run --help` lists --labels and mentions supervised."""
-    result = runner.invoke(app, ["run", "--help"])
+    """`hmm-fit run --help` lists --labels and mentions supervised.
+
+    Force a wide terminal (COLUMNS=200): typer renders --help through Rich,
+    which truncates the option-name column with `…` on a narrow terminal. CI
+    runners report a narrow / unset width, so without this the `--labels`
+    token can render as `--label…` and the substring check fails (the test
+    passes locally at 80 cols but failed on ubuntu-latest with a newer Rich).
+    """
+    result = runner.invoke(app, ["run", "--help"], env={"COLUMNS": "200"})
     assert result.exit_code == 0
     assert "--labels" in result.stdout
     out = result.stdout.lower()
