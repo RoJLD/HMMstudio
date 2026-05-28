@@ -49,8 +49,12 @@ test.describe("Academy — lesson index + Try in editor bridge", () => {
     // URL should be /academy/lesson-2-markov-chains
     await expect(page).toHaveURL(/\/academy\/lesson-2-markov-chains/);
 
-    // The lesson title is the H1
-    await expect(page.locator("h1")).toContainText("Markov chains");
+    // The lesson title is the page's <h1>. Target it by heading role + level
+    // so we don't collide with the sidebar's "hmm-studio" <h1> (locator("h1")
+    // would resolve to 2 elements and fail Playwright strict mode).
+    await expect(
+      page.getByRole("heading", { level: 1, name: /Markov chains/i }),
+    ).toBeVisible();
 
     // "Before 'hidden', just 'Markov'" heading from the lesson body (h2)
     await expect(

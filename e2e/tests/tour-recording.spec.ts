@@ -38,14 +38,24 @@ test.describe("Studio tour (records a video walkthrough)", () => {
     await page.goto("/data");
     await pause(page, 1200);
 
-    const fileInput = page.locator('input[type="file"]').first();
+    // Target the dropzone input by test id (see golden-path.spec.ts comment):
+    // with a warehouse configured, `input[type=file].first()` would hit the
+    // sidebar's warehouse-upload input instead, leaving the dataset unloaded
+    // and the "Launch fit" button disabled later in this walkthrough.
+    const fileInput = page.getByTestId("dataset-upload-input");
     await fileInput.setInputFiles(FIXTURE_PATH);
-    // Wait for preview to render
-    await expect(page.getByText(/data_3state\.csv/i)).toBeVisible({ timeout: 10000 });
+    // Wait for the local preview card to render (proves `current` was set).
+    await expect(
+      page.getByRole("heading", { name: /data_3state\.csv/i }),
+    ).toBeVisible({ timeout: 10000 });
     await pause(page, 2000);
 
     // ---- Scene 3: Topology editor ----
-    await page.goto("/topology");
+    // Client-side nav (not page.goto): a reload would clear the in-memory
+    // datasetStore and disable "Launch fit" in Scene 4. Only topologyStore
+    // persists to localStorage.
+    await page.getByRole("link", { name: "Topology editor" }).click();
+    await expect(page).toHaveURL(/\/topology/);
     await pause(page, 1000);
 
     const addState = page.getByRole("button", { name: /\+ state/i });
@@ -68,7 +78,8 @@ test.describe("Studio tour (records a video walkthrough)", () => {
     }
 
     // ---- Scene 4: Fit launcher ----
-    await page.goto("/fit");
+    await page.getByRole("link", { name: "Fit", exact: true }).click();
+    await expect(page).toHaveURL(/\/fit/);
     await pause(page, 1200);
 
     const launchButton = page.getByRole("button", { name: /Launch fit/i });
