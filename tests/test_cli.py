@@ -459,17 +459,36 @@ def test_run_with_labels_semi_supervised_via_minus_one(runner, tmp_path, _superv
     assert result.exit_code == 0, result.stdout
 
 
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI SGR escape sequences (color/style codes).
+
+    Rich (used by typer for --help) styles markdown code-spans like
+    ``--labels`` in colour, which on a colour-enabled terminal splits the
+    token with escape codes *mid-string*, e.g.
+    ``\\x1b[36m-\\x1b[0m\\x1b[36m-labels\\x1b[0m``. A naive ``"--labels" in
+    stdout`` then fails even though the flag is visually present. Stripping
+    SGR codes reconstructs the literal token.
+    """
+    import re
+
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+
 def test_run_help_documents_labels(runner):
     """`hmm-fit run --help` lists --labels and mentions supervised.
 
-    Force a wide terminal (COLUMNS=200): typer renders --help through Rich,
-    which truncates the option-name column with `…` on a narrow terminal. CI
-    runners report a narrow / unset width, so without this the `--labels`
-    token can render as `--label…` and the substring check fails (the test
-    passes locally at 80 cols but failed on ubuntu-latest with a newer Rich).
+    Two CI-robustness measures:
+      * `env={"COLUMNS": "200"}` — typer's Rich renderer truncates the option
+        column with `…` on a narrow terminal; a wide one avoids that.
+      * `_strip_ansi(...)` — newer Rich colours the markdown code-span
+        ``--labels`` and inserts SGR escapes mid-token, so the literal
+        substring check must run against the de-styled text. (Passed locally
+        at 80 cols but failed on ubuntu-latest, which emits colour by default
+        with typer 0.24 / rich 13.x.)
     """
     result = runner.invoke(app, ["run", "--help"], env={"COLUMNS": "200"})
     assert result.exit_code == 0
-    assert "--labels" in result.stdout
-    out = result.stdout.lower()
+    clean = _strip_ansi(result.stdout)
+    assert "--labels" in clean
+    out = clean.lower()
     assert "supervised" in out or "label" in out
