@@ -2,6 +2,7 @@ import { create, useStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { temporal } from "zundo";
 import type { TemporalState } from "zundo";
+import { lowestFreeStateName } from "../lib/nodePlacement";
 
 export type EmissionType = "gaussian" | "gmm" | "multinomial" | "poisson";
 export type CovarianceType = "full" | "diag" | "tied" | "spherical";
@@ -126,7 +127,7 @@ export const useTopologyStore = create<TopologyState>()(
             const id = _uid("s");
             const newState: StateNode = {
               id,
-              name: `s${s.states.length}`,
+              name: lowestFreeStateName(s.states),
               position,
             };
             return { states: [...s.states, newState] };

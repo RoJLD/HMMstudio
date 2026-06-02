@@ -1,4 +1,5 @@
 import { useTopologyStore, useTopologyTemporal } from "../../store/topologyStore";
+import { nextFreePosition } from "../../lib/nodePlacement";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -9,6 +10,7 @@ interface ToolbarProps {
 
 export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProps) {
   const addState = useTopologyStore((s) => s.addState);
+  const states = useTopologyStore((s) => s.states);
   const undo = useTopologyTemporal((s) => s.undo);
   const redo = useTopologyTemporal((s) => s.redo);
   const canUndo = useTopologyTemporal((s) => s.pastStates.length > 0);
@@ -20,9 +22,7 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   return (
     <div className="flex gap-2 items-center mb-2 flex-wrap">
       <button
-        onClick={() =>
-          addState({ x: 100 + Math.random() * 300, y: 100 + Math.random() * 200 })
-        }
+        onClick={() => addState(nextFreePosition(states))}
         className={btn}
       >
         + state
