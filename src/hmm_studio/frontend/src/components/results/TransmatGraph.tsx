@@ -11,6 +11,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import type { TransmatResponse, DecodedResponse } from "../../api/client";
+import { probEdgeStyle } from "../../lib/edgeStyle";
 
 // Edges below this probability are hidden to keep the graph readable.
 const MIN_PROB = 0.01;
@@ -115,26 +116,19 @@ export function TransmatGraph({
       const p = data.transmat[i]?.[j] ?? 0;
       if (p < MIN_PROB) continue;
       const isActive = prevState != null && curState != null && i === prevState && j === curState;
+      const base = probEdgeStyle(p);
       edges.push({
+        ...base,
         id: `${i}-${j}`,
         source: `s${i}`,
         target: `s${j}`,
-        label: p.toFixed(2),
         animated: isActive,
-        style: {
-          strokeWidth: isActive ? 4 : 1 + 5 * p,
-          stroke: isActive ? "#4f46e5" : `rgba(79,70,229,${(0.3 + 0.7 * p).toFixed(2)})`,
-        },
-        labelStyle: { fontSize: 10, fontFamily: "monospace", fill: "#3730a3" },
-        labelBgPadding: [2, 3] as [number, number],
-        labelBgBorderRadius: 4,
-        labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: isActive ? "#4f46e5" : "#6366f1",
-          width: 16,
-          height: 16,
-        },
+        style: isActive
+          ? { strokeWidth: 4, stroke: "#4f46e5" }
+          : base.style,
+        markerEnd: isActive
+          ? { type: MarkerType.ArrowClosed, color: "#4f46e5", width: 16, height: 16 }
+          : base.markerEnd,
       });
     }
   }
