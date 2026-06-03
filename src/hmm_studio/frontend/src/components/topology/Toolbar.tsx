@@ -1,4 +1,5 @@
 import { useTopologyStore, useTopologyTemporal } from "../../store/topologyStore";
+import { useSavedTopologies } from "../../store/savedTopologiesStore";
 import { nextFreePosition } from "../../lib/nodePlacement";
 import { useEditorPrefs } from "../../store/editorPrefsStore";
 
@@ -19,6 +20,37 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
 
   const showPriorPreview = useEditorPrefs((s) => s.showPriorPreview);
   const setShowPriorPreview = useEditorPrefs((s) => s.setShowPriorPreview);
+
+  const saved = useSavedTopologies((s) => s.saved);
+  const saveModel = useSavedTopologies((s) => s.save);
+  const removeModel = useSavedTopologies((s) => s.remove);
+
+  function handleSaveCurrent() {
+    const st = useTopologyStore.getState();
+    if (st.states.length === 0) return;
+    const name = window.prompt("Save current model as:", st.name || "untitled");
+    if (!name) return;
+    saveModel({
+      name,
+      data: {
+        name,
+        states: st.states,
+        transitions: st.transitions,
+        emission: st.emission,
+        startprob: st.startprob,
+        init: st.init,
+        fit: st.fit,
+        transmat_prior_alpha: st.transmat_prior_alpha,
+      },
+      savedAt: Date.now(),
+    });
+  }
+
+  function handleLoadSaved(name: string) {
+    const entry = saved[name];
+    if (!entry) return;
+    useTopologyStore.getState().loadTopology(entry.data);
+  }
 
   const btn =
     "px-3 py-1.5 rounded text-sm border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed";
@@ -62,6 +94,38 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
         prior preview
         <span className="text-xs text-slate-400">(expected P before fit)</span>
       </label>
+      <div className="w-px h-6 bg-slate-300" />
+      <button onClick={handleSaveCurrent} className={btn}>💾 Save model</button>
+      <select
+        className={btn}
+        value=""
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v) handleLoadSaved(v);
+          e.target.value = "";
+        }}
+      >
+        <option value="">📂 Load saved…</option>
+        {Object.keys(saved).map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
+      {Object.keys(saved).length > 0 && (
+        <select
+          className={btn}
+          value=""
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v && window.confirm(`Delete saved model "${v}"?`)) removeModel(v);
+            e.target.value = "";
+          }}
+        >
+          <option value="">🗑 Delete…</option>
+          {Object.keys(saved).map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
