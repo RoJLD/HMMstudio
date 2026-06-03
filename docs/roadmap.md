@@ -233,8 +233,8 @@ DISTRIBUTION — Phase I
   I.4+  MLflow/VSCode/Streamlit/HF/KNIME     DEFERRED       gated sur demande externe
 
 ACADEMY (E) + VALIDATION (V)
-  E     Academy : web lessons + notebooks     SHIPPED       14 leçons + quiz/flashcards
-        + bibliographie + notebook bubbles                 + sections (L15 in-flight)
+  E     Academy : web lessons + notebooks     SHIPPED       16 leçons + quiz/flashcards
+        + bibliographie + notebook bubbles                 + sections (L16 validité)
   V     Scientific validation V.1-V.6+perf    SHIPPED       2026-05-22
 
 CROSS-CUTTING — Phase Z + D
@@ -1057,7 +1057,14 @@ frontend) + specs Playwright.
 
 ### Academy étendue (Phase E élargie) — ✅ SHIPPED / 🔄 in-flight
 
-- 7 → 12 → 13 → **14 leçons** (L15 « choosing the emission » en working tree).
+- 7 → 12 → 13 → 14 → 15 → **16 leçons** (L16 « when is your model valid? »).
+- **Leçon 16 « When is your model valid? (and when NOT to use an HMM) »** —
+  cadre unifié de validité (5 hypothèses, checks avant/pendant/après fit, quand
+  renoncer au HMM), ancrée aux diagnostics maison + courbe de convergence
+  désormais **persistée** sur la page Résultats (`convergence_history` sur
+  `FittedModel` + `GET /api/fit/{id}/convergence`). Consolide l'item roadmap
+  « Quand NE PAS utiliser un HMM ». Spec
+  `docs/superpowers/specs/2026-06-03-academy-model-validity-lesson-design.md`.
 - Quiz noté + flashcards par leçon (niveaux cognitifs Recall/Apply/Analyze,
   meilleurs scores persistés). Sections thématiques ordonnées. Bulles
   `<NotebookLink />` (Binder/Colab/GitHub/download) sur 9 leçons.
@@ -1333,6 +1340,7 @@ ce qu'est une matrice de transition. **C'est un trou d'acquisition.**
 5. **"Topologie : left-right vs ergodique"** — switcher topologie, voir l'effet
 6. **"Supervised vs Unsupervised"** — toggle labels on/off
 7. **"Quand NE PAS utiliser un HMM"** — honnêteté intellectuelle, pointer vers Transformer/SSM
+   — **consolidée dans la leçon 16** « When is your model valid? » (section 6 « when NOT to use an HMM »).
 
 La leçon 7 est **critique** — elle distingue un outil sérieux d'un outil
 commercial qui surjoue. Elle renforce le wedge en clarifiant ce qu'on
