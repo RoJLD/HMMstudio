@@ -71,6 +71,14 @@ bayesian = [
     "pymc>=6.0",
     "arviz>=1.0",
 ]
+rslds = [
+    # rSLDS backend (Phase D spike) — ssm has Cython C-extensions. On Windows
+    # without MSVC Build Tools, use tools/docker/rslds.Dockerfile instead.
+    # ssm pinned to the same commit as Projet_Robin/benchmark (A's re-benchmark).
+    "ssm @ git+https://github.com/lindermanlab/ssm.git@eb6c8aa33e5311d3564075807dec340759dd8081",
+    "scikit-learn>=1.3",  # for ElasticNetRSLDS regularization
+    "numpy<2",            # ssm doesn't support numpy 2.x cleanly at this commit
+]
 
 [project.urls]
 Homepage = "https://github.com/RoJLD/HMMstudio"
