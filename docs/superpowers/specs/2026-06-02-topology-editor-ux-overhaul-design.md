@@ -427,3 +427,147 @@ collés, drag, flèches-proba — avant le structurel qu'il n'a pas demandé) :
   [[hmm-studio-distribution-strategy]].
 - Roadmap : la viz topologie P1/P2 est déjà SHIPPED (cf. `docs/roadmap.md`,
   section « Travaux livrés hors-roadmap initial ») ; ce chantier en est la suite.
+
+---
+
+## Update 2026-06-03 — Round 2 (retour utilisateur + Incrément 1 déployé)
+
+**Contexte.** L'Incrément 1 (lots A + B1/B2 : drag réparé, espacement, toggle
+*prior preview*) a été **mergé sur `main` et déployé** (conteneur `hmm-studio`
+sur `:8000`, bundle vérifié). En testant, l'utilisateur a formulé 5 demandes,
+analysées par un workflow Understand+Design (journal 2026-06-03). Les arbitrages
+sont tranchés ci-dessous ; ils définissent l'**Incrément 2**.
+
+> Découverte clé : 2 des 5 demandes (drag, premières probas) étaient **déjà
+> construites mais non mergées** — d'où le déploiement immédiat. Les 3 autres
+> sont de vraies nouveautés.
+
+### Arbitrages utilisateur (2026-06-03)
+
+1. **Probas sur les flèches → toggle 3 états** `aucun / prior / appris`.
+2. **Onglets → stop-gap d'abord** (modèles nommés sauvegardés) ; **vrais onglets
+   (A1) inscrits au roadmap** avec leurs avantages.
+3. **Flèches auto-placées → les trois** : ergodique + self-loops + bidirectionnelles
+   + bouton Tidy.
+4. **Valider → recalcul** : tranché en bouton **« Fit this topology »** séparé
+   (validate reste structurel — cf. lot H).
+
+### Lots de l'Incrément 2
+
+**Lot F — Flèches automatiques (ask 2, les trois).**
+- **F.1 — Ergodique affiche ses flèches (gain rapide).** Aujourd'hui
+  `allowedTransitionsForShape('ergodic')` renvoie `[]` ⇒ `buildTopologyYaml` omet
+  `allowed_transitions` ⇒ store sans transitions ⇒ **0 flèche** alors qu'ergodique
+  = tout-à-tout. Décision : **matérialiser** les K² transitions pour ergodique au
+  chargement (dédupliquées par `addTransition`), pour que per-edge priors, Tidy et
+  l'overlay appris les voient. *(alt. « full-mesh implicite » écartée : moins
+  éditable.)* Fichiers : `buildTopologyYaml.ts` (allowedTransitionsForShape), wizard.
+- **F.2 — Self-loops (= C1, déjà spec'd §3.3)** : type d'arête `selfLoop` (arc) +
+  bouton `↺` ; via le registre `edgeTypes` (P-1).
+- **F.3 — Bidirectionnelles lisibles (= B3, déjà spec'd §3.2)** : type `curved`,
+  offset des paires réciproques, labels à 30/70 %.
+- **F.4 — Bouton Tidy (= D1, déjà spec'd §3.4)** : left-right + circulaire,
+  zéro-dépendance ; `setPositions` atomique (P-3). Layered/dagre différé.
+
+**Lot G — Probas APPRISES sur les flèches + toggle 3 états (ask 5 ; option B1).**
+- **Nuance préservée** : « prior » = P *attendue avant* fit (déjà construit) ;
+  « appris » = `fitted.model.transmat_` *après* fit. Deux nombres différents.
+- **Toggle tri-état** : remplacer le booléen `showPriorPreview` (editorPrefsStore)
+  par `overlayMode: 'none' | 'prior' | 'learned'` (segmented control Toolbar).
+  `learned` n'est sélectionnable que si un fit valide existe pour la topologie
+  courante. Même langage visuel que Results (`probEdgeStyle` déjà partagé).
+- **Lien fit** : capturer le `job_id` retourné par `/api/fit/start` dans un
+  **store UI/side dédié (PAS `topologyStore`)** + un **fingerprint** de la topologie
+  au moment du fit (hash des noms d'états + paires source/target). Respecte la
+  règle « le modèle + l'undo restent purs » (**B2 rejeté** : ne pas écrire le
+  transmat appris dans le modèle/undo/YAML).
+- **Jointure (le piège)** : la matrice est **index-ordonnée** ; la **seule clé qui
+  survit** au round-trip est le **nom d'état** (`state_names = states.map(s=>s.name)`).
+  Mapper `transmat[i][j]` via `state_names[i]/[j]` → arête éditeur dont source/target
+  `.name` correspond. **Garde anti-stale obligatoire** : si la topologie a changé
+  depuis le fit (rename/réordonnancement/ajout/suppression), comparer le
+  fingerprint et **désactiver/dimmer** `learned` (« re-fit pour rafraîchir »)
+  plutôt que peindre de **faux chiffres**. Noms dupliqués → `indexOf` ambigu → à
+  valider/interdire.
+- Fichiers : `editorPrefsStore.ts` (overlayMode + fitLink), `EditorCanvas.tsx`
+  (branche learned, miroir de la branche prior), `client.ts` (getFitTransmat —
+  existe déjà), endpoint `/api/fit/{jobId}/transmat` (**inchangé**, réutilisé).
+
+**Lot H — Bouton « Fit this topology » (ask 3 ; découplage validate/fit).**
+- **Décision** : ne PAS coupler validate→fit. `validate` reste structurel et gratuit
+  (debounce 400 ms) ; un fit est lent/async/**gated sur un dataset** que l'éditeur
+  n'a pas. Auto-fit-on-edit martèlerait le ThreadPoolExecutor.
+- Ajouter un bouton **« Fit this topology »** dans la Toolbar, **activé seulement
+  si un dataset est lié** : lit `useDatasetStore.getState().current`, garde le null,
+  sérialise `topologyToYAML`, appelle `startFit({topology_yaml, dataset_id})`, route
+  vers `/results/{id}`. **Aucun changement backend.** Affiche « fitting on <fichier> ».
+  C'est ici qu'on capture le `job_id` pour le lot G.
+- Fichiers : `Toolbar.tsx`, `TopologyPage.tsx`, lecture `datasetStore`. Réutilise
+  `FitPage.handleSubmit`.
+
+**Lot I — Stop-gap « modèles sauvegardés » (ask 4 ; option A2).**
+- **Problème confirmé** : `loadTopology` (wizard / import / share-URL / Academy
+  try-in-editor) **écrase** le modèle courant (perte de données).
+- Store **frère** `{ saved: Record<name, TopologyData>, saveCurrent, load, delete }`
+  (clé localStorage propre, comme `editorPrefsStore`) + un sélecteur Toolbar
+  (Sauver sous… / Charger… / Supprimer) + un prompt **« Sauver le modèle courant ? »**
+  avant tout clobber sur les **4 chemins**. Pas de barre d'onglets, pas d'undo
+  par modèle. La `saved`-map est **exactement** la docs-map de A1 ⇒ tremplin, pas du
+  jetable.
+- Fichiers : nouveau `savedTopologiesStore.ts`, `Toolbar.tsx`, hooks des 4 chemins
+  clobber (`WizardPage.finish`, `TopologyPage` import + share hydrate,
+  `LessonPage.handleTryInEditor`).
+
+### Roadmap — A1 « vrais onglets multi-HMM » (DIFFÉRÉ, inscrit sur demande)
+
+Cible future au-delà du stop-gap (lot I). **Avantages** : plusieurs HMM ouverts
+en parallèle (comparer deux modèles côte à côte), workflow navigateur familier,
+zéro perte de données, et un undo **indépendant par onglet**. **Architecture
+recommandée (A1)** : store multi-document en **façade** —
+`{ docs: Record<id, TopologyData>, order, activeDocId }` avec les 8 champs data
+**mirorés** au top-level du doc actif, pour que les **9 abonnés** `useTopologyStore`
+et tous les `getState()/topologyToYAML(getState())` (Fit, Compare, Share, Wizard,
+Import, Academy, validation) restent **inchangés**. Surface nouvelle : `TabBar`,
+`addDoc/closeDoc/setActiveDoc/renameDoc`, prompt « nouvel onglet vs cet onglet » sur
+les 4 chemins. **Risques** (à provisionner) : (1) **undo zundo par-document** — une
+seule timeline aujourd'hui ; equality custom ignorant `docs/order/activeDocId` +
+snapshot `{past,future}` par doc au switch (sinon l'undo d'un onglet pollue l'autre) ;
+(2) **persist `version:2` + `migrate()`** enveloppant le blob plat existant comme
+premier doc (sinon perte du modèle courant) ; (3) **sémantique Fit/Compare
+cross-onglets** à trancher. Effort ~2-3 j. **A3** (sous-arbres React indépendants)
+**rejeté** (sur-ingénierie). *À détailler en spec dédié quand priorisé.*
+**Le lot G doit stocker le fit-link `lastFitJobId`+fingerprint en pensant
+« par-document »** pour éviter une reprise quand A1 arrivera.
+
+### Questions ouvertes (round 2) — résolues
+
+- Toggle probas : **tri-état** `none/prior/learned` (remplace le booléen). ✅
+- Onglets : **A2 d'abord**, A1 au roadmap. ✅
+- Flèches auto : **les trois** (ergodique + self-loops + bidirectionnelles + Tidy). ✅
+- Validate vs fit : **validate structurel + bouton « Fit this topology » séparé**,
+  dataset-gated. ✅
+- Anti-stale `learned` : **désactiver + bannière « re-fit »** sur mismatch de
+  fingerprint (pas de chiffres faux). ✅
+- Dataset de l'éditeur : réutiliser `datasetStore.current` avec label explicite
+  « fitting on <fichier> ». ✅
+
+### Bornes (round 2)
+
+- **B2 rejeté** : ne jamais cacher le transmat appris dans `topologyStore` (pollue
+  undo/persist/YAML/Share ; le modèle « mentirait » sur son état fitté).
+- **A1 différé** (roadmap) ; on livre **A2** maintenant.
+- **`validate` ≠ fit** ; le fit reste explicite, async, dataset-gated.
+- Endpoint `/api/fit/{jobId}/transmat` **réutilisé tel quel** (aucun backend).
+- Noms d'états **uniques** requis pour la jointure G (valider).
+
+### Séquencement Incrément 2 (chaque lot livrable seul)
+
+0. **Prérequis P-1/P-3** (registre `edgeTypes`, `setPositions`) — partagés F/D.
+1. **Lot F.1 ergodique** (~0,5 j) — gain rapide, débloque « flèches qui apparaissent ».
+2. **Lot I stop-gap sauvegardes** (~0,5-1 j) — stoppe la perte de données.
+3. **Lot H « Fit this topology »** (~1-1,5 j) — prérequis du lot G (capture job_id).
+4. **Lot G probas apprises + tri-état** (~1,5-2,5 j) — la demande #5.
+5. **Lot F.2/F.3/F.4** self-loops + bidirectionnelles + Tidy (~3-4 j) — déjà spec'd.
+   Total ~7-9 j ; estimations larges. Spec → `writing-plans` par lot, TDD, vitest +
+   e2e dans le tier existant ; mettre à jour roadmap/INVENTORY au ship.
+
