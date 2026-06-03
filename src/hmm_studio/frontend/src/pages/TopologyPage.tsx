@@ -3,17 +3,36 @@ import { Link } from "react-router-dom";
 import { EditorCanvas } from "../components/topology/EditorCanvas";
 import { Toolbar } from "../components/topology/Toolbar";
 import { SidePanel } from "../components/topology/SidePanel";
-import { useTopologyStore } from "../store/topologyStore";
+import { useTopologyStore, useTopologyTemporal } from "../store/topologyStore";
 import { topologyToYAML, yamlToTopology } from "../lib/yaml";
 import { useDebouncedValidation } from "../hooks/useDebouncedValidation";
 import { buildShareUrl, clearTopologyParam, readSharedTopology } from "../lib/share";
 import { confirmClobber } from "../lib/guardClobber";
 import { useSavedTopologies } from "../store/savedTopologiesStore";
+import { undoRedoIntent, isTextEntryTarget } from "../lib/undoHotkey";
 
 export default function TopologyPage() {
   const validation = useDebouncedValidation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const undo = useTopologyTemporal((s) => s.undo);
+  const redo = useTopologyTemporal((s) => s.redo);
+
+  // Keyboard undo/redo. React Flow binds none of these natively; we forward to
+  // the already-wired zundo temporal store. Ctrl/Cmd+Z = undo, Ctrl+Y or
+  // Ctrl/Cmd+Shift+Z = redo. Ignored while the user is typing in a field so the
+  // browser's native "undo typing" still works there.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const intent = undoRedoIntent(e);
+      if (!intent || isTextEntryTarget(e.target)) return;
+      e.preventDefault();
+      if (intent === "undo") undo();
+      else redo();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undo, redo]);
 
   function saveCurrent() {
     const st = useTopologyStore.getState();

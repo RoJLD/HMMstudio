@@ -186,6 +186,59 @@ test.describe("Topology editor — Increment 2", () => {
   });
 });
 
+test.describe("Topology editor — keyboard + marquee (quick-wins)", () => {
+  test("Ctrl+Z undoes an add, Ctrl+Y redoes it", async ({ page }) => {
+    await page.goto("/topology");
+    await page.waitForTimeout(400);
+    const add = page.getByRole("button", { name: /\+ state/i });
+    await add.click();
+    await add.click();
+    await page.waitForTimeout(200);
+    expect(await page.locator(".react-flow__node").count()).toBe(2);
+
+    // Keyboard undo (no toolbar click) — the handler lives on window.
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(200);
+    expect(await page.locator(".react-flow__node").count()).toBe(1);
+
+    // Keyboard redo via Ctrl+Y (Windows convention).
+    await page.keyboard.press("Control+y");
+    await page.waitForTimeout(200);
+    expect(await page.locator(".react-flow__node").count()).toBe(2);
+
+    // Undo again, then redo via Ctrl+Shift+Z (Mac/cross-platform convention).
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(200);
+    expect(await page.locator(".react-flow__node").count()).toBe(1);
+    await page.keyboard.press("Control+Shift+z");
+    await page.waitForTimeout(200);
+    expect(await page.locator(".react-flow__node").count()).toBe(2);
+  });
+
+  test("left-drag marquee selects multiple nodes", async ({ page }) => {
+    await page.goto("/topology");
+    await page.waitForTimeout(400);
+    const add = page.getByRole("button", { name: /\+ state/i });
+    await add.click();
+    await add.click();
+    await add.click();
+    await page.waitForTimeout(300);
+
+    const pane = page.locator(".react-flow__pane");
+    const box = await pane.boundingBox();
+    if (!box) throw new Error("pane not found");
+    // Rubber-band from an (empty) corner across the whole pane. With
+    // selectionOnDrag + panOnDrag={[1,2]}, a left-drag on the pane selects.
+    await page.mouse.move(box.x + 5, box.y + 5);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 5, box.y + box.height - 5, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    expect(await page.locator(".react-flow__node.selected").count()).toBeGreaterThanOrEqual(2);
+  });
+});
+
 test.describe("Saved-models portability", () => {
   test("save a model then export it as YAML", async ({ page }) => {
     await page.goto("/topology");

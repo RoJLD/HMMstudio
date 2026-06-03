@@ -2,7 +2,8 @@
 
 **Date de création** : 2026-05-21
 **Auteur** : Robin Denis
-**Dernière mise à jour** : 2026-06-02 (**re-baseline** : la table d'état avait
+**Dernière mise à jour** : 2026-06-03 (éditeur de topologie : Incrément 3 +
+quick-wins clavier/marquee inventoriés ci-dessous. **Re-baseline** du 2026-06-02 : la table d'état avait
 ~2 semaines de retard — v1.1.0 + 69 commits non reflétés. Statuts re-synchronisés
 avec le code, le CHANGELOG et le git log. Le travail livré hors-roadmap initial
 — feature selection, sélection de modèles, regimes/Giudici, viz topologie animée,
@@ -960,13 +961,14 @@ concurrence pas.
 > après v1.1.0. Inventoriés ici au re-baseline pour que le roadmap suive la
 > réalité. Specs sous `docs/specs/`.
 
-### Refonte UX de l'éditeur de topologie — Incréments 1+2 — ✅ SHIPPED (2026-06-03)
+### Refonte UX de l'éditeur de topologie — Incréments 1→3 + quick-wins — ✅ SHIPPED (2026-06-03)
 
 Suite à un retour utilisateur (« états collés, drag cassé, pas de probas sur les
 flèches »). Spec : `docs/superpowers/specs/2026-06-02-topology-editor-ux-overhaul-design.md`
-(design round-2 en update daté). Plans : `docs/superpowers/plans/2026-06-02-*` (Inc 1)
-et `2026-06-03-topology-editor-increment-2.md` (Inc 2). 36 tests vitest (nouveau tier
-unitaire frontend) + specs Playwright.
+(designs rounds 2-3 en updates datés). Plans : `docs/superpowers/plans/2026-06-02-*` (Inc 1),
+`2026-06-03-topology-editor-increment-2.md` (Inc 2),
+`2026-06-03-saved-models-portability.md` (Inc 3). **60 tests vitest** (tier unitaire
+frontend) + specs Playwright.
 
 - **Incrément 1** : drag réparé (les bulles suivent le curseur, la sélection survit
   aux commits) + espacement (grille 240/160, fitView borné, largeur de pilule) +
@@ -980,8 +982,30 @@ unitaire frontend) + specs Playwright.
   (store localStorage `hmm-studio-saved-topologies` + garde « sauver avant
   d'écraser »). Stores `fitLink`/`saved`/`editorPrefs` séparés du modèle (pureté
   zundo/YAML préservée ; B2 « cacher le transmat dans le modèle » rejeté).
+- **Incrément 3 — portabilité des modèles sauvegardés** : export **YAML** + **share-URL**
+  par modèle, **import YAML → bibliothèque**, sauvegarde/restauration de **toute la
+  bibliothèque** en JSON (`{schema_version, kind, models}`, forward-compat A1),
+  panneau **« My models »** remplaçant le `<select>`. Helper pur `modelLibraryIO`,
+  zéro changement backend. Spec `2026-06-03-saved-models-portability-design.md`.
+- **Quick-wins (2026-06-03)** : (a) **undo/redo au clavier** Ctrl+Z / Ctrl+Y /
+  Ctrl+Shift+Z — la feature undo existait *via les boutons* mais n'était bindée nulle
+  part (correctif de **découvrabilité**, pas un bug de state : les drags étaient déjà
+  trackés par zundo) ; (b) **sélection rectangle** au clic-gauche (`selectionOnDrag`
+  + `panOnDrag=[1,2]` + `panOnScroll` — modèle « Figma » : drag = sélection, scroll =
+  pan, Ctrl/⌘+scroll = zoom, **hint à l'écran** pour ne pas surprendre) ; (c) **drag
+  de groupe = un seul undo** (commit batché via `setPositions`). Helpers purs
+  `undoHotkey` + `nodeChangeCommit` testés ; revue adversariale 3-lentilles.
 - **Différé au roadmap** : **A1 vrais onglets multi-HMM** (façade multi-document +
   barre d'onglets + undo par onglet) — avantages/risques consignés dans le spec.
+- **Pistes éditeur suivantes** (diagnostiquées 2026-06-03 contre le code, à spec'er) :
+  - **Wizard → choix « cet onglet vs nouveau »** — stop-gap à 3 voies réutilisant
+    « My models » comme 2e slot (le wizard ne clobber déjà pas en silence ; reframe
+    du prompt + boucher le chemin non-gardé `LessonPage.loadTopology`). **Pas A1.** Effort S.
+  - **Lisibilité des flèches (Inc 4)** — gate des labels par zoom + survol/sélection,
+    élagage `MIN_PROB` (déjà présent côté graphe Résultats), nouveau editorPref
+    (persist v2). Effort M, **spec requis**.
+  - **Copier-coller de nœuds (Ctrl+C / Ctrl+V)** — feature net-neuve (multi-sélection
+    + action store `pasteStates` : re-mint d'ids, renommage, offset). Effort M, **spec requis**.
 
 ### Feature selection (`hmm_core.features`) — ✅ SHIPPED
 

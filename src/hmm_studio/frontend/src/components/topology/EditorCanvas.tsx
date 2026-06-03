@@ -10,12 +10,14 @@ import ReactFlow, {
   applyNodeChanges,
   EdgeChange,
   applyEdgeChanges,
+  SelectionMode,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { nodeTypes } from "./nodeTypes";
 import { edgeTypes } from "./edgeTypes";
 import { useTopologyStore } from "../../store/topologyStore";
 import { reconcileNodes } from "../../lib/reconcileNodes";
+import { collectNodeCommits } from "../../lib/nodeChangeCommit";
 import { probEdgeStyle } from "../../lib/edgeStyle";
 import { priorMeanPreview } from "../../lib/priorPreview";
 import { useEditorPrefs } from "../../store/editorPrefsStore";
@@ -27,7 +29,7 @@ import { topologyFingerprint } from "../../lib/topologyFingerprint";
 export function EditorCanvas() {
   const states = useTopologyStore((s) => s.states);
   const transitions = useTopologyStore((s) => s.transitions);
-  const moveState = useTopologyStore((s) => s.moveState);
+  const setPositions = useTopologyStore((s) => s.setPositions);
   const removeState = useTopologyStore((s) => s.removeState);
   const addTransition = useTopologyStore((s) => s.addTransition);
   const removeTransition = useTopologyStore((s) => s.removeTransition);
@@ -113,22 +115,14 @@ export function EditorCanvas() {
       // selection render. setRfNodes uses the functional updater to avoid a
       // stale closure.
       setRfNodes((nds) => applyNodeChanges(changes, nds));
-      // Commit side effects to the store: final drag position (once, on
-      // drop) and removals.
-      changes.forEach((change) => {
-        if (
-          change.type === "position" &&
-          change.position &&
-          change.dragging === false
-        ) {
-          moveState(change.id, change.position);
-        }
-        if (change.type === "remove") {
-          removeState(change.id);
-        }
-      });
+      // Commit side effects to the store. Finished drags go through a single
+      // setPositions() so a multi-node (marquee) move is ONE undo entry rather
+      // than one per node; removals are applied as they come.
+      const { moved, removed } = collectNodeCommits(changes);
+      if (Object.keys(moved).length > 0) setPositions(moved);
+      removed.forEach((id) => removeState(id));
     },
-    [moveState, removeState],
+    [setPositions, removeState],
   );
 
   const onEdgesChange = useCallback(
@@ -179,10 +173,20 @@ export function EditorCanvas() {
         fitView
         fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
         deleteKeyCode={["Backspace", "Delete"]}
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1, 2]}
+        panOnScroll
       >
         <Background />
         <Controls />
       </ReactFlow>
+      {/* Interaction hint — left-drag selects, so panning moved to scroll /
+          middle-drag and zoom to Ctrl/⌘+scroll (or the Controls +/− buttons).
+          Surfaced so the change of wheel behaviour isn't a silent surprise. */}
+      <div className="absolute bottom-2 right-2 z-10 pointer-events-none select-none rounded border border-slate-200 bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-400">
+        drag = select · scroll = pan · Ctrl/⌘+scroll = zoom
+      </div>
     </div>
   );
 }

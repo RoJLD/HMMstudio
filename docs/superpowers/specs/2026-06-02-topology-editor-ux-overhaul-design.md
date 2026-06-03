@@ -571,3 +571,76 @@ cross-onglets** à trancher. Effort ~2-3 j. **A3** (sous-arbres React indépenda
    Total ~7-9 j ; estimations larges. Spec → `writing-plans` par lot, TDD, vitest +
    e2e dans le tier existant ; mettre à jour roadmap/INVENTORY au ship.
 
+## Update 2026-06-03 — Round 3 (quick-wins clavier/marquee + diagnostic 4 recos)
+
+Quatre nouvelles recommandations utilisateur, **diagnostiquées contre le code réel**
+(investigation 4 lecteurs parallèles + panel de relecture adversariale 3-lentilles)
+avant tout build. Deux ont été **livrées** (quick-wins), trois **différées avec
+placement**.
+
+### Recos livrées (quick-wins, branche `feat/editor-quickwins`)
+
+**QW-1 — Undo/Redo au clavier.** *Diagnostic clé : l'undo n'était PAS cassé.* Une
+hypothèse initiale (« le fix-drag de l'Inc 1 sort les positions du store zundo »)
+s'est révélée **fausse** : `EditorCanvas.onNodesChange` committait déjà la position
+finale au `dragging===false`, et `states[].position` **est** dans le `partialize`
+temporel — les boutons ↶/↷ revenaient bien sur les drags. **Seule cause** du « ça
+marche pas » : **aucun `keydown` Ctrl+Z n'était bindé** (React Flow ne le fait pas
+nativement) → l'utilisateur attendait Ctrl+Z et ne découvrait jamais les boutons.
+Fix = handler `window` au niveau `TopologyPage` qui mappe via le helper pur
+`lib/undoHotkey.ts` (Ctrl/⌘+Z = undo ; Ctrl/⌘+Shift+Z ou Ctrl+Y = redo) et forwarde
+au store temporel ; **garde anti-vol** dans les champs texte (INPUT/TEXTAREA/
+contentEditable → on laisse l'undo natif du navigateur) ; tooltips « (Ctrl+Z) » sur
+les boutons. Zéro changement de store.
+
+**QW-2 — Sélection rectangle (marquee) au clic-gauche + drag de groupe = 1 undo.**
+Avant : left-drag *pannait* (défaut React Flow), pas de rubber-band sans Shift (non
+découvrable). Fix = `selectionOnDrag` + `selectionMode=Partial` + `panOnDrag=[1,2]`
+sur le `<ReactFlow>`. **Décision pan/zoom explicitée** (finding *Important* du panel) :
+comme le clic-gauche est désormais pris par la sélection, on ajoute `panOnScroll` —
+modèle « Figma » : **drag = sélection, scroll = pan, Ctrl/⌘+scroll = zoom**, boutons
+`<Controls/>` +/− conservés. Conséquence assumée : la **molette ne zoome plus** par
+défaut (relégué à Ctrl/⌘+scroll / pinch / boutons). Pour que ce ne soit pas une
+surprise silencieuse, un **hint discret** est affiché en bas-droite du canvas. En
+complément, `onNodesChange` committe désormais les drags terminés via **un seul**
+`setPositions(batch)` (helper pur `lib/nodeChangeCommit.ts`) au lieu d'une boucle
+`moveState` par nœud → un déplacement multi-nœuds = **une seule** entrée d'undo
+(réutilise l'action batch que Tidy emploie déjà).
+
+*Tests :* helpers purs `undoHotkey` (11) + `nodeChangeCommit` (6) en vitest (→ 60
+au total) ; specs e2e clavier + marquee (tier Playwright, non gated CI). Pureté
+confirmée par le panel : aucune écriture UI-only dans `topologyStore`/persist/zundo.
+
+### Recos différées (placement consigné, à spec'er séparément)
+
+- **QW-3 — Wizard : « cet onglet vs nouveau » à la fin.** Le *vrai* onglet = **A1
+  (différé)**. Mais le wizard **ne clobber déjà pas en silence** (`confirmClobber`).
+  Stop-gap livrable **sans A1** : un choix à **3 voies** au *finish* — (a) ouvrir en
+  sauvant l'actuel dans « My models », (b) ouvrir en jetant, (c) **sauver le nouveau
+  dans « My models » sans toucher au canvas** (= le « nouvel onglet » honnête).
+  Trou résiduel à boucher au passage : `LessonPage.loadTopology` **non gardé**.
+  Réutilise `savedTopologiesStore` + `confirmClobber` + `buildTopologyYaml`. **Pas A1.**
+  Effort S. Risque : ne pas polluer `topologyStore`/zundo pour simuler un 2e onglet
+  (rester dans le store frère `saved`). → polish du **lot I**, spec léger.
+- **QW-4 — Lisibilité des flèches → Incrément 4.** Pas un bug (bidirectionnel +
+  pilule déjà gérés). Le problème : **soupe de labels** à l'ergodique K² (≤ 36 labels
+  à K=6) et l'éditeur n'a **pas** le seuil `MIN_PROB` que le graphe Résultats applique
+  déjà. Top levier/coût : **masquer les labels selon le zoom + au survol/sélection** +
+  **élaguer les arêtes faible-proba**. Nécessite un nouveau `editorPref` (→ persist
+  **v2** + `migrateEditorPrefs`). Effort M. **Spec requis** (`writing-plans` ensuite).
+- **QW-5 — Copier-coller de nœuds (Ctrl+C / Ctrl+V).** Feature **net-neuve** (aucun
+  clipboard nœuds). Étapes : capter la multi-sélection (aujourd'hui `onSelectionChange`
+  ne garde qu'un id), snapshot des `StateNode` sélectionnés, action store `pasteStates`
+  (re-mint d'ids via `_uid`, renommage via `lowestFreeStateName`, offset +(40,40),
+  re-mappage des transitions internes, **un seul** `set()` → un undo). Effort M.
+  **Spec requis** ; candidat Inc 4 distinct.
+
+### Bornes (round 3)
+
+- QW reste du **polish/bugfix** : pas de nouveau concept de modèle, pas de backend,
+  pas de pollution undo/persist. A1 reste différé ; QW-3 n'est **pas** A1.
+- `panOnScroll` est un **choix assumé et surfacé** (hint), pas une régression
+  silencieuse — toute évolution future du modèle pan/zoom doit rester découvrable.
+- `moveState` (action store) reste en place bien qu'inutilisée par l'éditeur
+  (publique + testée ; la retirer = churn hors-scope).
+

@@ -134,10 +134,10 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
         <span className="text-xs text-amber-600">no dataset — pick one on Data</span>
       )}
       <div className="w-px h-6 bg-slate-300" />
-      <button onClick={() => undo()} disabled={!canUndo} className={btn}>
+      <button onClick={() => undo()} disabled={!canUndo} className={btn} title="Undo (Ctrl+Z)">
         ↶ Undo
       </button>
-      <button onClick={() => redo()} disabled={!canRedo} className={btn}>
+      <button onClick={() => redo()} disabled={!canRedo} className={btn} title="Redo (Ctrl+Y or Ctrl+Shift+Z)">
         ↷ Redo
       </button>
       <div className="w-px h-6 bg-slate-300" />
