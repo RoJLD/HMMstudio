@@ -1,0 +1,35 @@
+name: rSLDS backend (Docker)
+
+# Manual trigger only (image build is ~5min, full tier ~1-3min). Also schedule
+# a weekly run to catch silent drift in ssm / scipy / numpy interaction.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/hmm_core/backends/rslds_backend.py'
+      - 'src/hmm_core/backends/__init__.py'
+      - 'tools/docker/rslds.Dockerfile'
+      - 'tests/test_rslds_backend*.py'
+      - '.github/workflows/rslds-docker.yml'
+  schedule:
+    - cron: "0 0 * * 0"  # Sundays 00:00 UTC — weekly drift detection
+
+jobs:
+  rslds-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build rSLDS image
+        run: docker build -t hmm-studio-rslds -f tools/docker/rslds.Dockerfile .
+
+      - name: Smoke tier (fast, ~1min)
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/work -w /work \
+            hmm-studio-rslds python -m pytest tests/test_rslds_backend_smoke.py -v
+
+      - name: Full tier (slow, ~1-3min)
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/work -w /work \
+            hmm-studio-rslds python -m pytest tests/test_rslds_backend.py -v
