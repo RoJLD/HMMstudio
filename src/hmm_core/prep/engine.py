@@ -27,7 +27,6 @@ import yaml
 
 from hmm_core.prep.ops import OPS
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -141,7 +140,7 @@ class PreparedResult:
 
         # Preview first 5 rows via pandas's _repr_html_
         try:
-            preview_html = '<h5>First 5 rows</h5>' + self.df.head(5).to_html(
+            preview_html = "<h5>First 5 rows</h5>" + self.df.head(5).to_html(
                 max_cols=8, classes="dataframe"
             )
         except Exception:
@@ -231,9 +230,7 @@ def load_recipe(
         if isinstance(include_spec, str):
             include_spec = {"recipe": include_spec, "params": {}}
         if not isinstance(include_spec, dict) or "recipe" not in include_spec:
-            raise ValueError(
-                f"include must be a mapping with 'recipe' key, got {include_spec!r}"
-            )
+            raise ValueError(f"include must be a mapping with 'recipe' key, got {include_spec!r}")
         sub_recipe = load_recipe(include_spec["recipe"], _depth=_depth + 1, _max_depth=_max_depth)
         # Optional parameter overrides for the included recipe
         override = include_spec.get("params", {}) or {}
@@ -265,10 +262,7 @@ def load_recipe(
     if _depth == 0:
         for step in compiled_steps:
             if step.op not in OPS:
-                raise ValueError(
-                    f"unknown op : {step.op!r}. "
-                    f"Registered ops : {sorted(OPS)}"
-                )
+                raise ValueError(f"unknown op : {step.op!r}. " f"Registered ops : {sorted(OPS)}")
 
     return Recipe(
         name=name,
@@ -326,9 +320,7 @@ class Pipeline:
     def add_step(self, op: str, **params: Any) -> "Pipeline":
         """Append a step. Returns self for chaining."""
         if op not in OPS:
-            raise ValueError(
-                f"unknown op : {op!r}. Registered ops : {sorted(OPS)}"
-            )
+            raise ValueError(f"unknown op : {op!r}. Registered ops : {sorted(OPS)}")
         self._steps.append(RecipeStep(op=op, params=params))
         return self
 
@@ -373,16 +365,12 @@ class Pipeline:
             if self._output.observations:
                 missing = set(self._output.observations) - set(current.columns)
                 if missing:
-                    raise ValueError(
-                        f"observations columns not in prepared df : {missing}"
-                    )
+                    raise ValueError(f"observations columns not in prepared df : {missing}")
                 X = current[list(self._output.observations)]
             if self._output.covariates:
                 missing = set(self._output.covariates) - set(current.columns)
                 if missing:
-                    raise ValueError(
-                        f"covariates columns not in prepared df : {missing}"
-                    )
+                    raise ValueError(f"covariates columns not in prepared df : {missing}")
                 Z = current[list(self._output.covariates)]
 
         return PreparedResult(
@@ -407,9 +395,7 @@ class Pipeline:
         steps_rows = ["<h5>Pipeline steps</h5>"]
         steps_rows.append("<table><tr><th>#</th><th>Op</th><th>Parameters</th></tr>")
         for i, step in enumerate(self._steps):
-            params_str = ", ".join(
-                f"{k}={v!r}" for k, v in step.params.items()
-            )
+            params_str = ", ".join(f"{k}={v!r}" for k, v in step.params.items())
             steps_rows.append(
                 f"<tr><td>{i + 1}</td><td><code>{_esc(step.op)}</code></td>"
                 f"<td style='text-align:left'><code>{_esc(params_str)}</code></td></tr>"
@@ -423,7 +409,9 @@ class Pipeline:
         stats_html = render_stats_table(stats_rows)
 
         if self._recipe_description:
-            desc_html = f'<div class="small" style="margin: 4px 0">{_esc(self._recipe_description)}</div>'
+            desc_html = (
+                f'<div class="small" style="margin: 4px 0">{_esc(self._recipe_description)}</div>'
+            )
         else:
             desc_html = ""
 

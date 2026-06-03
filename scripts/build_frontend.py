@@ -13,6 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+# On Windows, `npm` is a `.cmd` shim that needs shell=True to be resolved via
+# PATH. On Linux / macOS, `shell=True` with a list-arg silently drops every
+# argument past the first (the shell receives only `npm` and treats the rest
+# as $0, $1...), so `npm install` becomes a bare `npm` that prints help and
+# exits 1. Use the shell only where it's actually required.
+_NEEDS_SHELL = sys.platform == "win32"
+
 
 def main() -> int:
     repo_root = Path(__file__).parent.parent
@@ -24,10 +31,10 @@ def main() -> int:
         return 1
 
     print(f"[1/3] npm install in {frontend}...")
-    subprocess.run(["npm", "install"], cwd=frontend, check=True, shell=True)
+    subprocess.run(["npm", "install"], cwd=frontend, check=True, shell=_NEEDS_SHELL)
 
     print(f"[2/3] npm run build in {frontend}...")
-    subprocess.run(["npm", "run", "build"], cwd=frontend, check=True, shell=True)
+    subprocess.run(["npm", "run", "build"], cwd=frontend, check=True, shell=_NEEDS_SHELL)
 
     src = frontend / "dist"
     if not src.exists():

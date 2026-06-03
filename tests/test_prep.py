@@ -18,7 +18,6 @@ import pytest
 
 from hmm_core.prep import OPS, Pipeline, list_recipes, load_recipe, register_op
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -113,9 +112,9 @@ def test_op_log_diff(sample_df):
     # Excluding that spike, all values should be < 0.05 (typical daily return)
     sorted_abs = valid.abs().sort_values()
     median_abs_return = sorted_abs.iloc[len(sorted_abs) // 2]
-    assert median_abs_return < 0.05, (
-        f"median |log_return| = {median_abs_return:.4f} ; expected typical daily return"
-    )
+    assert (
+        median_abs_return < 0.05
+    ), f"median |log_return| = {median_abs_return:.4f} ; expected typical daily return"
 
 
 def test_op_rolling_std(sample_df):
@@ -159,7 +158,10 @@ def test_op_resample(sample_df):
 def test_op_diff(sample_df):
     out = OPS["diff"](sample_df.fillna(0), column="close", new_name="d1")
     assert pd.isna(out["d1"].iloc[0])
-    assert out["d1"].iloc[1] == sample_df.fillna(0)["close"].iloc[1] - sample_df.fillna(0)["close"].iloc[0]
+    assert (
+        out["d1"].iloc[1]
+        == sample_df.fillna(0)["close"].iloc[1] - sample_df.fillna(0)["close"].iloc[0]
+    )
 
 
 def test_op_shift(sample_df):
@@ -317,11 +319,13 @@ def test_op_log1p_forced_on_negative_produces_nan():
 
 
 def test_op_drop_low_variance_drops_near_constant():
-    df = pd.DataFrame({
-        "stable": [1.0] * 10,        # std = 0 -> dropped
-        "active": np.arange(10.0),    # std > threshold -> kept
-        "mostly_zero": [0.0] * 8 + [1.0, 2.0],   # zeros_frac = 0.8 -> dropped
-    })
+    df = pd.DataFrame(
+        {
+            "stable": [1.0] * 10,  # std = 0 -> dropped
+            "active": np.arange(10.0),  # std > threshold -> kept
+            "mostly_zero": [0.0] * 8 + [1.0, 2.0],  # zeros_frac = 0.8 -> dropped
+        }
+    )
     out = OPS["drop_low_variance"](df)
     assert "active" in out.columns
     assert "stable" not in out.columns
@@ -417,9 +421,7 @@ def test_recipe_clean_missing_forward_fill_drops_no_data(sample_df):
 
 def test_recipe_volatility_features_creates_vol_column(sample_df):
     # First need log_return present in the input
-    pipe = (
-        Pipeline.from_recipe("financial_log_returns")
-    )
+    pipe = Pipeline.from_recipe("financial_log_returns")
     intermediate = pipe.fit_transform(sample_df.ffill())
     # Now apply volatility features
     vol_pipe = Pipeline.from_recipe("volatility_features")
@@ -533,12 +535,8 @@ def test_load_recipe_max_depth_cycle_protection(tmp_path):
     """Self-including recipe should hit the depth limit and raise."""
     a = tmp_path / "a.yaml"
     b = tmp_path / "b.yaml"
-    a.write_text(
-        f"name: a\nincludes:\n  - recipe: {b}\nsteps: []\n"
-    )
-    b.write_text(
-        f"name: b\nincludes:\n  - recipe: {a}\nsteps: []\n"
-    )
+    a.write_text(f"name: a\nincludes:\n  - recipe: {b}\nsteps: []\n")
+    b.write_text(f"name: b\nincludes:\n  - recipe: {a}\nsteps: []\n")
     with pytest.raises(RecursionError, match="max depth"):
         load_recipe(a)
 
@@ -549,11 +547,7 @@ def test_load_recipe_max_depth_cycle_protection(tmp_path):
 
 
 def test_provenance_records_applied_steps(sample_df):
-    pipe = (
-        Pipeline()
-        .add_step("log_diff", column="close", new_name="ret")
-        .add_step("dropna")
-    )
+    pipe = Pipeline().add_step("log_diff", column="close", new_name="ret").add_step("dropna")
     result = pipe.fit_transform(sample_df)
     assert len(result.provenance) == 2
     assert result.provenance[0].op == "log_diff"

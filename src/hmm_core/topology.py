@@ -230,7 +230,7 @@ class Topology:
         )
 
         return wrap_html(
-            f"<h4>Topology</h4>",
+            "<h4>Topology</h4>",
             stats_html,
             heatmap_html,
         )

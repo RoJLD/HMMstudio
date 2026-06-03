@@ -144,9 +144,7 @@ def dropna(df: pd.DataFrame, *, columns: list[str] | None = None) -> pd.DataFram
 
 
 @register_op("log_diff")
-def log_diff(
-    df: pd.DataFrame, *, column: str, new_name: str | None = None
-) -> pd.DataFrame:
+def log_diff(df: pd.DataFrame, *, column: str, new_name: str | None = None) -> pd.DataFrame:
     out = df.copy()
     name = new_name or f"{column}_logdiff"
     out[name] = np.log(out[column].astype(float)).diff()
@@ -421,18 +419,10 @@ def ewma(
     if is_single_legacy:
         suffix = f"hl{halflife}" if halflife is not None else f"span{span}"
         name = new_name or f"ewma_{column}_{suffix}"
-        out[name] = (
-            out[column]
-            .ewm(halflife=halflife, span=span, adjust=False)
-            .mean()
-        )
+        out[name] = out[column].ewm(halflife=halflife, span=span, adjust=False).mean()
         return out
     for col in targets:
-        out[col] = (
-            out[col]
-            .ewm(halflife=halflife, span=span, adjust=False)
-            .mean()
-        )
+        out[col] = out[col].ewm(halflife=halflife, span=span, adjust=False).mean()
     return out
 
 
@@ -442,9 +432,7 @@ def ewma(
 
 
 @register_op("zscore")
-def zscore(
-    df: pd.DataFrame, *, columns: list[str] | None = None
-) -> pd.DataFrame:
+def zscore(df: pd.DataFrame, *, columns: list[str] | None = None) -> pd.DataFrame:
     """Standardise each column to mean 0 / std 1. Defaults to all numeric columns."""
     targets = _resolve_columns(df, columns, None)
     out = df.copy()
@@ -481,9 +469,7 @@ def minmax(
 
 
 @register_op("robust_scale")
-def robust_scale(
-    df: pd.DataFrame, *, columns: list[str] | None = None
-) -> pd.DataFrame:
+def robust_scale(df: pd.DataFrame, *, columns: list[str] | None = None) -> pd.DataFrame:
     """Median + IQR scaling — robust to outliers. Defaults to all numeric columns."""
     targets = _resolve_columns(df, columns, None)
     out = df.copy()

@@ -80,7 +80,6 @@ class FittedModel:
         """Rich HTML representation for Jupyter (Phase I.1)."""
         from hmm_core._jupyter import (
             render_matrix_heatmap,
-            render_sequence_strip,
             render_stats_table,
             wrap_html,
         )
@@ -291,10 +290,7 @@ def fit(
     # (ln ln n vs ln n) but faster than AIC ; favoured for model-order
     # selection on long sequences where BIC over-penalises. ln(ln(n))
     # needs n ≥ 3 to stay positive ; clamp below that.
-    hqic = float(
-        -2.0 * result.log_likelihood
-        + 2.0 * n_params * np.log(np.log(max(n_obs, 3)))
-    )
+    hqic = float(-2.0 * result.log_likelihood + 2.0 * n_params * np.log(np.log(max(n_obs, 3))))
 
     return FittedModel(
         model=result.model,

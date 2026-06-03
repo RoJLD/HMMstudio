@@ -75,9 +75,7 @@ class FeatureSelectionResult:
         return self.similarity_matrix
 
 
-def _entropy_diagonal(
-    standardized: np.ndarray, n_neighbors: int, seed: int
-) -> np.ndarray:
+def _entropy_diagonal(standardized: np.ndarray, n_neighbors: int, seed: int) -> np.ndarray:
     """Per-variable entropy proxy ``H(x_i)`` via diagonal MI.
 
     Estimates ``MI(x_i, x_i + jitter)`` with the same k-NN estimator as
@@ -268,9 +266,7 @@ def unsupervised_feature_selection(
     if features.shape[1] == 0:
         raise ValueError("features DataFrame has zero columns")
     if n_clusters > features.shape[1]:
-        raise ValueError(
-            f"n_clusters={n_clusters} > number of features ({features.shape[1]})"
-        )
+        raise ValueError(f"n_clusters={n_clusters} > number of features ({features.shape[1]})")
 
     rng = np.random.default_rng(random_state)
     columns = list(features.columns)

@@ -53,6 +53,7 @@ export function DataDropZone({ onFile, uploading }: DataDropZoneProps) {
         onChange={onChange}
         style={{ display: "none" }}
         disabled={uploading}
+        data-testid="dataset-upload-input"
       />
       {uploading ? (
         <div>

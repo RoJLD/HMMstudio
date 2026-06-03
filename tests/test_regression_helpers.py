@@ -7,8 +7,6 @@ These tests cover the comparison logic itself — they don't need real data.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 
 import pytest
 
@@ -17,7 +15,6 @@ from tests._regression_helpers import (
     assert_summary_matches_reference,
     env_csv_path,
 )
-
 
 # ---------------------------------------------------------------------------
 # env_csv_path

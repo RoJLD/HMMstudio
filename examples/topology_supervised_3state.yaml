@@ -1,0 +1,25 @@
+name: supervised_3state_demo
+n_states: 3
+state_names: [low, mid, high]
+
+# Ergodic Gaussian K=3, n_features=1 — pairs with examples/data_supervised.csv
+# and examples/states_supervised.csv. Matches the synthetic generator in
+# examples/generate_demo_data.py (Phase A.7 supervised demo).
+emission:
+  type: gaussian
+  covariance_type: diag
+  n_features: 1
+
+# No allowed_transitions = ergodic. The supervised fit recovers the actual
+# transmat from label counts, so we don't need a structural prior here.
+
+startprob: uniform
+
+init:
+  strategy: uniform
+  seed: 42
+
+fit:
+  algorithm: baum_welch
+  n_iter: 50
+  tol: 1.0e-4

@@ -30,9 +30,7 @@ def _strict_left_right_gaussian(startprob="first_state", covariance_type="full")
         name="lr3_strict",
         n_states=3,
         state_names=["a", "b", "c"],
-        emission=EmissionSpec(
-            type="gaussian", n_features=2, covariance_type=covariance_type
-        ),
+        emission=EmissionSpec(type="gaussian", n_features=2, covariance_type=covariance_type),
         allowed_transitions=[
             ("a", "a"),
             ("a", "b"),
@@ -51,9 +49,7 @@ def _strict_left_right_gmm():
         name="lr3_strict_gmm",
         n_states=3,
         state_names=["a", "b", "c"],
-        emission=EmissionSpec(
-            type="gmm", n_features=2, covariance_type="diag", n_mix=2
-        ),
+        emission=EmissionSpec(type="gmm", n_features=2, covariance_type="diag", n_mix=2),
         allowed_transitions=[
             ("a", "a"),
             ("a", "b"),
@@ -159,9 +155,7 @@ def test_strict_left_right_v1_cross_check_unaffected(synthetic_gaussian_left_rig
     from hmmlearn.hmm import GaussianHMM
 
     X = synthetic_gaussian_left_right["X"]
-    vanilla = GaussianHMM(
-        n_components=3, covariance_type="full", n_iter=20, random_state=42
-    )
+    vanilla = GaussianHMM(n_components=3, covariance_type="full", n_iter=20, random_state=42)
     vanilla.fit(X)
 
     constrained = ConstrainedGaussianHMM(

@@ -21,7 +21,6 @@ from hmm_core.nhmm import fit_nhmm
 from hmm_core.prep import Pipeline
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -155,9 +154,7 @@ def test_fitted_model_left_right_shows_forbidden(left_right_topology, gaussian_d
 
 def test_nhmm_fitted_model_repr_html(simple_topology, gaussian_data):
     Z = np.random.default_rng(0).normal(0, 1, (len(gaussian_data), 2))
-    result = fit_nhmm(
-        simple_topology, gaussian_data, Z, covariate_names=["z0", "z1"], seed=42
-    )
+    result = fit_nhmm(simple_topology, gaussian_data, Z, covariate_names=["z0", "z1"], seed=42)
     html = result._repr_html_()
     assert _is_valid_html_snippet(html)
     assert "NHMM" in html or "nhmm" in html.lower()
@@ -230,11 +227,7 @@ def test_factorial_nhmm_fitted_model_repr_html():
 
 
 def test_pipeline_repr_html():
-    pipe = (
-        Pipeline()
-        .add_step("log_diff", column="close", new_name="ret")
-        .add_step("dropna")
-    )
+    pipe = Pipeline().add_step("log_diff", column="close", new_name="ret").add_step("dropna")
     html = pipe._repr_html_()
     assert _is_valid_html_snippet(html)
     assert "log_diff" in html

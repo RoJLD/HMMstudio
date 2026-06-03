@@ -61,9 +61,7 @@ def summary() -> dict:
     return run_recipe_fit(
         csv_path=env_csv_path("HMM_VALENTIN_ETH_PATH"),  # type: ignore[arg-type]
         recipe_name="valentin_eth",
-        topology_yaml=Path(__file__).parent.parent
-        / "examples"
-        / "valentin_eth_3regime_gmm.yaml",
+        topology_yaml=Path(__file__).parent.parent / "examples" / "valentin_eth_3regime_gmm.yaml",
         csv_kwargs={"encoding": "ISO-8859-1", "parse_dates": ["date"]},
         sort_index_col="date",
         post_prep=lambda df: pca.fit_transform(df.values),
@@ -78,9 +76,10 @@ def test_summary_matches_reference(summary: dict) -> None:
 
 def test_post_prep_shape(summary: dict) -> None:
     """PCA output is 2-D and has the expected row count."""
-    assert summary["post_prep_shape"] == (3402, 2), (
-        f"Post-PCA shape changed: {summary['post_prep_shape']} vs (3402, 2)"
-    )
+    assert summary["post_prep_shape"] == (
+        3402,
+        2,
+    ), f"Post-PCA shape changed: {summary['post_prep_shape']} vs (3402, 2)"
 
 
 def test_three_phases_all_populated(summary: dict) -> None:

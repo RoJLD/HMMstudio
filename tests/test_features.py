@@ -29,7 +29,6 @@ from hmm_core.features import (
 )
 from hmm_core.prep import OPS, Pipeline
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -93,11 +92,7 @@ def test_correlated_features_collapse(correlated_df):
     kept = set(result.selected.columns)
     assert len({"A", "B"} & kept) <= 1
     # A and B must share a cluster
-    cluster_of = {
-        name: cid
-        for cid, names in result.cluster_dict.items()
-        for name in names
-    }
+    cluster_of = {name: cid for cid, names in result.cluster_dict.items() for name in names}
     assert cluster_of["A"] == cluster_of["B"]
 
 
@@ -148,9 +143,7 @@ def test_medoid_is_most_central(correlated_df):
 
 def test_n_clusters_exceeds_features_raises(independent_df):
     with pytest.raises(ValueError, match="n_clusters"):
-        unsupervised_feature_selection(
-            independent_df, n_clusters=independent_df.shape[1] + 1
-        )
+        unsupervised_feature_selection(independent_df, n_clusters=independent_df.shape[1] + 1)
 
 
 def test_empty_features_raises():

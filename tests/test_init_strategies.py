@@ -260,9 +260,7 @@ def test_init_gmm_full_covariance_is_spd(synthetic_gmm_3state):
             C = params["covars_"][k, m]
             np.testing.assert_allclose(C, C.T, atol=1e-12)
             eigs = np.linalg.eigvalsh(C)
-            assert (eigs > 0).all(), (
-                f"covars_[{k}, {m}] not positive definite: eigs={eigs}"
-            )
+            assert (eigs > 0).all(), f"covars_[{k}, {m}] not positive definite: eigs={eigs}"
 
 
 def test_init_gmm_tied_covariance_is_spd(synthetic_gmm_3state):

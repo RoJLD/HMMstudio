@@ -1,14 +1,16 @@
 name: E2E
 
-# Note: requires GitHub remote + a working studio launch. Will fail until
-# both are set up. Disabled by default — uncomment the on: triggers when ready.
+# Playwright golden-path + accessibility + warehouse + academy + tour-recording
+# + topology-editor suites against a freshly-built React studio. Gates `push`
+# to main and `pull_request` to main (not feature-branch pushes — the suite is
+# ~10 min on a clean runner). 21/21 green locally as of the e2e-drifts cleanup.
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   e2e:

@@ -121,8 +121,9 @@ class GMMNHMMFittedModel:
 
         # Render a per-regime table : state | component | weight | mean[0]
         rows_html = ["<h5>Sub-modes per regime (GMM components)</h5>"]
-        rows_html.append("<table><tr><th>Regime</th><th>Component</th>"
-                         "<th>Weight</th><th>Mean (D=0)</th></tr>")
+        rows_html.append(
+            "<table><tr><th>Regime</th><th>Component</th>" "<th>Weight</th><th>Mean (D=0)</th></tr>"
+        )
         for k in range(K):
             for m in range(M):
                 state_name = self.topology.state_names[k]

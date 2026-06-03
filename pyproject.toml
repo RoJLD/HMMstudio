@@ -55,6 +55,7 @@ dcor = ["dcor>=0.6"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",  # per-test timeout; turns CI hangs into clean fails
     "hypothesis>=6.100",
     "ruff>=0.5",
     "black>=24.0",
@@ -91,7 +92,11 @@ hmm_studio = ["server/static/**/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra --strict-markers"
+# `--timeout=180` is a defensive ceiling: the slowest legitimate test is the
+# Bayesian NUTS suite at ~30-60s. Setting 180s turns CI hangs (e.g. fork-on-Linux
+# coverage deadlocks with ProcessPoolExecutor) into clean test failures instead
+# of 25-min runner waste. Tests can override with @pytest.mark.timeout(N).
+addopts = "-ra --strict-markers --timeout=180"
 markers = [
     "slow: tests that take >10s (Bayesian NUTS sampling, recovery tests, etc.). Skip with -m 'not slow'.",
 ]
@@ -99,6 +104,17 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+# `with pm.Model() as model:` is the canonical PyMC idiom — the variable
+# is bound for the `with` block and downstream `pm.*` calls read it
+# implicitly via the model-stack, even though no name appears in the inner
+# scope. F841 (assigned-but-never-used) is a false positive here.
+"src/hmm_core/backends/bayesian_backend.py" = ["F841"]
+# Local imports colocated with their single consumer (auto_grid + test
+# helpers). Hoisting them to the top would obscure the pairing.
+"src/hmm_core/selection.py" = ["E402"]
+"tests/test_selection.py" = ["E402"]
 
 [tool.black]
 line-length = 100

@@ -22,7 +22,6 @@ import pytest
 from hmm_core.fit import fit as core_fit
 from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -88,7 +87,7 @@ def test_bayesian_backend_class_importable():
 def test_bayesian_backend_fit_returns_valid_result(two_regime_data, small_topology):
     """fit() returns a BackendFitResult with finite log-likelihood and right shapes."""
     pytest.importorskip("pymc", reason="pymc not installed")
-    from hmm_core.backends import BackendFitResult, BayesianHMMBackend
+    from hmm_core.backends import BayesianHMMBackend
 
     backend = BayesianHMMBackend(n_samples=200, n_tune=100, n_chains=2)
     result = core_fit(small_topology, two_regime_data, seed=42, backend=backend)
@@ -117,9 +116,7 @@ def test_bayesian_backend_idata_populated_after_fit(two_regime_data, small_topol
 
 
 @pytest.mark.slow
-def test_bayesian_recovers_synthetic_means_within_tolerance(
-    two_regime_data, small_topology
-):
+def test_bayesian_recovers_synthetic_means_within_tolerance(two_regime_data, small_topology):
     """Posterior mean of mus should be close to the true {0, 5}."""
     pytest.importorskip("pymc", reason="pymc not installed")
     from hmm_core.backends import BayesianHMMBackend
