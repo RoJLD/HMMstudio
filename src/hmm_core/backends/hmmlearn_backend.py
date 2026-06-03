@@ -155,6 +155,7 @@ class HmmlearnBackend:
         converged = bool(monitor.converged) if monitor is not None else False
         n_iter_actual = int(monitor.iter) if monitor is not None else topology.fit.n_iter
 
+        history = tuple(float(x) for x in getattr(monitor, "history", []) or [])
         return BackendFitResult(
             model=model,
             transmat=np.asarray(model.transmat_),
@@ -162,6 +163,7 @@ class HmmlearnBackend:
             log_likelihood=log_lik,
             n_iter_actual=n_iter_actual,
             converged=converged,
+            convergence_history=history,
         )
 
     def fit_supervised(
@@ -351,6 +353,7 @@ class HmmlearnBackend:
             log_likelihood=log_lik,
             n_iter_actual=n_iter_actual,
             converged=converged,
+            convergence_history=tuple(float(x) for x in getattr(monitor, "history", []) or []),
         )
 
     def decode(self, model: Any, X: np.ndarray, lengths: np.ndarray | None = None) -> np.ndarray:

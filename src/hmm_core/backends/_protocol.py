@@ -40,6 +40,9 @@ class BackendFitResult:
         Number of EM iterations actually run before convergence (or n_iter).
     converged
         True if the backend's convergence monitor reports convergence.
+    convergence_history
+        Per-iteration training log-likelihood trace from EM (empty for
+        closed-form / supervised fits that run no EM loop).
     """
 
     model: Any
@@ -48,6 +51,7 @@ class BackendFitResult:
     log_likelihood: float
     n_iter_actual: int
     converged: bool
+    convergence_history: tuple[float, ...] = ()
 
 
 @runtime_checkable

@@ -147,3 +147,38 @@ def test_backend_decode_and_score_roundtrip():
     posteriors = backend.predict_proba(result.model, X)
     assert posteriors.shape == (len(X), topo.n_states)
     assert np.allclose(posteriors.sum(axis=1), 1.0)
+
+
+def test_backend_fit_populates_convergence_history():
+    """Unsupervised EM exposes its per-iteration log-likelihood trace."""
+    import numpy as np
+    from hmm_core.backends import get_backend
+    from hmm_core.topology import Topology
+
+    rng = np.random.default_rng(0)
+    X = np.concatenate([rng.normal(-3, 0.5, (60, 1)), rng.normal(3, 0.5, (60, 1))])
+    topo = Topology(
+        name="conv",
+        n_states=2,
+        state_names=["a", "b"],
+        emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=1),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=0),
+        fit=FitSpec(algorithm="baum_welch", n_iter=50, tol=1e-4),
+    )
+    from hmm_core import init as init_mod
+    A = init_mod.transmat(topo, seed=0, X=X)
+    pi = init_mod.startprob(topo, seed=0)
+    ek = init_mod.emission_params(topo, X=X, seed=0)
+    result = get_backend("hmmlearn").fit(
+        topo, X, seed=0, lengths=None,
+        initial_transmat=A, initial_startprob=pi, emission_kwargs=ek,
+        mask=topo.transition_mask(),
+    )
+    assert isinstance(result.convergence_history, tuple)
+    assert len(result.convergence_history) >= 2
+    assert all(isinstance(v, float) for v in result.convergence_history)
+    # EM log-likelihood is monotone non-decreasing.
+    h = result.convergence_history
+    assert all(h[i + 1] >= h[i] - 1e-6 for i in range(len(h) - 1))
