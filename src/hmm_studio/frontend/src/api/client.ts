@@ -142,6 +142,16 @@ export async function getFitTransmat(jobId: string): Promise<TransmatResponse> {
   return jsonFetch<TransmatResponse>(`/api/fit/${jobId}/transmat`);
 }
 
+export interface ConvergenceResponse {
+  convergence_history: number[];
+  converged: boolean;
+  n_iter_actual: number;
+}
+
+export async function getFitConvergence(jobId: string): Promise<ConvergenceResponse> {
+  return jsonFetch<ConvergenceResponse>(`/api/fit/${jobId}/convergence`);
+}
+
 export async function getFitDecoded(jobId: string): Promise<DecodedResponse> {
   return jsonFetch<DecodedResponse>(`/api/fit/${jobId}/decoded`);
 }
