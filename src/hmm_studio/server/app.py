@@ -288,6 +288,31 @@ def create_app() -> FastAPI:
             "n_states": topology.n_states,
         }
 
+    @app.get("/api/fit/{job_id}/convergence")
+    def get_fit_convergence(job_id: str):
+        """Return the persisted per-iteration EM log-likelihood trace."""
+        import pickle
+
+        try:
+            status = runner.get_status(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="job not found")
+        if status["status"] != "done":
+            raise HTTPException(
+                status_code=409, detail=f"job status is {status['status']!r}, not done"
+            )
+        result_path = status.get("result_path")
+        if not result_path:
+            raise HTTPException(status_code=500, detail="result_path missing")
+        with (Path(result_path) / "model.pkl").open("rb") as f:
+            fitted = pickle.load(f)
+        history = [float(v) for v in getattr(fitted, "convergence_history", ()) or []]
+        return {
+            "convergence_history": history,
+            "converged": bool(getattr(fitted, "converged", False)),
+            "n_iter_actual": int(getattr(fitted, "n_iter_actual", len(history))),
+        }
+
     @app.get("/api/fit/{job_id}/decoded")
     def get_fit_decoded(job_id: str):
         """Return Viterbi path + posterior for visualization."""
