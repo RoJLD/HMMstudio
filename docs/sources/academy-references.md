@@ -202,6 +202,55 @@ For our `BayesianHMMBackend` (Phase A.6 / I.3).
 - [Damiano et al. — Stan HMM tutorial (PDF)](https://luisdamiano.github.io/stancon18/hmm_stan_tutorial.pdf)
 - [arXiv 2509.17806 — Bayesian non-homogeneous HMMs](https://arxiv.org/pdf/2509.17806)
 
+### Lee & McLachlan 2011 — *Finite mixtures of multivariate skew t distributions*
+
+Sharon X. Lee, Geoffrey J. McLachlan. arXiv:1109.4706 (preprint of the
+2014 *Statistics and Computing* paper).
+
+EM updates for unrestricted multivariate skew-t mixtures reduce to truncated
+multivariate-t moments computable without Monte Carlo. The authors' R
+packages `EMMIXuskew` and `EMMIXcskew` implement this directly. The
+practical low-risk upgrade from a Student-T emission when the data is
+heavy-tailed AND asymmetric.
+
+— **PDF** : <https://arxiv.org/pdf/1109.4706>
+
+### Foroni, Merlo & Petrella 2024 — *Hidden Markov graphical models with state-dependent generalized hyperbolic distributions*
+
+Beatrice Foroni, Luca Merlo, Lea Petrella. arXiv:2412.03668 (Dec 2024).
+
+HMM with state-conditional generalized hyperbolic emissions, fit by
+penalized EM with L1 regularization on state-specific precision matrices.
+Applied directly to multivariate financial returns. GH nests Student-T,
+NIG and VG as special cases, so this is a strict generalization of the
+Student-T baseline.
+
+— **PDF** : <https://arxiv.org/pdf/2412.03668>
+
+### Lorek et al. 2022 — *FlowHMM*
+
+Lorek et al. *Advances in Neural Information Processing Systems 35* (NeurIPS 2022).
+
+Normalizing-flow emission for an HMM, trained by a hybrid Baum-Welch (EM)
+for the transition parameters and mini-batch SGD for the flow M-step.
+Reference implementation : <https://github.com/tooploox/flowhmm>. Published
+experiments are on speech (TIMIT) and generic continuous benchmarks; no
+peer-reviewed financial held-out evidence at small sample size.
+
+— **PDF** : <https://proceedings.neurips.cc/paper_files/paper/2022/file/39c5871aa13be86ab978cba7069cbcec-Paper-Conference.pdf>
+
+### Rothfuss et al. ICLR 2020 — *Noise regularization for conditional density estimation*
+
+Jonas Rothfuss, Fábio Ferreira, Simon Boehm, Simon Walther, Maxim Ulrich,
+Tamim Asfour, Andreas Krause. ICLR 2020 (arXiv:1907.08982).
+
+Documents the severe MLE overfitting failure mode of MDN, KMN, and
+Normalizing Flow Networks on small datasets (including financial returns)
+and proposes noise regularization as a remedy. Critical reference when
+considering neural density estimators as HMM emissions at n ≈ a few thousand.
+
+— **PDF** : <https://openreview.net/pdf?id=rygtPhVtDS>
+
 ---
 
 ## Tier 4 — Domain applications & textbook canonicals
@@ -236,6 +285,8 @@ Jurafsky and reproduced in our V.3 validation suite.
 | 5. *Baum-Welch* | **Bilmes 1998** (cornerstone), Rabiner §III.C, MIT 16.410 Lec 21, Eisner ice-cream |
 | 6. *Constrained topologies* | Rabiner §V (left-right / Bakis), Durbin Ch.5 (profile HMM) |
 | 7. *NHMM* | Bengio & Frasconi 1995, Bengio 2002 handbook chapter |
+| 14. *Comparing models honestly* | re-benchmark methodology in `Projet_Robin/benchmark/` (no central refs cited) |
+| 15. *Choosing the emission distribution* | Lee & McLachlan 2011, Foroni-Merlo-Petrella 2024, FlowHMM NeurIPS 2022, Rothfuss et al. ICLR 2020 |
 
 ## Open follow-ups
 

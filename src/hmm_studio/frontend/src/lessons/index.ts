@@ -14,6 +14,7 @@ import { Lesson11SemiSupervised } from "./lesson-11-semi-supervised";
 import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
 import { Lesson13ChoosingFeatures } from "./lesson-13-choosing-features";
 import { Lesson14ComparingModels } from "./lesson-14-comparing-models";
+import { Lesson15ChoosingEmission } from "./lesson-15-choosing-emission";
 
 export type LessonCategory =
   | "foundations"
@@ -345,6 +346,30 @@ fit: {algorithm: baum_welch, n_iter: 50, tol: 1.0e-4}
       "When does complexity pay? A regime-detection case study: benchmark, don't assume; simpler can win; negative results count; and why you can't compare log-likelihoods across model families.",
     status: "published",
     content: Lesson14ComparingModels,
+  },
+  {
+    id: "lesson-15-choosing-emission",
+    category: "selection",
+    order: 4,
+    title: "Choosing the emission distribution",
+    estimatedMinutes: 12,
+    difficulty: "Intermediate",
+    description:
+      "Your transitions are fine, your features are clean, yet held-out log-likelihood collapses. The culprit is often the emission. A diagnostic recipe, what to do inside hmm-studio, and what's beyond.",
+    status: "published",
+    content: Lesson15ChoosingEmission,
+    presetTopologyYaml: `name: lesson_15_gmm_emission_demo
+n_states: 3
+state_names: [calm, normal, stressed]
+emission:
+  type: gmm
+  covariance_type: full
+  n_features: 2
+  n_mix: 3
+startprob: uniform
+init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
+`,
   },
 ];
 
