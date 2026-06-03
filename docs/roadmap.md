@@ -2,14 +2,17 @@
 
 **Date de création** : 2026-05-21
 **Auteur** : Robin Denis
-**Dernière mise à jour** : 2026-05-22 (session "architecte-CEO" : licence MIT
-actée, abstraction backend livrée, positionnement stratégique formalisé)
+**Dernière mise à jour** : 2026-06-02 (**re-baseline** : la table d'état avait
+~2 semaines de retard — v1.1.0 + 69 commits non reflétés. Statuts re-synchronisés
+avec le code, le CHANGELOG et le git log. Le travail livré hors-roadmap initial
+— feature selection, sélection de modèles, regimes/Giudici, viz topologie animée,
+wizard, param-help, expansion Academy — est désormais inventorié ci-dessous.)
 
 > Document vivant. À ré-éditer à chaque transition de phase (fin de
 > sous-projet, décision majeure, pivot). Ce n'est pas un spec — c'est la
 > carte stratégique au-dessus des specs. Les specs détaillés et les plans
-> d'implémentation par sous-projet vivent dans `docs/specs/` et
-> `docs/plans/`.
+> d'implémentation par sous-projet vivent dans `docs/specs/`,
+> `docs/superpowers/specs/` et `docs/superpowers/plans/`.
 
 ---
 
@@ -178,59 +181,69 @@ domine), bioinfo profile-HMM (HMMER domine). Ne pas y aller.
 
 ## Vue d'ensemble — où on en est
 
+État au **2026-06-02**. Versions : v1.0.0 (2026-05-22), v1.1.0 (2026-05-23),
+puis **69 commits non publiés** (vague post-v1.1, voir CHANGELOG `[Unreleased]`).
+Santé : **411 tests** sur 31 fichiers, coverage ≥ 92 % sur `src/hmm_core/`.
+
 ```
-Phase    Sous-projet                       Statut         Dépend de   Échéance estimée
-─────────────────────────────────────────────────────────────────────────────────────────
-   A     hmm-core (Python engine + CLI)    SHIPPED v0.1   —           livré 2026-05-21
-   A.next Polish (GMM tied bug, coverage,  SHIPPED        A           livré 2026-05-22
-         lengths param)
-   A.1   NHMM dans le core (fit_nhmm)      SHIPPED v0.2   A           livré 2026-05-22
-   A.5   HMMBackend abstraction layer      SHIPPED        A           livré 2026-05-22
-         (decouple from hmmlearn)
-   A.7   Modes supervisé + semi-supervisé  PLANNED        A.5         ~1 semaine
-         (fit avec états labelés)                                     prioritaire avant A.6
-   A.10  GMM-NHMM (GMM emissions +         PLANNED        A.1, A.5,   ~1-2 semaines
-         covariate-dependent transitions)                 V           use case crypto direct
-                                                                     pas de gating signal ext.
-   A.13  Factorial NHMM (D chaînes        PLANNED        A.1, A.5,   ~2-3 semaines
-         parallèles, trend×vol×macro)                     V, A.10     use case crypto direct
-   A.11  Hierarchical HMM (HHMM)          SPEC-ONLY      A.5         ~3-4 sem code
-         spec drafted, code gated                                    GATED sur signal externe
-                                                                     (prof/chercheur explicite)
-   A.12  Profile-HMM (bioinfo)            DEFERRED       —           reconsider post-M3+6mois
-                                                                     pas dans wedge actuel
-   B.10  Data warehouse local + multi-fmt SHIPPED        B           livré 2026-05-25
-         (CSV/parquet/JSON/Excel/feather                              6 REST endpoints +
-         + sidecar yaml + settings page)                              path-traversal guard
-   B.11  Data prep layer (recipes engine  SHIPPED        —           livré 2026-05-22
-         + 21 ops + 8 bundled recipes)                               42 tests verts
-   I.1   Jupyter rich displays + notebook SHIPPED        —           livré 2026-05-26
-         gallery (8 notebooks)                                        7 _repr_html_ + Binder
-   I.2   scikit-learn-compatible API       SHIPPED        A.5         livré 2026-05-26
-         (HMMClassifier)                                              20 tests + estimator_checks
-   I.3   PyMC bridge                       SHIPPED        A.6         livré 2026-05-26 PM
-         (Bayesian backend = bridge)                                 notebook 09 + doc
-   A.6   BayesianHMMBackend (PyMC, MVP)    SHIPPED        A.5         livré 2026-05-26 PM
-         Gaussian diag ergodic                                       12 tests verts (NUTS)
-         priors + NUTS sampling                                       pymc optional dep
-   D     Migration dashboard crypto        SHIPPED        A, A.1      livré 2026-05-22 PM
-         (fit_hmm + fit_nhmm délégués)                                 9 tests régression verts
-   Z.1   GitHub Actions CI + pre-commit    SHIPPED        —           livré 2026-05-22
-   Z.5   Licence MIT + CITATION.cff        SHIPPED        —           livré 2026-05-22
-   B     hmm-studio web UI                 SHIPPED        A, A.1      MVP livré
-         (FastAPI + React + topology                                 B.1-B.8 + B.4.x +
-         editor + fit + results)                                     settings + warehouse
-   V     Scientific validation suite       SHIPPED        A           livré 2026-05-22
-         (V.1-V.6 + V.perf)                                          36+ tests verts
-   E     Academy (web + notebook gallery)  SHIPPED        I.1, V      livré 2026-05-26
-         7 web lessons (D3) + 8 notebooks                            web academy + Binder
-         + Try-in-editor bridge                                       gallery
-   C     Visualisations avancées           SHIPPED        B           C.1-C.6 livrés
-         (NHMM breathing, replay, K-scan,                            par session B
-         export SVG, annotations CSV,                                 (5ec533e..0172f57)
-         multi-séquences)
-   Z.2   Doc site (mkdocs) + 5 user guides SHIPPED        —           livré 2026-05-26
-         + CHANGELOG                                                  568b432 + bcd6eca
+ENGINE — hmm_core
+  ID    Sous-projet                          Statut        Livré / note
+  ───────────────────────────────────────────────────────────────────────────────
+  A     hmm-core (engine + CLI)              SHIPPED v0.1  2026-05-21
+  A.1   NHMM (fit_nhmm, A_t)                 SHIPPED v0.2  2026-05-22
+  A.5   HMMBackend abstraction (ADR-0003)    SHIPPED       2026-05-22
+  A.7   Supervisé (MLE closed-form)          SHIPPED v1.0  2026-05-22  ← était "PLANNED"
+  A.7.1 Semi-supervisé (E-step clamp)        SHIPPED       states= avec NaN/-1
+  A.8   Per-state EmissionSpec init hints    SHIPPED v1.0  2026-05-22
+  A.9   Dirichlet priors sur transitions     SHIPPED v1.0  2026-05-22
+  A.10  GMM-NHMM (2-stage)                    SHIPPED v1.1  2026-05-22  ← était "PLANNED"
+  A.13  Factorial NHMM (2-stage)             SHIPPED v1.1  2026-05-22  ← était "PLANNED"
+  A.6   Bayesian backend (PyMC NUTS)         SHIPPED v1.1  2026-05-26  ← était "NOT STARTED"
+  A.11  Hierarchical HMM (HHMM)              SPEC-ONLY      code gated (signal externe)
+  A.12  Profile-HMM (bioinfo)               DEFERRED        hors wedge
+
+FEATURES & SÉLECTION — post-v1.1, hors-roadmap initial (voir § dédié plus bas)
+  —     Unsupervised feature selection       SHIPPED       features.py (NMI medoid),
+        + prep op select_features_unsup.                   spec 2026-05-27
+  —     dcor distance-correlation variant    PLANNED       plan+spec 2026-05-28, 0 code
+  —     Model-variant selection              SHIPPED       selection.py (compare_models,
+        (HQIC, auto_grid, ModelComparison)                 HQIC), spec 2026-05-27
+  —     Regime labelling + Giudici 2020      SHIPPED       regimes.py + preset YAML
+
+DATA PREP
+  B.11  Prep recipes engine + ops            SHIPPED       2026-05-22 ; ops étendus
+        (21+ ops : log1p, drop_low_var…)                   (Valentin ETH port)
+
+WEB UI — hmm_studio
+  B     Studio web MVP                        SHIPPED v1.0  editor+fit+results+scan
+  B.4.x Per-state / per-edge panels           SHIPPED v1.0  init hints + Dirichlet
+  B.10  Data warehouse + settings page        SHIPPED       2026-05-25
+  C     Visualisations avancées C.1-C.6       SHIPPED v1.0  breathing/replay/export…
+  —     Topology viz P1+P2                    SHIPPED       flèches éditeur + graphe
+        (transition graph animé)                           transmat animé + Observed data
+  —     /compare page (BIC/AIC/HQIC grid)     SHIPPED       post-v1.1
+  —     Guided creation wizard                SHIPPED       /topology/new (5 étapes)
+  —     Param help tooltips (? popovers)      SHIPPED       deep links Academy
+
+DISTRIBUTION — Phase I
+  I.1   Jupyter rich displays                 SHIPPED       2026-05-26 (_repr_html_)
+  I.2   scikit-learn API (HMMClassifier)      SHIPPED       2026-05-26 (estimator_checks)
+  I.3   PyMC bridge                           SHIPPED v1.1  2026-05-26
+  I.4+  MLflow/VSCode/Streamlit/HF/KNIME     DEFERRED       gated sur demande externe
+
+ACADEMY (E) + VALIDATION (V)
+  E     Academy : web lessons + notebooks     SHIPPED       14 leçons + quiz/flashcards
+        + bibliographie + notebook bubbles                 + sections (L15 in-flight)
+  V     Scientific validation V.1-V.6+perf    SHIPPED       2026-05-22
+
+CROSS-CUTTING — Phase Z + D
+  D     Migration dashboard crypto            SHIPPED       2026-05-22 (délégué)  ← détail § disait "NOT STARTED"
+  Z.1   CI GitHub Actions + pre-commit        SHIPPED       2026-05-22
+  Z.2   Doc site mkdocs + guides + CHANGELOG  SHIPPED       2026-05-26
+  Z.5   Licence MIT + CITATION.cff            SHIPPED       2026-05-22
+  Z.3   Release PyPI publique                 🔴 BLOCKED    Trusted Publisher jamais
+                                                            enregistré — wheel v1.1
+                                                            sur Actions, pas sur PyPI
 ```
 
 ### Graphe de dépendances
@@ -256,6 +269,75 @@ Phase    Sous-projet                       Statut         Dépend de   Échéanc
 
 A débloque B et D en parallèle. C dépend de B (UI) et d'une extension
 NHMM dans `hmm-core` (qu'on peut faire en A.next ou comme prélude à C).
+
+> Le graphe ci-dessus est le plan d'origine (A→B/D→C). Il est **historique** :
+> A→E (Phase D), B, C, V, I.1-I.3 sont tous livrés. Le travail s'est depuis
+> déplacé vers les surfaces de distribution (Phase I) et l'outillage crypto
+> (feature selection, sélection de modèles, regimes), pas vers de nouveaux
+> nœuds du graphe initial.
+
+---
+
+## État au 2026-06-02 — ce qui reste *vraiment*
+
+> Section ajoutée au re-baseline. C'est la réponse courte à « il reste quoi ? ».
+> Presque tout le roadmap d'origine est livré (cf. table ci-dessus). Le reste
+> se range en 4 paquets, du plus actionnable au plus stratégique.
+
+### 1. En cours (working tree, non commité)
+
+- **Academy — leçon 15 « Choosing the emission distribution »**
+  ([plan](superpowers/plans/2026-05-28-academy-emission-lessons.md),
+  [spec](superpowers/specs/2026-05-28-academy-emission-lessons-design.md)).
+  Le fichier `lesson-15-choosing-emission.tsx` existe, est enregistré dans
+  `lessons/index.ts`, cross-link depuis la leçon 14 ajouté. **Essentiellement
+  fini — à builder + committer.**
+
+### 2. Planifié, zéro ligne de code
+
+- **`dcor` distance-correlation pour la feature selection**
+  ([plan](superpowers/plans/2026-05-28-features-dcor-criterion.md),
+  [spec](superpowers/specs/2026-05-28-features-dcor-criterion-design.md)).
+  Ajoute un critère distance-correlation (capte les dépendances non-monotones
+  que la NMI rate) en alternative à `unsupervised_feature_selection`. Plan TDD
+  écrit le 2026-05-28 ; **rien commencé** (pas d'extra `[dcor]` dans
+  `pyproject.toml`, rien dans `features.py`). **Seul backlog code prêt à exécuter.**
+
+### 3. Gardé au chaud volontairement (ne PAS construire sans déclencheur)
+
+- **A.11 HHMM** — spec écrite, code *gated* (≥ 1 prof/chercheur le demande
+  + Academy adoptée + A.10/A.13 stables). Leçon 12 (theory-only) déjà shippée.
+- **A.12 Profile-HMM** — *deferred*, hors wedge (HMMER domine la bioinfo).
+- **I.4+** (MLflow flavor, extension VS Code, Streamlit, HF hub, KNIME) —
+  gated sur demande externe.
+- **F.2 dcor** est en paquet 2 (engagé via plan), pas ici.
+- Appendix « variantes hors-scope » (AR-HMM, Coupled, CTMC, Switching SSM…) —
+  rejetées/déférées avec conditions de réactivation documentées.
+
+### 4. Dette release & hygiène (le vrai goulot de livraison)
+
+- 🔴 **Publication PyPI bloquée** — le *Trusted Publisher* n'a jamais été
+  enregistré ([release-checklist.md § Outstanding for v1.1.0](release-checklist.md)).
+  Le wheel v1.1.0 est sur GitHub Actions mais **pas sur PyPI**. Étape manuelle
+  unique sur `pypi.org/manage/account/publishing/`. **Tant que ce n'est pas
+  fait, `pip install hmm-studio` — le cœur du positionnement ADR-0012 — ne
+  marche pas.**
+- 🟠 **69 commits non publiés** depuis v1.1.0, pas de tag v1.2. La vague
+  post-v1.1 (feature selection, sélection de modèles, viz topologie, wizard,
+  param-help, Academy 7→14 leçons) mérite une release `v1.2.0` une fois PyPI
+  débloqué.
+
+### 5. Le vrai arbitrage stratégique (pas du code)
+
+Le positionnement (ADR-0012) et les *kill-criteria* reposent tous sur
+**l'adoption externe** : ≥ 3 utilisateurs externes réguliers, ≥ 1 citation
+académique à **M3 + 6 mois**. À ce jour : **0 utilisateur externe** (premier
+user = Robin). Les garde-fous anti-scope-creep du projet sont explicites :
+*ajouter des features sans signal externe est la mauvaise décision*. Le levier
+le plus rentable n'est donc pas un nouveau variant HMM, mais **débloquer PyPI
+puis faire de l'outreach** (Reddit r/MachineLearning, Twitter académique,
+mailing lists). Cf. § Critères de succès / d'échec et les *kill-criteria* des
+phases E et I.
 
 ---
 
@@ -342,7 +424,8 @@ suite existante).
 
 ## Phase A.7 — Modes supervisé et semi-supervisé
 
-**Status** : PLANNED · prioritaire avant A.6
+**Status** : ✅ SHIPPED v1.0 (2026-05-22) — supervisé closed-form + semi-supervisé
+(A.7.1, clamp E-step) livrés ; `fit(topology, X, states=...)` opérationnel. *(était : PLANNED · prioritaire avant A.6)*
 **Dépend de** : A.5 (abstraction backend, livrée)
 **Effort estimé** : ~1 semaine
 
@@ -441,7 +524,7 @@ mode d'entraînement.
 
 ## Phase A.10 — GMM-NHMM (GMM emissions + covariate-dependent transitions)
 
-**Status** : PLANNED · engagement direct (use case crypto)
+**Status** : ✅ SHIPPED v1.1 (2026-05-22) via décomposition 2-stage dans `src/hmm_core/gmm_nhmm.py`. L'expansion K·M (Stratégie A) a été **rejetée à l'implémentation** (sur-paramétrée sans contrainte de factorisation) — voir spec. 7 tests + 5 cross-checks V.5 verts. *(était : PLANNED)*
 **Dépend de** : A.1 (NHMM livré), A.5 (abstraction backend livrée), V (validation suite — livrée avant A.10)
 **Effort estimé** : 1-2 semaines
 
@@ -514,7 +597,7 @@ Aucun outil Python ne fait GMM-NHMM proprement :
 
 ## Phase A.13 — Factorial NHMM (D chaînes parallèles)
 
-**Status** : PLANNED · engagement direct (use case crypto multi-facteur)
+**Status** : ✅ SHIPPED v1.1 (2026-05-22) via décomposition 2-stage dans `src/hmm_core/factorial_nhmm.py`. L'expansion joint-state ∏K_d (Stratégie A) **rejetée** (même motif que A.10). 14 tests + 5 cross-checks V.6 verts ; 27× d'économie de paramètres à D=3 K=3. *(était : PLANNED)*
 **Dépend de** : A.1 (NHMM ✓), A.5 (backend abstraction ✓), V (validation suite), A.10 (GMM-NHMM — partagent l'infra Strategy A)
 **Effort estimé** : 2-3 semaines
 
@@ -640,9 +723,12 @@ Tant qu'aucune de ces conditions n'est rencontrée : ne pas investir.
 
 ## Phase A.6 — Backend bayésien (PyMC / NumPyro) — *option défendue, pas engagement*
 
-**Status** : NOT STARTED · candidat post-B, et **après A.7** dans tous les cas
-**Dépend de** : A.5 (abstraction backend, livrée), A.7 (modes d'entraînement),
-B MVP shipped + signal externe
+**Status** : ✅ SHIPPED v1.1 (2026-05-26) — `BayesianHMMBackend` (PyMC NUTS) dans
+`src/hmm_core/backends/bayesian_backend.py`, exposé via `fit(topology, X, backend="bayesian")`,
+extra `pip install "hmm-studio[bayesian]"`. `arviz.InferenceData` sur `backend.last_idata_`.
+12 tests verts. Sert aussi de pont I.3 (notebook 09). *(était : NOT STARTED — le gating
+signal-externe a finalement été court-circuité par le pari distribution ADR-0012.)*
+**Dépend de** : A.5 (abstraction backend, livrée), A.7 (modes d'entraînement, livré)
 
 ### Origine
 
@@ -713,7 +799,12 @@ sans demande réelle.**
 
 ## Phase B — `hmm-studio` web UI
 
-**Status** : NOT STARTED · besoin brainstorm/spec/plan séparé
+**Status** : ✅ SHIPPED v1.0 (2026-05-22) — MVP complet : FastAPI + React/Vite/TS,
+éditeur React Flow (drag-drop états/transitions, undo/redo, YAML import/export),
+upload data, fit launcher + streaming WebSocket de la log-vraisemblance, K-scan,
+Results (heatmap transmat, Viterbi colorisé, émissions, A(t) animé), dark mode.
+Étendu depuis : warehouse (B.10), /compare, wizard guidé, param-help, viz topologie
+animée. *(était : NOT STARTED)*
 **Dépend de** : A (impératif), A.1 NHMM (souhaitable mais pas bloquant)
 
 ### Vision
@@ -813,7 +904,8 @@ L'éditeur node-based promis dans la framing initiale "Gemini". L'utilisateur :
 
 ## Phase B.10 — Data warehouse local + multi-format
 
-**Status** : PLANNED · engagement direct (use case Robin + tous utilisateurs)
+**Status** : ✅ SHIPPED (2026-05-25) — warehouse multi-format (CSV/parquet/JSON/Excel/feather),
+6 endpoints REST + path-traversal guard, sidecar `.hmm.yaml`, settings page. *(était : PLANNED)*
 **Dépend de** : B (UI socle, livré pour l'essentiel)
 **Effort estimé** : 3-4 jours
 
@@ -861,9 +953,75 @@ concurrence pas.
 
 ---
 
+## Travaux livrés hors-roadmap initial (post-v1.1)
+
+> Ces chantiers ne figuraient pas comme phases au roadmap d'origine : ils ont
+> émergé de l'usage réel (port de la recherche crypto Nathan/Robin & Valentin)
+> après v1.1.0. Inventoriés ici au re-baseline pour que le roadmap suive la
+> réalité. Specs sous `docs/specs/`.
+
+### Feature selection (`hmm_core.features`) — ✅ SHIPPED
+
+- `unsupervised_feature_selection(features, n_clusters=10, ...)` — clustering
+  des colonnes candidates par information mutuelle normalisée (NMI), garde un
+  médoïde par cluster → sous-ensemble décorrélé prêt à `fit()`. Zéro nouvelle
+  dépendance (sklearn + scipy). Porté de `cmex_crypto/features/unsupervised_selection.py`.
+- Prep op `select_features_unsupervised` (utilisable en recette YAML).
+- 10 tests. Spec : `docs/specs/2026-05-27-unsupervised-feature-selection.md`.
+- **Suite engagée** : variante `dcor` (distance-correlation) — *planifiée, 0 code*,
+  voir § « État au 2026-06-02 » paquet 2.
+
+### Sélection de modèles (`hmm_core.selection`) — ✅ SHIPPED
+
+- `compare_models(X, candidates, ...) -> ModelComparison` — fit chaque candidat
+  sur le même `X`, classe les comparables par BIC/AIC/HQIC ; robuste (un fit qui
+  lève → `error` + NaN, jamais fatal). `auto_grid()` génère la grille émission×K.
+- Critère **HQIC** ajouté à `FittedModel` (à côté de BIC/AIC) + `best_k_by_hqic`
+  dans le K-scan. Préféré par plusieurs papiers HMM-finance sur séries longues.
+- Page web **`/compare`** (grille Gaussian/GMM/Poisson × K, classée). NHMM/Factorial
+  restent Python-API / `hmm-fit compare` (non comparables : modélisent P(X|Z)).
+- Spec : `docs/specs/2026-05-27-model-variant-selection.md` (Phases 1-3 livrées).
+
+### Régimes & labelling (`hmm_core.regimes`) — ✅ SHIPPED
+
+- `regime_order_by_feature_mean()` + `regime_labels(...)` — résolvent le problème
+  « les états EM ont un ordre arbitraire » (mappe index brut → label humain par
+  moyenne d'émission croissante). Porté de `regimes/giudici.py`.
+- Preset `examples/giudici_2020_btc_regimes.yaml` — le HMM 3-états gaussien
+  canonique de Giudici & Abu Hashish (2020) pour les régimes cryptoasset.
+
+### Prep ops étendus + post-v1.1 quality pass — ✅ SHIPPED
+
+- Nouveaux ops `log1p`, `drop_low_variance` ; recette `valentin_eth` (port ETH).
+- Quality pass : `to_summary_dict()`/`to_summary_json()` (source unique des
+  métriques) sur les 4 variants ; kmeans init GMM correct pour `full`/`tied`/`spherical` ;
+  smoothing `startprob_` (pathologie strict-left-right + `first_state`) ;
+  `FitSpec.freeze_startprob` / `freeze_transmat`. Helper de régression partagé
+  (`tests/_regression_helpers.py`).
+
+### UI post-v1.1 — ✅ SHIPPED
+
+- **Wizard de création guidée** (`/topology/new`, 5 étapes Emission → States →
+  Transitions → Training → Review, suggestion d'émission data-aware, preview YAML).
+- **Param-help** : popovers `?` sur éditeur / Fit / Compare avec deep-link Academy.
+- **Viz topologie** : flèches directionnelles dans l'éditeur + graphe transmat
+  appris animé (anneau Viterbi courant, fills = posterior, edge actif surligné)
+  synchronisé au player + panneau **Observed data** (`GET /api/fit/{id}/series`).
+
+### Academy étendue (Phase E élargie) — ✅ SHIPPED / 🔄 in-flight
+
+- 7 → 12 → 13 → **14 leçons** (L15 « choosing the emission » en working tree).
+- Quiz noté + flashcards par leçon (niveaux cognitifs Recall/Apply/Analyze,
+  meilleurs scores persistés). Sections thématiques ordonnées. Bulles
+  `<NotebookLink />` (Binder/Colab/GitHub/download) sur 9 leçons.
+- Bibliographie sourcée 4-tiers `docs/sources/academy-references.md` + composant
+  `<FurtherReading />`.
+
+---
+
 ## Phase I — Integrations (distribution surfaces vers plateformes matures)
 
-**Status** : PLANNED · PRIORITAIRE post-ADR-0012
+**Status** : ✅ SHIPPED (2026-05-26) — I.1 (Jupyter), I.2 (sklearn), I.3 (PyMC bridge) tous livrés. I.4+ deferred (gated sur demande). *(était : PLANNED · PRIORITAIRE post-ADR-0012)*
 **Dépend de** : A.5 (backend abstraction, livré) pour I.2
 **Effort total** : ~5-8 jours (I.1 + I.2) ; I.3 gated sur A.6
 
@@ -886,7 +1044,7 @@ l'écosystème scientifique Python (Jupyter, scikit-learn, PyMC).
 
 ### I.1 — Jupyter rich displays + notebook gallery (~2-3 jours)
 
-**Status** : PLANNED · PRIORITAIRE
+**Status** : ✅ SHIPPED (2026-05-26) — méthodes `_repr_html_` + notebook gallery (8+ notebooks) + Binder/Colab badges.
 
 **Surface livrable** :
 - `Topology.__repr_html__()` — graphe interactif inline (D3 ou Mermaid)
@@ -913,7 +1071,7 @@ l'écosystème scientifique Python (Jupyter, scikit-learn, PyMC).
 
 ### I.2 — scikit-learn-compatible API (~3-5 jours)
 
-**Status** : PLANNED · PRIORITAIRE
+**Status** : ✅ SHIPPED (2026-05-26) — `HMMClassifier` passe `estimator_checks`, intégré Pipeline/GridSearchCV. 20 tests.
 
 **Surface livrable** :
 - `hmm_studio.sklearn.HMMClassifier(n_states, topology=..., emission=..., ...)`
@@ -980,7 +1138,7 @@ l'écosystème scientifique Python (Jupyter, scikit-learn, PyMC).
 
 ## Phase V — Scientific validation suite
 
-**Status** : SPEC DRAFTED · prioritaire avant toute adoption externe
+**Status** : ✅ SHIPPED (2026-05-22) — V.1-V.6 + V.perf livrés (cross-check hmmlearn, recovery synthétique, textbook canoniques Russell & Norvig / Durbin / Rabiner / Eisner, stabilité numérique, cross-checks A.10/A.13). *(était : SPEC DRAFTED)*
 **Dépend de** : A (core stable, livré)
 **Effort estimé** : ~3-5 jours
 
@@ -1165,7 +1323,7 @@ investir).
 
 ## Phase C — Visualisations avancées + NHMM animé
 
-**Status** : NOT STARTED
+**Status** : ✅ SHIPPED v1.0 (2026-05-22), étendu post-v1.1 — C.1-C.6 livrés (NHMM breathing, replay temporel, K-scan, export SVG, annotations CSV, multi-séquences) + viz topologie P1/P2 (flèches éditeur, transition graph animé synchronisé au player, panneau Observed data). *(était : NOT STARTED)*
 **Dépend de** : B (UI socle), A.1 (NHMM dans core)
 
 ### Périmètre
@@ -1200,7 +1358,7 @@ différencie l'outil d'un Jupyter-notebook-amélioré.
 
 ## Phase D — Migration du dashboard crypto
 
-**Status** : NOT STARTED
+**Status** : ✅ SHIPPED (2026-05-22) — le dashboard crypto délègue à `hmm_core.fit` ; drift numérique = 6×10⁻⁶ %, 9 tests de régression verts. *(était : NOT STARTED)*
 **Dépend de** : A (stable; aujourd'hui c'est OK)
 
 ### Périmètre
@@ -1294,8 +1452,9 @@ Pas nécessaire en MVP local-only.
 
 ## Planning indicatif
 
-Hypothèse : ~10-15h/semaine sur ce projet. Toutes les durées sont des
-estimations larges; à corriger après chaque phase.
+> **Historique** — ce planning S+0..S+19 était l'estimation initiale. La vélocité
+> réelle l'a largement battu : A, B, C, D, V, E, I, A.6/A.7/A.10/A.13 tous livrés
+> entre le 2026-05-21 et le 2026-05-27. Conservé tel quel comme trace d'estimation.
 
 ```
 Semaine     Sous-projet     Livrable
@@ -1311,25 +1470,36 @@ S+19        Z (release)     v1.0 PyPI, decision licence
 
 ### Jalons (milestones)
 
-- **M1** : `hmm-core` v0.1 livré (✓ atteint)
-- **M2** : Dashboard crypto migré, NHMM dans core. `hmm-core` v0.2.
-- **M3** : Studio MVP utilisable par un utilisateur sans connaissance Python.
-- **M4** : Visualisations avancées + tous les exemples publication-ready.
-- **M5** : v1.0 PyPI public.
+- **M1** : `hmm-core` v0.1 livré — ✅ atteint 2026-05-21
+- **M2** : Dashboard crypto migré, NHMM dans core, `hmm-core` v0.2 — ✅ atteint 2026-05-22
+- **M3** : Studio MVP utilisable sans connaissance Python — ✅ atteint (v1.0, 2026-05-22)
+- **M4** : Visualisations avancées + exemples publication-ready — ✅ atteint (C livré + viz topologie post-v1.1)
+- **M5** : **v1.0/v1.1 PyPI public — 🔴 BLOQUÉ** : wheel construit (v1.1.0), mais
+  Trusted Publisher jamais enregistré → jamais publié sur PyPI. C'est le jalon
+  ouvert. Une fois débloqué : tagger **v1.2.0** (vague post-v1.1).
+- **M6** (nouveau) : **Premier signal externe** — ≥ 1 utilisateur/citation
+  externe. C'est le vrai jalon stratégique restant (cf. kill-criteria). Aucun
+  feature ne le remplace ; il dépend de M5 (pip install) + outreach.
 
 ---
 
 ## Décisions ouvertes à arbitrer
 
-Liste des choix qui ne sont pas tranchés. À résoudre quand on commence la
-phase concernée (pas avant — risque de pré-décider sans le contexte).
+La plupart des décisions ci-dessous ont été **tranchées à l'implémentation** ;
+conservées avec leur résolution pour la traçabilité.
 
-1. **Migration dashboard crypto avant ou après B ?** (recommandation : avant — voir phase D)
-2. **Stack frontend de B** : React Flow vs Cytoscape (recommandation : React Flow)
-3. **Backend persistence de B** : in-memory vs SQLite (recommandation : in-memory MVP)
-4. **NHMM "breathing" en B ou en C ?** (recommandation : statique en B, animé en C)
-5. **PyPI public ou private ?** — à décider en M5.
-6. **Doc site** : mkdocs vs docusaurus vs custom. À trancher en Z.2.
+1. ~~Migration dashboard crypto avant ou après B ?~~ → **Avant** (Phase D livrée 2026-05-22). ✅
+2. ~~Stack frontend de B : React Flow vs Cytoscape ?~~ → **React Flow**. ✅
+3. ~~Backend persistence de B : in-memory vs SQLite ?~~ → **SQLite** (job history). ✅
+4. ~~NHMM "breathing" en B ou en C ?~~ → **Animé en C** + viz topologie post-v1.1. ✅
+5. **PyPI public ou private ?** → **public** (décidé), mais **publication bloquée**
+   sur l'enregistrement Trusted Publisher (cf. M5). ⏳ *seule décision encore
+   actionnable, et c'est de l'ops, pas un arbitrage.*
+6. ~~Doc site : mkdocs vs docusaurus vs custom ?~~ → **mkdocs-material** (Z.2 livré). ✅
+
+**Vraie question ouverte restante** (stratégique, pas technique) : *après PyPI,
+qu'est-ce qui ramène un premier utilisateur externe ?* — outreach ciblé vs
+attendre la découverte organique. À trancher au moment de débloquer M5.
 
 ### Décisions tranchées (historique)
 
@@ -1340,6 +1510,10 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 | 2026-05-22 | Premier utilisateur officiel : **Robin (recherche perso, régimes crypto)** | Garantit un canary permanent via Phase D. Ne dispense pas de chercher des utilisateurs externes (cf. critères de succès dans positionnement stratégique). |
 | 2026-05-22 | **Refus** du pivot "meta-configurateur unifiant HMM / SSM / Transformer" | Brainstorm externe proposant un IR commun + compiler vers PyMC/Mamba/HuggingFace selon annotations utilisateur. **Rejeté** : (a) les sémantiques mathématiques ne mappent pas (HMM discret-Markov vs Transformer non-récurrent vs SSM continu) ; (b) "compile vers Mamba" serait du templating, pas un compilateur ; (c) ~2-3 ans de travail pour solo part-time ; (d) torpille le wedge HMM-niche qu'on vient de formaliser. **Ce qu'on garde** : le slogan "knowledge engineering for sequential processes" + l'idée d'un backend bayésien *dans le wedge HMM* (cf. Phase A.6). |
 | 2026-05-22 | **Slogan adopté** : `hmm-studio` vend de l'**ingénierie de la connaissance pour processus séquentiels**, pas "un modèle HMM" | À utiliser dans README, doc site (Z.2), et toute communication externe. Aide à expliquer la valeur sans entrer dans la technique. |
+| 2026-05-22 | **Distribution hybride** (ADR-0012) : core spécialiste HMM + surfaces d'intégration (Jupyter I.1, sklearn I.2, PyMC I.3) | A créé la Phase I et reframé Phase E (onglet web → notebook gallery). Slogan : *"the deepest HMM library in the Python scientific stack"*. |
+| 2026-05-22 | **Rejet de l'expansion K·M / joint-state** pour GMM-NHMM (A.10) et Factorial (A.13) au profit de la décomposition 2-stage | L'expansion (Stratégie A) était sur-paramétrée sans contrainte de factorisation. Décidé *à l'implémentation*, documenté en spec pour ne pas relitiger. |
+| 2026-05-26 | **A.6 Bayesian backend livré sans attendre le gating signal-externe** | Le pari distribution ADR-0012 (audience bayésienne académique via PyMC) a primé sur le gating original « ≥ 1 user externe d'abord ». Coût borné (~tenu), reste dans le wedge HMM. |
+| 2026-06-02 | **Re-baseline du roadmap** (ce document) | La table d'état avait ~2 sem de retard. Re-synchronisée avec code/CHANGELOG/git. Confirme : le goulot n'est plus le code mais la **publication PyPI + l'adoption externe**. |
 
 ---
 
@@ -1347,18 +1521,18 @@ phase concernée (pas avant — risque de pré-décider sans le contexte).
 
 À monitorer en continu :
 
-| Métrique | Cible | 2026-05-21 | 2026-05-22 | 2026-05-22 (PM) |
+| Métrique | Cible | 2026-05-21 | 2026-05-22 (PM) | **2026-06-02** |
 |---|---|---|---|---|
-| Test coverage `src/hmm_core/` | ≥ 85% | 87% | 92% ↑ | 92% (maintenu post-backend) |
-| Test count | croissant | 54 | 66 ↑ | 76 ↑ |
+| Test coverage `src/hmm_core/` | ≥ 85% | 87% | 92% | ≥ 92% (maintenu) |
+| Test count | croissant | 54 | 76 | **411** ↑↑ (31 fichiers) |
 | Tests passing | 100% | 100% | 100% ✓ | 100% ✓ |
-| Open dette (items du final review) | ≤ 5 | 3 | 0 ✓ | 0 ✓ |
-| Sub-projects livrés / planifiés | — | 1 / 4 | 2 + 1 validé / 5 | 3 + 1 validé / 5 (A.5) |
-| Specs draftées (B, C) | — | 0 | 2 ✓ | 2 ✓ |
-| CI configurée | oui | non | oui (en attente de remote) | oui |
-| Licence formalisée | oui | non | non | **MIT ✓** |
-| Découplage backend (résilience hmmlearn) | oui | non | non | **HMMBackend ✓** |
-| Utilisateurs externes réguliers | ≥ 3 à M3+6mois | 0 | 0 | 0 (premier user = Robin, à monitorer) |
+| Sub-projects livrés / planifiés | — | 1 / 4 | 3 + 1 validé / 5 | **~tous (A,A.1,A.5-A.10,A.13,B,B.10,C,D,E,I.1-I.3,V,Z) + post-v1.1** |
+| Variants HMM livrés | — | 4 émissions | + NHMM | + GMM-NHMM, Factorial, Bayésien, supervisé/semi-sup |
+| CI configurée | oui | non | oui | oui ✓ |
+| Licence formalisée | oui | non | **MIT ✓** | MIT ✓ |
+| Découplage backend (résilience hmmlearn) | oui | non | **HMMBackend ✓** | ✓ + Bayesian backend |
+| **Publié sur PyPI** | oui (M5) | non | non | **🔴 NON — bloqué Trusted Publisher** |
+| Utilisateurs externes réguliers | ≥ 3 à M3+6mois | 0 | 0 | **0** (premier user = Robin — *le vrai chantier ouvert*) |
 
 ---
 

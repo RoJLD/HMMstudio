@@ -217,22 +217,29 @@ def select_features_unsupervised(
     df: pd.DataFrame,
     *,
     n_clusters: int = 10,
+    criterion: str = "nmi",
     n_neighbors: int = 5,
     linkage_method: str = "average",
     jitter_std: float = 1e-8,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Keep one medoid feature per NMI-cluster (unsupervised selection).
+    """Keep one medoid feature per similarity cluster (unsupervised selection).
 
     Thin recipe-friendly wrapper around
     :func:`hmm_core.features.unsupervised_feature_selection` : clusters the
-    candidate columns by normalised mutual information and returns only the
-    selected (decorrelated) subset of columns — a ``df -> df`` op.
+    candidate columns by the chosen criterion and returns only the selected
+    (decorrelated) subset of columns — a ``df -> df`` op.
 
-    The rich metadata (NMI matrix, clusters) is not exposed in the pipeline ;
-    call ``unsupervised_feature_selection`` directly to inspect it. NaN rows
-    must be dropped upstream (e.g. a preceding ``dropna`` step) — the k-NN MI
-    estimator needs clean input.
+    ``criterion`` selects the similarity measure : ``"nmi"`` (default) uses
+    normalised mutual information via the sklearn k-NN estimator ;
+    ``"dcor"`` uses distance correlation (requires the optional ``dcor`` extra :
+    ``pip install "hmm-studio[dcor]"``). When ``criterion="dcor"``,
+    ``n_neighbors``, ``jitter_std`` and ``random_state`` are ignored.
+
+    The rich metadata (similarity matrix, clusters) is not exposed in the
+    pipeline ; call ``unsupervised_feature_selection`` directly to inspect it.
+    NaN rows must be dropped upstream (e.g. a preceding ``dropna`` step) — the
+    k-NN MI estimator needs clean input.
     """
     # Imported lazily: pulls sklearn/scipy, which we keep out of the
     # module-load path for the prep package.
@@ -241,6 +248,7 @@ def select_features_unsupervised(
     return unsupervised_feature_selection(
         df,
         n_clusters=n_clusters,
+        criterion=criterion,
         n_neighbors=n_neighbors,
         linkage_method=linkage_method,
         jitter_std=jitter_std,
