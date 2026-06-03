@@ -170,3 +170,37 @@ Sections (style maison : `h2` + listes + blocs code + composants + `FurtherReadi
   `validation/test_v*.py`.
 - Conventions Academy : `lessons/index.ts:58-374` (registre, catégories `:19-35`),
   `components/academy/lessonQuiz.ts`, `FurtherReading.tsx`, `BaumWelchAnimation`.
+
+## Décisions 2026-06-03 (résolution des questions ouvertes)
+
+Validées avec l'utilisateur avant le plan/build :
+
+1. **Q1 → consolidé.** L'item roadmap « Quand NE PAS utiliser un HMM » est **fondu**
+   dans la leçon 16 (section 6). Mettre à jour le roadmap au ship.
+2. **Q2 → OUI, on ajoute `convergence_history`.** Décision de **lever** la borne « OUT :
+   pas de backend » : on persiste la **trace LL par itération** pour pouvoir tracer une
+   **vraie courbe de convergence** d'un modèle fitté dans la leçon. Conséquences :
+   - **Backend** : `FittedModel.convergence_history: list[float]` (depuis
+     `monitor_.history`, déjà capturé live — `hmmlearn_backend.py:112-151`), persisté
+     dans `summary.json` (`io.py`). `fit_log.txt` reste.
+   - **API** : exposer la trace sur le résultat de fit — soit un champ
+     `convergence_history` sur `FitJobResult` (`schemas.py:47-58`, `app.py:211-232`),
+     soit un endpoint dédié `/api/fit/{id}/convergence`. *À trancher au plan* (préf :
+     champ sur le résultat si la taille reste raisonnable, sinon endpoint downsamplé
+     comme `/decoded`).
+   - **Frontend** : un petit rendu de courbe LL (réutiliser le tracé de
+     `BaumWelchAnimation` alimenté par des données réelles, ou un mini composant), au
+     lieu du seul exemple synthétique. La §3.2 (« widget custom écarté car la trace LL
+     n'est pas exposée ») est donc **partiellement levée** : on n'ajoute pas un widget
+     *lourd*, mais on branche la courbe sur la vraie trace.
+   - **Scope §4** : `convergence_history` passe de **OUT → IN**. Restent OUT : helper CV
+     intégré, tests goodness-of-fit, détecteur auto de label-switching.
+   - **Tests** : couvrir le champ core (présence + monotonie sur un fit jouet) + la
+     sérialisation summary.json + le contrat API.
+3. **Q3 → OUI**, forger un **petit preset volontairement mal-spécifié** (ex. K trop grand
+   → état à occupation ~0) comme accroche hands-on (`presetTopologyYaml`).
+4. **Q4 → confirmé** : quiz = ~4 flashcards + 5-6 questions Apply/Analyze.
+
+**Exécution** : `writing-plans` (TDD) puis `subagent-driven-development`, merge +
+déploiement (même pipeline que les incréments éditeur). Branche
+`feat/academy-model-validity-lesson`.
