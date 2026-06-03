@@ -118,7 +118,7 @@ test.describe("Academy — lesson index + Try in editor bridge", () => {
     ).toBeVisible();
   });
 
-  test("lesson-16 model validity renders, shows the convergence curve, and has a quiz", async ({ page }) => {
+  test("lesson-16 model validity renders and shows the convergence curve", async ({ page }) => {
     await page.goto("/academy/lesson-16-model-validity");
     await page.waitForTimeout(400);
     await expect(page.getByRole("heading", { name: /Why this matters/i })).toBeVisible();

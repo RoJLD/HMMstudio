@@ -110,6 +110,30 @@ export function Lesson16ModelValidity() {
         and BIC prefers fewer states. Then drop to K=2 and compare.
       </p>
 
+      <h2 className="text-xl font-semibold text-slate-900 mb-3 mt-8">See also</h2>
+      <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
+        <li>
+          <Link to="/academy/lesson-1-what-is-an-hmm" className="text-brand-700 hover:underline">Lesson 1</Link>
+          {" "}— the HMM assumptions this lesson stress-tests.
+        </li>
+        <li>
+          <Link to="/academy/lesson-5-baum-welch" className="text-brand-700 hover:underline">Lesson 5</Link>
+          {" "}— EM convergence and local optima.
+        </li>
+        <li>
+          <Link to="/academy/lesson-6-constrained-topologies" className="text-brand-700 hover:underline">Lesson 6</Link>
+          {" "}— when a constrained topology fixes an unidentifiable fit.
+        </li>
+        <li>
+          <Link to="/academy/lesson-14-comparing-models" className="text-brand-700 hover:underline">Lesson 14</Link>
+          {" "}— choosing K and emission by BIC/AIC/HQIC.
+        </li>
+        <li>
+          <Link to="/academy/lesson-15-choosing-emission" className="text-brand-700 hover:underline">Lesson 15</Link>
+          {" "}— diagnosing a wrong emission family.
+        </li>
+      </ul>
+
       <FurtherReading
         references={[
           { label: "Bilmes 1998", title: "A Gentle Tutorial of the EM Algorithm", url: "https://f.hubspotusercontent40.net/hubfs/8111846/bilmes-em.pdf", note: "why EM log-likelihood is monotone and converges to a local optimum" },
