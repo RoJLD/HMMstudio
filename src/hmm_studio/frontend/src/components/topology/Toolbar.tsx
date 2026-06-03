@@ -20,6 +20,7 @@ interface ToolbarProps {
 export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProps) {
   const addState = useTopologyStore((s) => s.addState);
   const states = useTopologyStore((s) => s.states);
+  const transitions = useTopologyStore((s) => s.transitions);
   const undo = useTopologyTemporal((s) => s.undo);
   const redo = useTopologyTemporal((s) => s.redo);
   const canUndo = useTopologyTemporal((s) => s.pastStates.length > 0);
@@ -35,6 +36,10 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   const navigate = useNavigate();
   const dataset = useDatasetStore((s) => s.current);
   const setFitLink = useFitLink((s) => s.setFitLink);
+  const lastFitJobId = useFitLink((s) => s.lastFitJobId);
+  const fitFingerprint = useFitLink((s) => s.fitFingerprint);
+  const learnedAvailable =
+    !!lastFitJobId && fitFingerprint === topologyFingerprint(states, transitions);
   const [fitting, setFitting] = useState(false);
 
   async function handleFit() {
@@ -134,14 +139,17 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
           <button
             key={m}
             onClick={() => setOverlayMode(m)}
+            disabled={m === "learned" && !learnedAvailable}
             className={
               "px-2 py-1 " +
-              (overlayMode === m ? "bg-brand-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50")
+              (overlayMode === m ? "bg-brand-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50") +
+              (m === "learned" && !learnedAvailable ? " opacity-40 cursor-not-allowed" : "")
             }
             title={
               m === "none" ? "No probabilities"
               : m === "prior" ? "Prior mean (expected P before fit)"
-              : "Learned probabilities (after a fit)"
+              : learnedAvailable ? "Learned probabilities (after a fit)"
+              : "Run ▶ Fit this topology first (and don't change the topology after)"
             }
           >
             {m === "none" ? "—" : m}

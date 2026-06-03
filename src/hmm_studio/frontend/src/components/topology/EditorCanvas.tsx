@@ -18,6 +18,10 @@ import { reconcileNodes } from "../../lib/reconcileNodes";
 import { probEdgeStyle } from "../../lib/edgeStyle";
 import { priorMeanPreview } from "../../lib/priorPreview";
 import { useEditorPrefs } from "../../store/editorPrefsStore";
+import { getFitTransmat, type TransmatResponse } from "../../api/client";
+import { useFitLink } from "../../store/fitLinkStore";
+import { buildLearnedMap } from "../../lib/learnedOverlay";
+import { topologyFingerprint } from "../../lib/topologyFingerprint";
 
 export function EditorCanvas() {
   const states = useTopologyStore((s) => s.states);
@@ -30,6 +34,32 @@ export function EditorCanvas() {
   const setSelectedEdgeId = useTopologyStore((s) => s.setSelectedEdgeId);
   const transmatPriorAlpha = useTopologyStore((s) => s.transmat_prior_alpha);
   const overlayMode = useEditorPrefs((s) => s.overlayMode);
+
+  const lastFitJobId = useFitLink((s) => s.lastFitJobId);
+  const fitFingerprint = useFitLink((s) => s.fitFingerprint);
+  const [learnedTransmat, setLearnedTransmat] = useState<TransmatResponse | null>(null);
+  const [learnedError, setLearnedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (overlayMode !== "learned" || !lastFitJobId) {
+      setLearnedTransmat(null);
+      setLearnedError(null);
+      return;
+    }
+    let cancelled = false;
+    getFitTransmat(lastFitJobId)
+      .then((t) => { if (!cancelled) { setLearnedTransmat(t); setLearnedError(null); } })
+      .catch((e) => { if (!cancelled) { setLearnedTransmat(null); setLearnedError(e instanceof Error ? e.message : "fetch failed"); } });
+    return () => { cancelled = true; };
+  }, [overlayMode, lastFitJobId]);
+
+  const currentFingerprint = topologyFingerprint(states, transitions);
+  const learnedStale =
+    overlayMode === "learned" && fitFingerprint !== null && fitFingerprint !== currentFingerprint;
+  const learnedMap =
+    overlayMode === "learned" && learnedTransmat && !learnedStale
+      ? buildLearnedMap(transitions, states, learnedTransmat)
+      : null;
 
   const [rfNodes, setRfNodes] = useState<Node[]>(() => reconcileNodes([], states));
 
@@ -44,6 +74,10 @@ export function EditorCanvas() {
     overlayMode === "prior" ? priorMeanPreview(transitions, transmatPriorAlpha) : null;
 
   const edges: Edge[] = transitions.map((t) => {
+    if (learnedMap) {
+      const p = learnedMap.get(t.id) ?? 0;
+      return { ...probEdgeStyle(p), id: t.id, source: t.source, target: t.target, type: "default" };
+    }
     if (previews) {
       const p = previews.get(t.id) ?? 0;
       return {
@@ -126,7 +160,16 @@ export function EditorCanvas() {
   );
 
   return (
-    <div className="flex-1 border border-slate-200 rounded">
+    <div className="flex-1 border border-slate-200 rounded relative">
+      {overlayMode === "learned" && (learnedStale || !lastFitJobId || learnedError) && (
+        <div className="absolute z-10 m-2 px-2 py-1 text-xs rounded bg-amber-50 border border-amber-300 text-amber-800">
+          {!lastFitJobId
+            ? "No fit yet — click ▶ Fit this topology to compute learned probabilities."
+            : learnedStale
+              ? "Topology changed since the last fit — re-fit to refresh the learned probabilities."
+              : `Could not load learned probabilities: ${learnedError}`}
+        </div>
+      )}
       <ReactFlow
         nodes={rfNodes}
         edges={edges}
