@@ -2,6 +2,7 @@ import yaml from "js-yaml";
 import type {
   CovarianceType,
   EmissionType,
+  TopologyData,
   TopologyState,
 } from "../store/topologyStore";
 
@@ -35,7 +36,7 @@ interface TopologyYAML {
 
 type TopologyPartial = Parameters<TopologyState["loadTopology"]>[0];
 
-export function topologyToYAML(state: TopologyState): string {
+export function topologyToYAML(state: TopologyData): string {
   const emissionObj: Record<string, unknown> = { type: state.emission.type };
   if (state.emission.n_features !== null) emissionObj.n_features = state.emission.n_features;
   if (state.emission.covariance_type !== null) emissionObj.covariance_type = state.emission.covariance_type;

@@ -1,4 +1,4 @@
-import type { TopologyState } from "../store/topologyStore";
+import type { TopologyData, TopologyState } from "../store/topologyStore";
 import { topologyToYAML, yamlToTopology } from "./yaml";
 
 type TopologyPartial = Parameters<TopologyState["loadTopology"]>[0];
@@ -23,7 +23,7 @@ function decodeFromUrl(payload: string): string {
 }
 
 /** Build a shareable URL for the current topology (relative to current location). */
-export function buildShareUrl(state: TopologyState): string {
+export function buildShareUrl(state: TopologyData): string {
   const yamlText = topologyToYAML(state);
   const payload = encodeForUrl(yamlText);
   const url = new URL(window.location.href);
