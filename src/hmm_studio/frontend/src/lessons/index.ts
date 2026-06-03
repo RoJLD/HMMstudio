@@ -15,6 +15,7 @@ import { Lesson12HierarchicalHmm } from "./lesson-12-hierarchical-hmm";
 import { Lesson13ChoosingFeatures } from "./lesson-13-choosing-features";
 import { Lesson14ComparingModels } from "./lesson-14-comparing-models";
 import { Lesson15ChoosingEmission } from "./lesson-15-choosing-emission";
+import { Lesson16ModelValidity } from "./lesson-16-model-validity";
 
 export type LessonCategory =
   | "foundations"
@@ -368,6 +369,29 @@ emission:
   n_mix: 3
 startprob: uniform
 init: {strategy: kmeans, seed: 42}
+fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
+`,
+  },
+  {
+    id: "lesson-16-model-validity",
+    category: "selection",
+    order: 5,
+    title: "When is your model valid? (and when NOT to use an HMM)",
+    estimatedMinutes: 16,
+    difficulty: "Advanced",
+    description:
+      "HMMs are powerful but fragile. The five assumptions, how to check them before fitting, how to diagnose convergence and post-fit failures, and when to reject the HMM for a simpler or different model.",
+    status: "published",
+    content: Lesson16ModelValidity,
+    presetTopologyYaml: `name: lesson_16_overspecified_demo
+n_states: 5
+state_names: [a, b, c, d, e]
+emission:
+  type: gaussian
+  covariance_type: diag
+  n_features: 1
+startprob: uniform
+init: {strategy: kmeans, seed: 7}
 fit: {algorithm: baum_welch, n_iter: 100, tol: 1.0e-4}
 `,
   },
