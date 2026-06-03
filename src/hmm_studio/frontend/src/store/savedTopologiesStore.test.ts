@@ -35,4 +35,10 @@ describe("savedTopologiesStore", () => {
     useSavedTopologies.getState().remove("alpha");
     expect(useSavedTopologies.getState().saved).toEqual({});
   });
+
+  it("setSaved replaces the whole library", () => {
+    useSavedTopologies.getState().save(demo("alpha"));
+    useSavedTopologies.getState().setSaved({ beta: demo("beta"), gamma: demo("gamma") });
+    expect(Object.keys(useSavedTopologies.getState().saved).sort()).toEqual(["beta", "gamma"]);
+  });
 });
