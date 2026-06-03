@@ -70,6 +70,8 @@ export function SavedModelsPanel({ onLoad, onClose }: { onLoad: (name: string) =
         alert(`Import failed: ${e instanceof Error ? e.message : "?"}`);
       }
     };
+    // eslint-disable-next-line no-alert
+    reader.onerror = () => alert("Could not read the file.");
     reader.readAsText(file);
   }
 
@@ -95,6 +97,8 @@ export function SavedModelsPanel({ onLoad, onClose }: { onLoad: (name: string) =
       const overwrite = window.confirm("Overwrite models with the same name? (Cancel = keep existing)");
       setSaved(mergeModels(saved, models, overwrite ? "overwrite" : "keep-existing"));
     };
+    // eslint-disable-next-line no-alert
+    reader.onerror = () => alert("Could not read the file.");
     reader.readAsText(file);
   }
 
