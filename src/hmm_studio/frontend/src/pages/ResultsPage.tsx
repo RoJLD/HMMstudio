@@ -6,6 +6,7 @@ import {
   getFitDecoded,
   getFitSeries,
   getFitEmissions,
+  getFitConvergence,
   getNhmmInfo,
   listAnnotations,
   openFitProgressSocket,
@@ -40,6 +41,7 @@ export default function ResultsPage() {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [emissions, setEmissions] = useState<EmissionsResponse | null>(null);
   const [nhmmInfo, setNhmmInfo] = useState<NhmmInfoResponse | null>(null);
+  const [convergence, setConvergence] = useState<number[] | null>(null);
   const [currentT, setCurrentT] = useState<number | null>(null);
   const [annotations, setAnnotations] = useState<AnnotationOut[]>([]);
 
@@ -93,12 +95,14 @@ export default function ResultsPage() {
       getFitEmissions(jobId).catch(() => null),
       getNhmmInfo(jobId).catch(() => null),
       getFitSeries(jobId).catch(() => null),
-    ]).then(([t, d, e, n, s]) => {
+      getFitConvergence(jobId).catch(() => null),
+    ]).then(([t, d, e, n, s, c]) => {
       setTransmat(t);
       setDecoded(d);
       setEmissions(e);
       setNhmmInfo(n);
       setSeries(s);
+      setConvergence(c ? c.convergence_history : null);
     });
   }, [jobId, status?.status]);
 
@@ -166,6 +170,19 @@ export default function ResultsPage() {
       {/* Done: full results */}
       {status.status === "done" && (
         <>
+          {convergence && convergence.length > 1 && (
+            <div className="border border-slate-200 rounded-md p-4 bg-white mb-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                Convergence (log-likelihood vs iteration)
+              </h3>
+              <p className="text-xs text-slate-500 mb-3">
+                The EM log-likelihood should climb and plateau. A flat-then-jump
+                or non-monotone trace signals an initialization or numerical issue —
+                re-fit with another seed.
+              </p>
+              <ProgressCurve history={convergence} />
+            </div>
+          )}
           {decoded && decoded.n_total > 0 && (
             <TimelinePlayer
               total={decoded.n_total}
