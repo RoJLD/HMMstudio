@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -14,6 +14,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { nodeTypes } from "./nodeTypes";
 import { useTopologyStore } from "../../store/topologyStore";
+import { reconcileNodes } from "../../lib/reconcileNodes";
 
 export function EditorCanvas() {
   const states = useTopologyStore((s) => s.states);
@@ -25,12 +26,14 @@ export function EditorCanvas() {
   const setSelectedStateId = useTopologyStore((s) => s.setSelectedStateId);
   const setSelectedEdgeId = useTopologyStore((s) => s.setSelectedEdgeId);
 
-  const nodes: Node[] = states.map((s) => ({
-    id: s.id,
-    type: "state",
-    position: s.position,
-    data: { label: s.name },
-  }));
+  const [rfNodes, setRfNodes] = useState<Node[]>(() => reconcileNodes([], states));
+
+  // Re-seed local nodes whenever the store's states identity changes (commit,
+  // add, remove, YAML load). Merge-by-id preserves React Flow's transient
+  // fields (selected, dragging, measured size) — see reconcileNodes.
+  useEffect(() => {
+    setRfNodes((prev) => reconcileNodes(prev, states));
+  }, [states]);
 
   const edges: Edge[] = transitions.map((t) => ({
     id: t.id,
@@ -55,6 +58,12 @@ export function EditorCanvas() {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Apply every change type to the local array so in-flight drags AND
+      // selection render. setRfNodes uses the functional updater to avoid a
+      // stale closure.
+      setRfNodes((nds) => applyNodeChanges(changes, nds));
+      // Commit side effects to the store: final drag position (once, on
+      // drop) and removals.
       changes.forEach((change) => {
         if (
           change.type === "position" &&
@@ -67,10 +76,8 @@ export function EditorCanvas() {
           removeState(change.id);
         }
       });
-      // Apply locally too so the canvas reflects in-flight drags
-      applyNodeChanges(changes, nodes);
     },
-    [moveState, removeState, nodes],
+    [moveState, removeState],
   );
 
   const onEdgesChange = useCallback(
@@ -101,7 +108,7 @@ export function EditorCanvas() {
   return (
     <div className="flex-1 border border-slate-200 rounded">
       <ReactFlow
-        nodes={nodes}
+        nodes={rfNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
