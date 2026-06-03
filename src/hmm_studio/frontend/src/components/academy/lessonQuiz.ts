@@ -194,6 +194,22 @@ export const LESSON_QUIZZES: Record<string, LessonQuiz> = {
       { level: "Analyze", prompt: "/compare flags NHMM and Factorial as comparable=False because…", options: ["they are slow to fit", "their likelihoods aren't on the same scale as P(X) models", "they always lose", "they need a GPU"], correct: 1, concept: "comparability", explanation: "An NHMM conditions on covariates (P(X|Z)); you can't BIC-rank it against P(X) models." },
     ],
   },
+  "lesson-16-model-validity": {
+    flashcards: [
+      { level: "Recall", front: "Name the five HMM validity assumptions.", back: "Stationarity, the Markov property, conditional independence of emissions given state, a finite/known K, and identifiability (stable parameters across inits)." },
+      { level: "Apply", front: "Top-3 random inits give wildly different log-likelihoods. What does that mean?", back: "A local-optimum problem — the fit is fragile. Run more inits / better init and keep the best." },
+      { level: "Analyze", front: "Two re-fits give the same model with the state indices swapped. Bug?", back: "No — HMMs are identifiable only up to a permutation of states (label switching). Order states by an emission feature to compare." },
+      { level: "Apply", front: "A state has ~0 posterior occupancy after fitting. What does it suggest?", back: "K is probably too large (over-fragmentation) — try fewer states or a constrained topology." },
+    ],
+    questions: [
+      { level: "Analyze", prompt: "You fit a 3-state HMM; states 0 and 1 have near-identical means and the transitions look random. This suggests…", options: ["a perfect fit", "the model is unidentifiable — merge states or add constraints", "the data is Gaussian", "more iterations are needed"], correct: 1, concept: "identifiability", explanation: "Indistinguishable states + random transitions = the data doesn't support that many regimes." },
+      { level: "Apply", prompt: "Held-out log-likelihood is 10× worse than train. The most likely culprit is…", options: ["the seed", "overfitting or a mismatched emission family", "too few iterations", "the transition mask"], correct: 1, concept: "generalization", explanation: "Train-good / eval-bad is the classic overfit-or-wrong-emission signature (see Lesson 15)." },
+      { level: "Analyze", prompt: "Your data's autocorrelation is strong at lags 5–20. An HMM may fail because…", options: ["it needs more states", "it assumes the Markov property (only lag-1 dependence)", "emissions must be Gaussian", "it cannot be fit"], correct: 1, concept: "markov assumption", explanation: "Long-range dependence violates the Markov assumption — consider AR or state-space models." },
+      { level: "Apply", prompt: "Which check tells you EM converged cleanly?", options: ["BIC is negative", "the log-likelihood trace rises monotonically and plateaus", "the transmat is symmetric", "the seed is 42"], correct: 1, concept: "convergence", explanation: "A monotone, plateauing LL trace (now persisted on the results page) is the convergence signal." },
+      { level: "Analyze", prompt: "When is a vanilla HMM the WRONG tool?", options: ["small interpretable-regime data", "non-stationary regimes that drift over time", "speech/bioinformatics", "teaching"], correct: 1, concept: "when not to use", explanation: "Time-varying dynamics call for an NHMM/switching model, not a homogeneous HMM." },
+      { level: "Apply", prompt: "You have no idea how many regimes exist and no domain guidance. Best first move?", options: ["grid-search K up to 50", "start at K=2 and validate with BIC + held-out LL before growing", "pick K=10", "use one state"], correct: 1, concept: "choosing K", explanation: "Grow K only when validation justifies it; never grid-search without a validation signal." },
+    ],
+  },
 };
 
 export function getLessonQuiz(lessonId: string): LessonQuiz | undefined {
