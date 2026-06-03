@@ -1,5 +1,6 @@
 import { useTopologyStore, useTopologyTemporal } from "../../store/topologyStore";
 import { nextFreePosition } from "../../lib/nodePlacement";
+import { useEditorPrefs } from "../../store/editorPrefsStore";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -15,6 +16,9 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   const redo = useTopologyTemporal((s) => s.redo);
   const canUndo = useTopologyTemporal((s) => s.pastStates.length > 0);
   const canRedo = useTopologyTemporal((s) => s.futureStates.length > 0);
+
+  const showPriorPreview = useEditorPrefs((s) => s.showPriorPreview);
+  const setShowPriorPreview = useEditorPrefs((s) => s.setShowPriorPreview);
 
   const btn =
     "px-3 py-1.5 rounded text-sm border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed";
@@ -48,6 +52,16 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
       <button onClick={onValidate} className={btn}>
         ✓ Re-validate
       </button>
+      <div className="w-px h-6 bg-slate-300" />
+      <label className="flex items-center gap-1.5 text-sm text-slate-600 select-none">
+        <input
+          type="checkbox"
+          checked={showPriorPreview}
+          onChange={(e) => setShowPriorPreview(e.target.checked)}
+        />
+        prior preview
+        <span className="text-xs text-slate-400">(expected P before fit)</span>
+      </label>
     </div>
   );
 }

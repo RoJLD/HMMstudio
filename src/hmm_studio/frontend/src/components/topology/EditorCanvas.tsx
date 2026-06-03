@@ -15,6 +15,9 @@ import "reactflow/dist/style.css";
 import { nodeTypes } from "./nodeTypes";
 import { useTopologyStore } from "../../store/topologyStore";
 import { reconcileNodes } from "../../lib/reconcileNodes";
+import { probEdgeStyle } from "../../lib/edgeStyle";
+import { priorMeanPreview } from "../../lib/priorPreview";
+import { useEditorPrefs } from "../../store/editorPrefsStore";
 
 export function EditorCanvas() {
   const states = useTopologyStore((s) => s.states);
@@ -25,6 +28,8 @@ export function EditorCanvas() {
   const removeTransition = useTopologyStore((s) => s.removeTransition);
   const setSelectedStateId = useTopologyStore((s) => s.setSelectedStateId);
   const setSelectedEdgeId = useTopologyStore((s) => s.setSelectedEdgeId);
+  const transmatPriorAlpha = useTopologyStore((s) => s.transmat_prior_alpha);
+  const showPriorPreview = useEditorPrefs((s) => s.showPriorPreview);
 
   const [rfNodes, setRfNodes] = useState<Node[]>(() => reconcileNodes([], states));
 
@@ -35,26 +40,42 @@ export function EditorCanvas() {
     setRfNodes((prev) => reconcileNodes(prev, states));
   }, [states]);
 
-  const edges: Edge[] = transitions.map((t) => ({
-    id: t.id,
-    source: t.source,
-    target: t.target,
-    type: "default",
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
-    },
-    style: {
-      strokeWidth: t.prior_weight !== undefined ? 3 : 2,
-      stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
-    },
-    label:
-      t.prior_weight !== undefined ? `α=${t.prior_weight.toFixed(1)}` : undefined,
-    labelStyle: { fontSize: 10, fontFamily: "monospace" },
-    labelBgPadding: [2, 4] as [number, number],
-    labelBgBorderRadius: 4,
-    labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
-  }));
+  const previews = showPriorPreview
+    ? priorMeanPreview(transitions, transmatPriorAlpha)
+    : null;
+
+  const edges: Edge[] = transitions.map((t) => {
+    if (previews) {
+      const p = previews.get(t.id) ?? 0;
+      return {
+        ...probEdgeStyle(p),
+        id: t.id,
+        source: t.source,
+        target: t.target,
+        type: "default",
+      };
+    }
+    return {
+      id: t.id,
+      source: t.source,
+      target: t.target,
+      type: "default",
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
+      },
+      style: {
+        strokeWidth: t.prior_weight !== undefined ? 3 : 2,
+        stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
+      },
+      label:
+        t.prior_weight !== undefined ? `α=${t.prior_weight.toFixed(1)}` : undefined,
+      labelStyle: { fontSize: 10, fontFamily: "monospace" },
+      labelBgPadding: [2, 4] as [number, number],
+      labelBgBorderRadius: 4,
+      labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
+    };
+  });
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
