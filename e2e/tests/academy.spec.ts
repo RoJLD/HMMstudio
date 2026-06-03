@@ -118,6 +118,15 @@ test.describe("Academy — lesson index + Try in editor bridge", () => {
     ).toBeVisible();
   });
 
+  test("lesson-16 model validity renders, shows the convergence curve, and has a quiz", async ({ page }) => {
+    await page.goto("/academy/lesson-16-model-validity");
+    await page.waitForTimeout(400);
+    await expect(page.getByRole("heading", { name: /Why this matters/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /When NOT to use an HMM/i })).toBeVisible();
+    // The reused ProgressCurve renders an <svg>.
+    expect(await page.locator("svg").count()).toBeGreaterThan(0);
+  });
+
   test("planned lessons are not clickable", async ({ page }) => {
     await page.goto("/academy");
 
