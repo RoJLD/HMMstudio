@@ -50,9 +50,16 @@ export function suggestEmission(preview: DatasetPreview | null | undefined): Emi
   return { type: "gaussian", nFeatures: cols.length, nSymbols: 2 };
 }
 
-/** allowed_transitions name-pairs for a shape. Ergodic → [] (caller omits the key). */
+/** allowed_transitions name-pairs for a shape. */
 export function allowedTransitionsForShape(shape: TransitionShape, names: string[]): string[][] {
-  if (shape === "ergodic") return [];
+  if (shape === "ergodic") {
+    // Materialize the full mesh (incl. self-loops) so ergodic models show
+    // editable arrows instead of zero. Semantically identical to an omitted
+    // mask (all transitions allowed), but now visible + per-edge-prior-able.
+    const pairs: string[][] = [];
+    for (const a of names) for (const b of names) pairs.push([a, b]);
+    return pairs;
+  }
   const pairs: string[][] = [];
   const K = names.length;
   for (let i = 0; i < K; i++) {
