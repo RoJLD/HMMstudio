@@ -12,6 +12,7 @@ interface SavedTopologiesState {
   saved: Record<string, SavedTopology>;
   save: (entry: SavedTopology) => void;
   remove: (name: string) => void;
+  setSaved: (saved: Record<string, SavedTopology>) => void;
 }
 
 // Sibling of topologyStore (NOT the active model): a named library of saved
@@ -29,6 +30,7 @@ export const useSavedTopologies = create<SavedTopologiesState>()(
           delete next[name];
           return { saved: next };
         }),
+      setSaved: (saved) => set({ saved }),
     }),
     {
       name: "hmm-studio-saved-topologies",

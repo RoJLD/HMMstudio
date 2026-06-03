@@ -11,6 +11,7 @@ import { topologyFingerprint } from "../../lib/topologyFingerprint";
 import { useFitLink } from "../../store/fitLinkStore";
 import { autoLayout, type LayoutMode } from "../../lib/autoLayout";
 import { confirmClobber } from "../../lib/guardClobber";
+import { SavedModelsPanel } from "./SavedModelsPanel";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -40,7 +41,6 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
 
   const saved = useSavedTopologies((s) => s.saved);
   const saveModel = useSavedTopologies((s) => s.save);
-  const removeModel = useSavedTopologies((s) => s.remove);
 
   const navigate = useNavigate();
   const dataset = useDatasetStore((s) => s.current);
@@ -50,6 +50,7 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   const learnedAvailable =
     !!lastFitJobId && fitFingerprint === topologyFingerprint(states, transitions);
   const [fitting, setFitting] = useState(false);
+  const [showModels, setShowModels] = useState(false);
 
   async function handleFit() {
     if (!dataset || states.length === 0) return;
@@ -178,36 +179,17 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
       </div>
       <div className="w-px h-6 bg-slate-300" />
       <button onClick={handleSaveCurrent} className={btn}>💾 Save model</button>
-      <select
-        className={btn}
-        value=""
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v) handleLoadSaved(v);
-          e.target.value = "";
-        }}
-      >
-        <option value="">📂 Load saved…</option>
-        {Object.keys(saved).map((n) => (
-          <option key={n} value={n}>{n}</option>
-        ))}
-      </select>
-      {Object.keys(saved).length > 0 && (
-        <select
-          className={btn}
-          value=""
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v && window.confirm(`Delete saved model "${v}"?`)) removeModel(v);
-            e.target.value = "";
-          }}
-        >
-          <option value="">🗑 Delete…</option>
-          {Object.keys(saved).map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
-      )}
+      <div className="relative inline-block">
+        <button onClick={() => setShowModels((v) => !v)} className={btn}>
+          📂 My models ({Object.keys(saved).length})
+        </button>
+        {showModels && (
+          <SavedModelsPanel
+            onLoad={(n) => { handleLoadSaved(n); setShowModels(false); }}
+            onClose={() => setShowModels(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }
