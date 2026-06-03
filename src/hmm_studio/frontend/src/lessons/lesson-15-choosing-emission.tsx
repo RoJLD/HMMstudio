@@ -132,7 +132,12 @@ export function Lesson15ChoosingEmission() {
         Open the topology preset attached to this lesson : a 3-state GMM-HMM with 3
         mixture components per state on 2D features. Fit it, decode states, and
         inspect the residuals per state. If your data is heavy-tailed, the GMM
-        components will cluster around the tails.
+        components will cluster around the tails.{" "}
+        For the broader picture — convergence, identifiability and when to abandon the
+        HMM entirely — see{" "}
+        <Link to="/academy/lesson-16-model-validity" className="text-brand-700 hover:underline">
+          Lesson 16 — Model validity
+        </Link>.
       </p>
 
       <FurtherReading

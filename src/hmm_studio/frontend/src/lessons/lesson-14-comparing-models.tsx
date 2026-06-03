@@ -115,6 +115,14 @@ export function Lesson14ComparingModels() {
         the bottleneck.
       </p>
 
+      <p className="text-slate-700 mb-4">
+        Comparison tells you which model wins; validity tells you whether the winner is
+        trustworthy at all. See{" "}
+        <Link to="/academy/lesson-16-model-validity" className="text-brand-700 hover:underline">
+          Lesson 16 — Model validity
+        </Link>.
+      </p>
+
       <FurtherReading
         references={[
           {
