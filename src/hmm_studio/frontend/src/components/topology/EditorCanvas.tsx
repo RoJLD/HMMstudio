@@ -13,6 +13,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { nodeTypes } from "./nodeTypes";
+import { edgeTypes } from "./edgeTypes";
 import { useTopologyStore } from "../../store/topologyStore";
 import { reconcileNodes } from "../../lib/reconcileNodes";
 import { probEdgeStyle } from "../../lib/edgeStyle";
@@ -73,41 +74,37 @@ export function EditorCanvas() {
   const previews =
     overlayMode === "prior" ? priorMeanPreview(transitions, transmatPriorAlpha) : null;
 
+  const pairKey = (a: string, b: string) => `${a} ${b}`;
+  const present = new Set(transitions.map((t) => pairKey(t.source, t.target)));
+
   const edges: Edge[] = transitions.map((t) => {
+    // 1) style props (probability overlay or default)
+    let styleProps: Partial<Edge>;
     if (learnedMap) {
-      const p = learnedMap.get(t.id) ?? 0;
-      return { ...probEdgeStyle(p), id: t.id, source: t.source, target: t.target, type: "default" };
-    }
-    if (previews) {
-      const p = previews.get(t.id) ?? 0;
-      return {
-        ...probEdgeStyle(p),
-        id: t.id,
-        source: t.source,
-        target: t.target,
-        type: "default",
+      styleProps = probEdgeStyle(learnedMap.get(t.id) ?? 0);
+    } else if (previews) {
+      styleProps = probEdgeStyle(previews.get(t.id) ?? 0);
+    } else {
+      styleProps = {
+        markerEnd: { type: MarkerType.ArrowClosed, color: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8" },
+        style: { strokeWidth: t.prior_weight !== undefined ? 3 : 2, stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8" },
+        label: t.prior_weight !== undefined ? `α=${t.prior_weight.toFixed(1)}` : undefined,
+        labelStyle: { fontSize: 10, fontFamily: "monospace" },
+        labelBgPadding: [2, 4] as [number, number],
+        labelBgBorderRadius: 4,
+        labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
       };
     }
-    return {
-      id: t.id,
-      source: t.source,
-      target: t.target,
-      type: "default",
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
-      },
-      style: {
-        strokeWidth: t.prior_weight !== undefined ? 3 : 2,
-        stroke: t.prior_weight !== undefined ? "#4f46e5" : "#94a3b8",
-      },
-      label:
-        t.prior_weight !== undefined ? `α=${t.prior_weight.toFixed(1)}` : undefined,
-      labelStyle: { fontSize: 10, fontFamily: "monospace" },
-      labelBgPadding: [2, 4] as [number, number],
-      labelBgBorderRadius: 4,
-      labelBgStyle: { fill: "#eef2ff", fillOpacity: 0.9 },
-    };
+    // 2) edge type: self-loop, curved (reciprocal pair), or default
+    let type = "default";
+    let data: Record<string, unknown> | undefined;
+    if (t.source === t.target) {
+      type = "selfLoop";
+    } else if (present.has(pairKey(t.target, t.source))) {
+      type = "curved";
+      data = { dir: t.source < t.target ? 1 : -1 };
+    }
+    return { ...styleProps, id: t.id, source: t.source, target: t.target, type, data };
   });
 
   const onNodesChange = useCallback(
@@ -174,6 +171,7 @@ export function EditorCanvas() {
         nodes={rfNodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
