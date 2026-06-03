@@ -185,3 +185,34 @@ test.describe("Topology editor — Increment 2", () => {
     expect(await page.locator(".react-flow__node").count()).toBeGreaterThan(0);
   });
 });
+
+test.describe("Saved-models portability", () => {
+  test("save a model then export it as YAML", async ({ page }) => {
+    await page.goto("/topology");
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: /\+ state/i }).click();
+    await page.waitForTimeout(150);
+    page.on("dialog", (d) => d.accept("e2e-export"));
+    await page.getByRole("button", { name: /Save model/i }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole("button", { name: /My models/i }).click();
+    await page.waitForTimeout(150);
+    const dl = page.waitForEvent("download");
+    await page.getByRole("button", { name: /YAML/i }).first().click();
+    expect((await dl).suggestedFilename()).toMatch(/\.yaml$/);
+  });
+
+  test("export-all downloads a library JSON", async ({ page }) => {
+    await page.goto("/topology");
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: /\+ state/i }).click();
+    page.on("dialog", (d) => d.accept("e2e-lib"));
+    await page.getByRole("button", { name: /Save model/i }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole("button", { name: /My models/i }).click();
+    await page.waitForTimeout(150);
+    const dl = page.waitForEvent("download");
+    await page.getByRole("button", { name: /Export all/i }).click();
+    expect((await dl).suggestedFilename()).toMatch(/\.json$/);
+  });
+});
