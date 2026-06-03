@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTopologyStore, useTopologyTemporal } from "../../store/topologyStore";
 import { useSavedTopologies } from "../../store/savedTopologiesStore";
 import { nextFreePosition } from "../../lib/nodePlacement";
-import { useEditorPrefs } from "../../store/editorPrefsStore";
+import { useEditorPrefs, type OverlayMode } from "../../store/editorPrefsStore";
 import { useDatasetStore } from "../../store/datasetStore";
 import { startFit } from "../../api/client";
 import { topologyToYAML } from "../../lib/yaml";
@@ -25,8 +25,8 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   const canUndo = useTopologyTemporal((s) => s.pastStates.length > 0);
   const canRedo = useTopologyTemporal((s) => s.futureStates.length > 0);
 
-  const showPriorPreview = useEditorPrefs((s) => s.showPriorPreview);
-  const setShowPriorPreview = useEditorPrefs((s) => s.setShowPriorPreview);
+  const overlayMode = useEditorPrefs((s) => s.overlayMode);
+  const setOverlayMode = useEditorPrefs((s) => s.setOverlayMode);
 
   const saved = useSavedTopologies((s) => s.saved);
   const saveModel = useSavedTopologies((s) => s.save);
@@ -129,15 +129,25 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
         ✓ Re-validate
       </button>
       <div className="w-px h-6 bg-slate-300" />
-      <label className="flex items-center gap-1.5 text-sm text-slate-600 select-none">
-        <input
-          type="checkbox"
-          checked={showPriorPreview}
-          onChange={(e) => setShowPriorPreview(e.target.checked)}
-        />
-        prior preview
-        <span className="text-xs text-slate-400">(expected P before fit)</span>
-      </label>
+      <div className="inline-flex rounded border border-slate-300 overflow-hidden text-sm">
+        {(["none", "prior", "learned"] as OverlayMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setOverlayMode(m)}
+            className={
+              "px-2 py-1 " +
+              (overlayMode === m ? "bg-brand-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50")
+            }
+            title={
+              m === "none" ? "No probabilities"
+              : m === "prior" ? "Prior mean (expected P before fit)"
+              : "Learned probabilities (after a fit)"
+            }
+          >
+            {m === "none" ? "—" : m}
+          </button>
+        ))}
+      </div>
       <div className="w-px h-6 bg-slate-300" />
       <button onClick={handleSaveCurrent} className={btn}>💾 Save model</button>
       <select

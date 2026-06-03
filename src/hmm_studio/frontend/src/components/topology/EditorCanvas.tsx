@@ -29,7 +29,7 @@ export function EditorCanvas() {
   const setSelectedStateId = useTopologyStore((s) => s.setSelectedStateId);
   const setSelectedEdgeId = useTopologyStore((s) => s.setSelectedEdgeId);
   const transmatPriorAlpha = useTopologyStore((s) => s.transmat_prior_alpha);
-  const showPriorPreview = useEditorPrefs((s) => s.showPriorPreview);
+  const overlayMode = useEditorPrefs((s) => s.overlayMode);
 
   const [rfNodes, setRfNodes] = useState<Node[]>(() => reconcileNodes([], states));
 
@@ -40,9 +40,8 @@ export function EditorCanvas() {
     setRfNodes((prev) => reconcileNodes(prev, states));
   }, [states]);
 
-  const previews = showPriorPreview
-    ? priorMeanPreview(transitions, transmatPriorAlpha)
-    : null;
+  const previews =
+    overlayMode === "prior" ? priorMeanPreview(transitions, transmatPriorAlpha) : null;
 
   const edges: Edge[] = transitions.map((t) => {
     if (previews) {

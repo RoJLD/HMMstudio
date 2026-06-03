@@ -1,23 +1,39 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// UI-only editor preferences. Deliberately SEPARATE from topologyStore so that
-// toggling them is NOT undoable (zundo) and does NOT enter the topology's
-// persisted/serialised model. Persisted under its own localStorage key.
+export type OverlayMode = "none" | "prior" | "learned";
+
+// UI-only editor preferences. SEPARATE from topologyStore so toggling them is
+// not undoable and does not enter the serialised model.
 interface EditorPrefs {
-  showPriorPreview: boolean;
-  setShowPriorPreview: (v: boolean) => void;
+  overlayMode: OverlayMode;
+  setOverlayMode: (m: OverlayMode) => void;
+}
+
+/** Persist migration: v0 stored a boolean `showPriorPreview`; v1 stores
+ *  `overlayMode`. Pure + exported for testing. */
+export function migrateEditorPrefs(
+  persisted: unknown,
+  version: number,
+): { overlayMode: OverlayMode } {
+  if (version < 1 && persisted && typeof (persisted as { showPriorPreview?: unknown }).showPriorPreview === "boolean") {
+    return { overlayMode: (persisted as { showPriorPreview: boolean }).showPriorPreview ? "prior" : "none" };
+  }
+  const m = (persisted as { overlayMode?: OverlayMode } | null)?.overlayMode;
+  return { overlayMode: m ?? "none" };
 }
 
 export const useEditorPrefs = create<EditorPrefs>()(
   persist(
     (set) => ({
-      showPriorPreview: false,
-      setShowPriorPreview: (v) => set({ showPriorPreview: v }),
+      overlayMode: "none",
+      setOverlayMode: (m) => set({ overlayMode: m }),
     }),
     {
       name: "hmm-studio-editor-prefs",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persisted, version) => migrateEditorPrefs(persisted, version) as EditorPrefs,
     },
   ),
 );
