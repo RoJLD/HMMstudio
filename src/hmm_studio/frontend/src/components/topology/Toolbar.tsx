@@ -1,7 +1,14 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTopologyStore, useTopologyTemporal } from "../../store/topologyStore";
 import { useSavedTopologies } from "../../store/savedTopologiesStore";
 import { nextFreePosition } from "../../lib/nodePlacement";
 import { useEditorPrefs } from "../../store/editorPrefsStore";
+import { useDatasetStore } from "../../store/datasetStore";
+import { startFit } from "../../api/client";
+import { topologyToYAML } from "../../lib/yaml";
+import { topologyFingerprint } from "../../lib/topologyFingerprint";
+import { useFitLink } from "../../store/fitLinkStore";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -24,6 +31,29 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   const saved = useSavedTopologies((s) => s.saved);
   const saveModel = useSavedTopologies((s) => s.save);
   const removeModel = useSavedTopologies((s) => s.remove);
+
+  const navigate = useNavigate();
+  const dataset = useDatasetStore((s) => s.current);
+  const setFitLink = useFitLink((s) => s.setFitLink);
+  const [fitting, setFitting] = useState(false);
+
+  async function handleFit() {
+    if (!dataset || states.length === 0) return;
+    setFitting(true);
+    try {
+      const st = useTopologyStore.getState();
+      const result = await startFit({
+        topology_yaml: topologyToYAML(st),
+        dataset_id: dataset.id,
+      });
+      setFitLink(result.id, topologyFingerprint(st.states, st.transitions));
+      navigate(`/results/${result.id}`);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(`Fit failed: ${e instanceof Error ? e.message : "?"}`);
+      setFitting(false);
+    }
+  }
 
   function handleSaveCurrent() {
     const st = useTopologyStore.getState();
@@ -63,6 +93,20 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
       >
         + state
       </button>
+      <div className="w-px h-6 bg-slate-300" />
+      <button
+        onClick={handleFit}
+        disabled={!dataset || states.length === 0 || fitting}
+        title={dataset ? `Fit on ${dataset.filename}` : "Select a dataset on the Data page first"}
+        className={btn}
+      >
+        {fitting ? "Fitting…" : "▶ Fit this topology"}
+      </button>
+      {dataset ? (
+        <span className="text-xs text-slate-400">on {dataset.filename}</span>
+      ) : (
+        <span className="text-xs text-amber-600">no dataset — pick one on Data</span>
+      )}
       <div className="w-px h-6 bg-slate-300" />
       <button onClick={() => undo()} disabled={!canUndo} className={btn}>
         ↶ Undo
