@@ -109,6 +109,7 @@ export function EditorCanvas() {
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
         fitView
+        fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
         deleteKeyCode={["Backspace", "Delete"]}
       >
         <Background />

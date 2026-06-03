@@ -121,7 +121,7 @@ export function yamlToTopology(text: string): TopologyPartial {
   const states: import("../store/topologyStore").StateNode[] = names.map((name, i) => ({
     id: `s-${i}-${Math.random().toString(36).slice(2, 6)}`,
     name,
-    position: { x: 80 + (i % 4) * 180, y: 80 + Math.floor(i / 4) * 140 },
+    position: { x: 60 + (i % 4) * 240, y: 60 + Math.floor(i / 4) * 160 },
   }));
 
   // B.4.2: parse per-state emissions if present and length matches

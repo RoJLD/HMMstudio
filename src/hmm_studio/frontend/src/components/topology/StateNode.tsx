@@ -12,7 +12,7 @@ function StateNodeImpl({ id, data, selected }: NodeProps<StateNodeData>) {
   return (
     <div
       className={
-        "px-4 py-2 rounded-full border-2 bg-white shadow-sm min-w-[80px] text-center " +
+        "px-4 py-2 rounded-full border-2 bg-white shadow-sm min-w-[80px] max-w-[160px] text-center " +
         (selected
           ? "border-brand-600 ring-2 ring-brand-500/30"
           : "border-slate-300")
@@ -27,7 +27,7 @@ function StateNodeImpl({ id, data, selected }: NodeProps<StateNodeData>) {
         value={data.label}
         onChange={(e) => renameState(id, e.target.value)}
         onClick={(e) => e.stopPropagation()}
-        className="w-full bg-transparent text-center text-sm font-medium text-slate-900 outline-none"
+        className="w-full bg-transparent text-center text-sm font-medium text-slate-900 outline-none truncate"
       />
       <Handle
         type="source"
