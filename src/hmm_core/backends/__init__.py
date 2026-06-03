@@ -31,11 +31,24 @@ except ImportError:
     # error from get_backend("bayesian") if they try to use it without pymc.
     BayesianHMMBackend = None  # type: ignore[assignment]
 
+# rSLDS backend (Phase D spike) is optional — ssm has Cython C-extensions that
+# require a C compiler at install. Register lazily so users without ssm pay no
+# import cost.
+try:
+    from hmm_core.backends.rslds_backend import RSLDSBackend
+
+    register_backend("rslds", RSLDSBackend, default=False)
+except ImportError:
+    # ssm not installed — silently skip registration. get_backend("rslds") will
+    # raise a clear "unknown HMM backend" error if the user tries to use it.
+    RSLDSBackend = None  # type: ignore[assignment]
+
 __all__ = [
     "BackendFitResult",
     "BayesianHMMBackend",
     "HMMBackend",
     "HmmlearnBackend",
+    "RSLDSBackend",
     "get_backend",
     "list_backends",
     "register_backend",
