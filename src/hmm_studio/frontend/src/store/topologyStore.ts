@@ -67,13 +67,14 @@ export interface TopologyState {
   renameState: (id: string, name: string) => void;
   removeState: (id: string) => void;
   moveState: (id: string, position: { x: number; y: number }) => void;
+  setPositions: (positions: Record<string, { x: number; y: number }>) => void;
   addTransition: (source: string, target: string) => void;
   removeTransition: (id: string) => void;
   setEmission: (emission: EmissionSpec) => void;
   setStartprob: (sp: "uniform" | "first_state" | number[]) => void;
   setInit: (init: InitSpec) => void;
   setFit: (fit: FitSpec) => void;
-  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit" | "setStateInit" | "setSelectedStateId" | "setPriorAlpha" | "setEdgePriorWeight" | "setSelectedEdgeId">>) => void;
+  loadTopology: (raw: Partial<Omit<TopologyState, "loadTopology" | "reset" | "setName" | "addState" | "renameState" | "removeState" | "moveState" | "setPositions" | "addTransition" | "removeTransition" | "setEmission" | "setStartprob" | "setInit" | "setFit" | "setStateInit" | "setSelectedStateId" | "setPriorAlpha" | "setEdgePriorWeight" | "setSelectedEdgeId">>) => void;
   reset: () => void;
   setStateInit: (
     id: string,
@@ -147,6 +148,12 @@ export const useTopologyStore = create<TopologyState>()(
           set((s) => ({
             states: s.states.map((n) => (n.id === id ? { ...n, position } : n)),
           })),
+        setPositions: (positions) =>
+          set((s) => ({
+            states: s.states.map((n) =>
+              positions[n.id] ? { ...n, position: positions[n.id] } : n,
+            ),
+          })),
         addTransition: (source, target) =>
           set((s) => {
             if (s.transitions.some((e) => e.source === source && e.target === target)) {
@@ -191,6 +198,7 @@ export const useTopologyStore = create<TopologyState>()(
             renameState,
             removeState,
             moveState,
+            setPositions,
             addTransition,
             removeTransition,
             setEmission,
