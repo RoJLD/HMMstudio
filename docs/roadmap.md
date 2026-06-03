@@ -960,6 +960,29 @@ concurrence pas.
 > après v1.1.0. Inventoriés ici au re-baseline pour que le roadmap suive la
 > réalité. Specs sous `docs/specs/`.
 
+### Refonte UX de l'éditeur de topologie — Incréments 1+2 — ✅ SHIPPED (2026-06-03)
+
+Suite à un retour utilisateur (« états collés, drag cassé, pas de probas sur les
+flèches »). Spec : `docs/superpowers/specs/2026-06-02-topology-editor-ux-overhaul-design.md`
+(design round-2 en update daté). Plans : `docs/superpowers/plans/2026-06-02-*` (Inc 1)
+et `2026-06-03-topology-editor-increment-2.md` (Inc 2). 36 tests vitest (nouveau tier
+unitaire frontend) + specs Playwright.
+
+- **Incrément 1** : drag réparé (les bulles suivent le curseur, la sélection survit
+  aux commits) + espacement (grille 240/160, fitView borné, largeur de pilule) +
+  toggle *prior preview* (moyenne du prior, OFF par défaut).
+- **Incrément 2** : (a) **ergodique** matérialise ses K² flèches ; (b) **self-loops**
+  en arc + **bidirectionnelles** courbées + bouton **Tidy** (chaîne/cercle, undo
+  atomique) + affordance `↺` ; (c) bouton **« Fit this topology »** dataset-gated
+  (validate reste structurel) ; (d) toggle **3 états aucun/prior/appris** avec
+  overlay du transmat **appris** (jointure par nom + garde anti-stale via
+  fingerprint — jamais de faux chiffres) ; (e) **stop-gap modèles sauvegardés**
+  (store localStorage `hmm-studio-saved-topologies` + garde « sauver avant
+  d'écraser »). Stores `fitLink`/`saved`/`editorPrefs` séparés du modèle (pureté
+  zundo/YAML préservée ; B2 « cacher le transmat dans le modèle » rejeté).
+- **Différé au roadmap** : **A1 vrais onglets multi-HMM** (façade multi-document +
+  barre d'onglets + undo par onglet) — avantages/risques consignés dans le spec.
+
 ### Feature selection (`hmm_core.features`) — ✅ SHIPPED
 
 - `unsupervised_feature_selection(features, n_clusters=10, ...)` — clustering
