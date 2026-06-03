@@ -9,6 +9,7 @@ import { startFit } from "../../api/client";
 import { topologyToYAML } from "../../lib/yaml";
 import { topologyFingerprint } from "../../lib/topologyFingerprint";
 import { useFitLink } from "../../store/fitLinkStore";
+import { autoLayout, type LayoutMode } from "../../lib/autoLayout";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -19,12 +20,19 @@ interface ToolbarProps {
 
 export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProps) {
   const addState = useTopologyStore((s) => s.addState);
+  const setPositions = useTopologyStore((s) => s.setPositions);
   const states = useTopologyStore((s) => s.states);
   const transitions = useTopologyStore((s) => s.transitions);
   const undo = useTopologyTemporal((s) => s.undo);
   const redo = useTopologyTemporal((s) => s.redo);
   const canUndo = useTopologyTemporal((s) => s.pastStates.length > 0);
   const canRedo = useTopologyTemporal((s) => s.futureStates.length > 0);
+
+  function tidy(mode: LayoutMode) {
+    const st = useTopologyStore.getState();
+    if (st.states.length === 0) return;
+    setPositions(autoLayout(st.states, mode));
+  }
 
   const overlayMode = useEditorPrefs((s) => s.overlayMode);
   const setOverlayMode = useEditorPrefs((s) => s.setOverlayMode);
@@ -97,6 +105,13 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
         className={btn}
       >
         + state
+      </button>
+      <div className="w-px h-6 bg-slate-300" />
+      <button onClick={() => tidy("left-right")} className={btn} title="Arrange as a left-right chain">
+        ⇥ Tidy (chain)
+      </button>
+      <button onClick={() => tidy("circular")} className={btn} title="Arrange on a circle (ergodic)">
+        ◯ Tidy (circle)
       </button>
       <div className="w-px h-6 bg-slate-300" />
       <button
