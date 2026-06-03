@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useTopologyStore } from "../store/topologyStore";
 import { useDatasetStore } from "../store/datasetStore";
 import { yamlToTopology } from "../lib/yaml";
+import { confirmClobber } from "../lib/guardClobber";
+import { useSavedTopologies } from "../store/savedTopologiesStore";
 import { HelpTip } from "../components/help/HelpTip";
 import {
   buildTopologyYaml,
@@ -101,6 +103,16 @@ export default function WizardPage() {
   function finish(goToFit: boolean) {
     setError(null);
     try {
+      const cur = useTopologyStore.getState();
+      const proceed = confirmClobber(cur.states.length, () => {
+        const { name, states, transitions, emission, startprob, init, fit, transmat_prior_alpha } = cur;
+        useSavedTopologies.getState().save({
+          name: name || "untitled",
+          data: { name, states, transitions, emission, startprob, init, fit, transmat_prior_alpha },
+          savedAt: Date.now(),
+        });
+      });
+      if (!proceed) return;
       const partial = yamlToTopology(buildTopologyYaml(model));
       useTopologyStore.getState().loadTopology(partial);
       navigate(goToFit ? "/fit" : "/topology");

@@ -7,16 +7,30 @@ import { useTopologyStore } from "../store/topologyStore";
 import { topologyToYAML, yamlToTopology } from "../lib/yaml";
 import { useDebouncedValidation } from "../hooks/useDebouncedValidation";
 import { buildShareUrl, clearTopologyParam, readSharedTopology } from "../lib/share";
+import { confirmClobber } from "../lib/guardClobber";
+import { useSavedTopologies } from "../store/savedTopologiesStore";
 
 export default function TopologyPage() {
   const validation = useDebouncedValidation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
 
+  function saveCurrent() {
+    const st = useTopologyStore.getState();
+    const { name, states, transitions, emission, startprob, init, fit, transmat_prior_alpha } = st;
+    useSavedTopologies.getState().save({
+      name: name || "untitled",
+      data: { name, states, transitions, emission, startprob, init, fit, transmat_prior_alpha },
+      savedAt: Date.now(),
+    });
+  }
+
   // On mount: hydrate topology from ?topology= URL param if present
   useEffect(() => {
     const shared = readSharedTopology();
     if (shared) {
+      const cur = useTopologyStore.getState();
+      if (!confirmClobber(cur.states.length, saveCurrent)) { clearTopologyParam(); return; }
       useTopologyStore.getState().loadTopology(shared);
       clearTopologyParam();
       setShareStatus("Loaded topology from shared URL");
@@ -63,6 +77,8 @@ export default function TopologyPage() {
       try {
         const text = String(reader.result);
         const partial = yamlToTopology(text);
+        const cur = useTopologyStore.getState();
+        if (!confirmClobber(cur.states.length, saveCurrent)) return;
         useTopologyStore.getState().loadTopology(partial);
       } catch (e) {
         // eslint-disable-next-line no-alert
