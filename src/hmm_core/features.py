@@ -53,9 +53,11 @@ class FeatureSelectionResult:
     selected
         ``features[medoids]`` — the selected subset, input row index preserved.
         One column per cluster.
-    nmi_matrix
-        The full ``(p, p)`` NMI matrix, with ``NMI(x_i, x_i) = 1`` on the
-        diagonal and symmetric off-diagonal. Useful for a diagnostic heatmap.
+    similarity_matrix
+        The full ``(p, p)`` matrix of feature-pair similarity in ``[0, 1]``,
+        symmetric with ``1.0`` on the diagonal. Contains NMI when the selector
+        ran with ``criterion="nmi"`` (the default), or dcor values when
+        ``criterion="dcor"``. Useful for a diagnostic heatmap.
     cluster_dict
         Mapping ``cluster_id -> list of feature names`` in that cluster.
     medoid_per_cluster
@@ -63,9 +65,14 @@ class FeatureSelectionResult:
     """
 
     selected: pd.DataFrame
-    nmi_matrix: np.ndarray
+    similarity_matrix: np.ndarray
     cluster_dict: dict[int, list[str]]
     medoid_per_cluster: dict[int, str]
+
+    @property
+    def nmi_matrix(self) -> np.ndarray:
+        """Legacy alias for :attr:`similarity_matrix` (kept for backward compat)."""
+        return self.similarity_matrix
 
 
 def _entropy_diagonal(
@@ -94,9 +101,97 @@ def _entropy_diagonal(
     return entropy
 
 
+_DCOR_EXTRA_HINT = (
+    "criterion='dcor' requires the 'dcor' extra: "
+    "pip install \"hmm-studio[dcor]\""
+)
+
+
+def _dcor_matrix(standardized: np.ndarray) -> np.ndarray:
+    """Distance-correlation similarity matrix.
+
+    Returns a symmetric ``(p, p)`` matrix with values in ``[0, 1]`` and ``1.0``
+    on the diagonal. Uses the ``dcor`` package (Székely, Rizzo & Bakirov 2007).
+    """
+    try:
+        import dcor
+    except ImportError as exc:
+        raise ImportError(_DCOR_EXTRA_HINT) from exc
+
+    p = standardized.shape[1]
+    M = np.zeros((p, p))
+    for i in range(p):
+        M[i, i] = 1.0
+        for j in range(i + 1, p):
+            d = float(dcor.distance_correlation(
+                standardized[:, i], standardized[:, j]
+            ))
+            M[i, j] = d
+            M[j, i] = d
+    return M
+
+
+def _cluster_and_pick_medoids(
+    similarity_matrix: np.ndarray,
+    columns: list[str],
+    n_clusters: int,
+    linkage_method: str,
+) -> tuple[dict[int, str], dict[int, list[str]], list[str]]:
+    """Cluster + medoid pipeline shared by every criterion.
+
+    Parameters
+    ----------
+    similarity_matrix
+        Symmetric ``(p, p)`` matrix with values in ``[0, 1]`` and ``1.0`` on the
+        diagonal (higher = more redundant).
+    columns
+        Feature names, length ``p``, in the same order as the matrix.
+    n_clusters
+        Number of clusters to cut the dendrogram at.
+    linkage_method
+        scipy.cluster.hierarchy linkage method (``"average"`` is the documented
+        default for NMI-style 1-similarity distances).
+
+    Returns
+    -------
+    medoid_per_cluster : dict[int, str]
+    cluster_dict       : dict[int, list[str]]
+    selected_names     : list[str]  (one medoid per cluster, sorted by cluster id)
+    """
+    distance = 1.0 - similarity_matrix
+    np.fill_diagonal(distance, 0.0)
+    distance = 0.5 * (distance + distance.T)
+    linkage = hierarchy.linkage(
+        squareform(distance, checks=False), method=linkage_method
+    )
+    cluster_ids = hierarchy.fcluster(linkage, n_clusters, criterion="maxclust")
+
+    clusters: dict[int, list[str]] = defaultdict(list)
+    for name, cid in zip(columns, cluster_ids, strict=False):
+        clusters[int(cid)].append(name)
+
+    medoids: dict[int, str] = {}
+    selected_names: list[str] = []
+    for cid, cols in sorted(clusters.items()):
+        if len(cols) == 1:
+            medoid = cols[0]
+        else:
+            idxs = [columns.index(c) for c in cols]
+            sub = similarity_matrix[np.ix_(idxs, idxs)].copy()
+            np.fill_diagonal(sub, 0.0)
+            centrality = sub.mean(axis=1)
+            medoid = cols[int(np.argmax(centrality))]
+        medoids[cid] = medoid
+        selected_names.append(medoid)
+
+    return medoids, dict(clusters), selected_names
+
+
 def unsupervised_feature_selection(
     features: pd.DataFrame,
     n_clusters: int = 10,
+    *,
+    criterion: str = "nmi",
     n_neighbors: int = 5,
     linkage_method: str = "average",
     jitter_std: float = 1e-8,
@@ -135,6 +230,13 @@ def unsupervised_feature_selection(
     n_clusters
         Number of clusters to retain — equals the number of selected
         features. Must be ``<= features.shape[1]``.
+    criterion
+        Similarity criterion. ``"nmi"`` (default) uses normalised mutual
+        information via the sklearn k-NN estimator. ``"dcor"`` uses distance
+        correlation (Székely, Rizzo & Bakirov 2007) — deterministic, no
+        jitter / k-NN tuning, requires the optional ``dcor`` extra
+        (``pip install "hmm-studio[dcor]"``). ``n_neighbors``, ``jitter_std``
+        and ``random_state`` are ignored when ``criterion="dcor"``.
     n_neighbors
         ``k`` for the k-NN entropy/MI estimator. sklearn's default is 3 ; we
         use 5 following Kraskov et al. 2004 §III.B, which recommends
@@ -177,6 +279,26 @@ def unsupervised_feature_selection(
     standardized = StandardScaler().fit_transform(features.values).astype(np.float64)
     standardized = standardized + rng.normal(0.0, jitter_std, size=standardized.shape)
 
+    if criterion not in {"nmi", "dcor"}:
+        raise ValueError(
+            f"criterion must be 'nmi' or 'dcor', got {criterion!r}"
+        )
+
+    if criterion == "dcor":
+        similarity = _dcor_matrix(standardized)
+        medoids, clusters, selected_names = _cluster_and_pick_medoids(
+            similarity_matrix=similarity,
+            columns=columns,
+            n_clusters=n_clusters,
+            linkage_method=linkage_method,
+        )
+        return FeatureSelectionResult(
+            selected=features[selected_names],
+            similarity_matrix=similarity,
+            cluster_dict=clusters,
+            medoid_per_cluster=medoids,
+        )
+
     entropy = _entropy_diagonal(
         standardized, n_neighbors=n_neighbors, seed=random_state
     )
@@ -199,35 +321,16 @@ def unsupervised_feature_selection(
     np.clip(nmi_matrix, 0.0, 1.0, out=nmi_matrix)
     np.fill_diagonal(nmi_matrix, 1.0)
 
-    distance = 1.0 - nmi_matrix
-    np.fill_diagonal(distance, 0.0)
-    distance = 0.5 * (distance + distance.T)
-    linkage = hierarchy.linkage(
-        squareform(distance, checks=False), method=linkage_method
+    medoids, clusters, selected_names = _cluster_and_pick_medoids(
+        similarity_matrix=nmi_matrix,
+        columns=columns,
+        n_clusters=n_clusters,
+        linkage_method=linkage_method,
     )
-    cluster_ids = hierarchy.fcluster(linkage, n_clusters, criterion="maxclust")
-
-    clusters: dict[int, list[str]] = defaultdict(list)
-    for name, cid in zip(columns, cluster_ids, strict=False):
-        clusters[int(cid)].append(name)
-
-    medoids: dict[int, str] = {}
-    selected_names: list[str] = []
-    for cid, cols in sorted(clusters.items()):
-        if len(cols) == 1:
-            medoid = cols[0]
-        else:
-            idxs = [columns.index(c) for c in cols]
-            sub_nmi = nmi_matrix[np.ix_(idxs, idxs)].copy()
-            np.fill_diagonal(sub_nmi, 0.0)
-            centrality = sub_nmi.mean(axis=1)
-            medoid = cols[int(np.argmax(centrality))]
-        medoids[cid] = medoid
-        selected_names.append(medoid)
 
     return FeatureSelectionResult(
         selected=features[selected_names],
-        nmi_matrix=nmi_matrix,
-        cluster_dict=dict(clusters),
+        similarity_matrix=nmi_matrix,
+        cluster_dict=clusters,
         medoid_per_cluster=medoids,
     )

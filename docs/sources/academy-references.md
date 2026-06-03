@@ -251,6 +251,19 @@ considering neural density estimators as HMM emissions at n ≈ a few thousand.
 
 — **PDF** : <https://openreview.net/pdf?id=rygtPhVtDS>
 
+### Székely, Rizzo & Bakirov 2007 — *Measuring and testing dependence by correlation of distances*
+
+Gábor J. Székely, Maria L. Rizzo, Nail K. Bakirov. *Annals of Statistics* 35(6),
+2769–2794.
+
+Introduces distance correlation, a measure that characterises independence
+(``dcor(X, Y) = 0`` iff X and Y are independent, not merely uncorrelated) and
+works on continuous and categorical data without density estimation. The Python
+``dcor`` package implements it for practical use. Underlies the
+``criterion="dcor"`` option of ``unsupervised_feature_selection``.
+
+— **PDF** : <https://projecteuclid.org/journals/annals-of-statistics/volume-35/issue-6/Measuring-and-testing-dependence-by-correlation-of-distances/10.1214/009053607000000505.full>
+
 ---
 
 ## Tier 4 — Domain applications & textbook canonicals
@@ -285,6 +298,7 @@ Jurafsky and reproduced in our V.3 validation suite.
 | 5. *Baum-Welch* | **Bilmes 1998** (cornerstone), Rabiner §III.C, MIT 16.410 Lec 21, Eisner ice-cream |
 | 6. *Constrained topologies* | Rabiner §V (left-right / Bakis), Durbin Ch.5 (profile HMM) |
 | 7. *NHMM* | Bengio & Frasconi 1995, Bengio 2002 handbook chapter |
+| 13. *Choosing features for your HMM* | Kraskov et al. 2004 (NMI), Székely-Rizzo-Bakirov 2007 (dcor) |
 | 14. *Comparing models honestly* | re-benchmark methodology in `Projet_Robin/benchmark/` (no central refs cited) |
 | 15. *Choosing the emission distribution* | Lee & McLachlan 2011, Foroni-Merlo-Petrella 2024, FlowHMM NeurIPS 2022, Rothfuss et al. ICLR 2020 |
 

@@ -181,6 +181,53 @@ model = fit(topology, result.selected.values, seed=42)`}</code>
       </ul>
 
       <h2 className="text-xl font-semibold text-slate-900 mb-3 mt-8">
+        Alternative criterion : distance correlation
+      </h2>
+      <p className="text-slate-700 mb-4">
+        NMI is not the only way to measure shared information. The selector also
+        accepts <code className="bg-slate-100 px-1 rounded text-sm">criterion=&quot;dcor&quot;</code>,
+        which uses <strong>distance correlation</strong> (Székely, Rizzo &amp;
+        Bakirov 2007) instead. dcor is :
+      </p>
+      <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
+        <li>
+          <strong>Deterministic.</strong> A closed-form functional of pairwise
+          distances. No k-NN estimator, no jitter, no{" "}
+          <code className="bg-slate-100 px-1 rounded text-sm">random_state</code>{" "}
+          to worry about.
+        </li>
+        <li>
+          <strong>Characterises independence.</strong>{" "}
+          <code className="bg-slate-100 px-1 rounded text-sm">dcor(X, Y) = 0</code>{" "}
+          iff X and Y are independent (not just linearly uncorrelated).
+        </li>
+      </ul>
+      <p className="text-slate-700 mb-4">
+        The trade-off : dcor is{" "}
+        <code className="bg-slate-100 px-1 rounded text-sm">O(n²)</code> per feature
+        pair, against{" "}
+        <code className="bg-slate-100 px-1 rounded text-sm">~O(n log n)</code> for the
+        k-NN MI estimator. On very large samples NMI is faster ; on small-to-medium
+        samples dcor is the safer choice because there is nothing to tune and nothing
+        stochastic to seed.
+      </p>
+      <pre className="bg-slate-100 rounded px-3 py-2 text-sm overflow-x-auto mb-4">
+        <code>{`# Install the optional extra first :
+#   pip install "hmm-studio[dcor]"
+result = unsupervised_feature_selection(df, n_clusters=8, criterion="dcor")`}</code>
+      </pre>
+      <p className="text-slate-700 mb-4">
+        The YAML pipeline op exposes the same parameter :
+      </p>
+      <pre className="bg-slate-100 rounded px-3 py-2 text-sm overflow-x-auto mb-4">
+        <code>{`steps:
+  - op: dropna
+  - op: select_features_unsupervised
+    n_clusters: 8
+    criterion: dcor`}</code>
+      </pre>
+
+      <h2 className="text-xl font-semibold text-slate-900 mb-3 mt-8">
         Where to learn more
       </h2>
       <p className="text-slate-700 mb-4">

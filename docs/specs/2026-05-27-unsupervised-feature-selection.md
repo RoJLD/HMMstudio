@@ -163,3 +163,38 @@ Porté de :
   (version production NMI, propre — base du portage)
 - `Experiment.Crypto.2026S1.NathanBerbinau/Projet_Robin/UnsupervisedModelFinder.ipynb`
   (prototype dcor — non retenu, voir § 4)
+
+## Update 2026-05-28 — `dcor` as an alternative criterion
+
+`unsupervised_feature_selection` now accepts a `criterion` parameter taking
+`"nmi"` (default, unchanged behaviour) or `"dcor"` (distance correlation, via
+the optional `dcor` extra). Motivation : the NMI k-NN estimator is sensitive
+to jitter and to the choice of `k`, and Nathan's parallel crypto research
+switched empirically from MI/linfoot to `dcor.distance_correlation` for
+reproducibility. `dcor` is deterministic, requires no jitter, and characterises
+independence (`dcor(X, Y) = 0` iff X⊥Y), at the cost of `O(n²)` per feature
+pair (vs k-NN MI's `~O(n log n)`).
+
+Key API decisions :
+
+- New parameter is keyword-only after `n_clusters`. Default `"nmi"` preserves
+  the full backward-compatible signature.
+- `dcor` is declared as an *optional* extra `[dcor]` in `pyproject.toml`,
+  following the existing `[bayesian]` pattern. `criterion="dcor"` raises an
+  `ImportError` with an actionable install message if the extra is missing.
+- The shared clustering+medoid pipeline was extracted into a private helper
+  `_cluster_and_pick_medoids(similarity_matrix, columns, n_clusters,
+  linkage_method)` so both criteria feed the same selection logic.
+- `FeatureSelectionResult.nmi_matrix` was renamed to `similarity_matrix` (the
+  name was inappropriate for non-NMI criteria). A `@property nmi_matrix`
+  returns the same array, preserving backward compatibility for callers using
+  the legacy attribute name.
+- The prep op `select_features_unsupervised` gained the same `criterion`
+  field, exposed in YAML pipelines.
+
+See implementation plan : `docs/superpowers/plans/2026-05-28-features-dcor-criterion.md`
+and design : `docs/superpowers/specs/2026-05-28-features-dcor-criterion-design.md`.
+
+Academy lesson 13 was updated with an "Alternative criterion : distance
+correlation" section explaining the trade-off ; `docs/sources/academy-references.md`
+gained a Tier-3 entry for Székely, Rizzo & Bakirov 2007.

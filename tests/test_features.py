@@ -190,3 +190,73 @@ def test_reproducible_with_seed(correlated_df):
     r2 = unsupervised_feature_selection(correlated_df, n_clusters=3, random_state=7)
     assert list(r1.selected.columns) == list(r2.selected.columns)
     assert np.allclose(r1.nmi_matrix, r2.nmi_matrix)
+
+
+def test_similarity_matrix_alias_equivalence(independent_df):
+    """`result.similarity_matrix` and `result.nmi_matrix` must point at the same
+    array — `nmi_matrix` is a backward-compat alias."""
+    result = unsupervised_feature_selection(independent_df, n_clusters=3)
+    assert hasattr(result, "similarity_matrix")
+    assert result.similarity_matrix is result.nmi_matrix
+
+
+# --- dcor criterion ------------------------------------------------------
+
+dcor = pytest.importorskip("dcor")  # whole-module skip if extra not installed
+
+
+@pytest.mark.parametrize("criterion", ["nmi", "dcor"])
+def test_selection_returns_subset_per_criterion(independent_df, criterion):
+    result = unsupervised_feature_selection(
+        independent_df, n_clusters=3, criterion=criterion
+    )
+    assert set(result.selected.columns).issubset(set(independent_df.columns))
+    assert len(result.selected.columns) == 3
+
+
+@pytest.mark.parametrize("criterion", ["nmi", "dcor"])
+def test_correlated_features_collapse_per_criterion(correlated_df, criterion):
+    """A and B are near-duplicates — both criteria must put them in the same
+    cluster and keep at most one of them."""
+    result = unsupervised_feature_selection(
+        correlated_df, n_clusters=4, criterion=criterion
+    )
+    kept = set(result.selected.columns)
+    assert len({"A", "B"} & kept) <= 1
+    cluster_of = {
+        name: cid
+        for cid, names in result.cluster_dict.items()
+        for name in names
+    }
+    assert cluster_of["A"] == cluster_of["B"]
+
+
+def test_dcor_similarity_matrix_properties(independent_df):
+    """dcor matrix must be symmetric, in [0, 1], with 1.0 on the diagonal."""
+    p = independent_df.shape[1]
+    result = unsupervised_feature_selection(
+        independent_df, n_clusters=3, criterion="dcor"
+    )
+    M = result.similarity_matrix
+    assert M.shape == (p, p)
+    assert np.allclose(np.diag(M), 1.0)
+    assert np.allclose(M, M.T)
+    assert M.min() >= 0.0
+    assert M.max() <= 1.0
+
+
+def test_criterion_invalid_value_raises(independent_df):
+    with pytest.raises(ValueError, match="criterion"):
+        unsupervised_feature_selection(
+            independent_df, n_clusters=3, criterion="kendall"
+        )
+
+
+def test_prep_op_passes_criterion(correlated_df):
+    """The select_features_unsupervised prep op forwards `criterion` to the
+    underlying selector."""
+    op = OPS["select_features_unsupervised"]
+    out = op(correlated_df, n_clusters=4, criterion="dcor")
+    assert out.shape[1] == 4
+    kept = set(out.columns)
+    assert len({"A", "B"} & kept) <= 1
