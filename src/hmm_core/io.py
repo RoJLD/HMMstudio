@@ -154,6 +154,7 @@ def save_model(fitted, output_dir: str | Path) -> None:
             "n_iter_actual": fitted.n_iter_actual,
             "converged": fitted.converged,
             "mask_violation_norm": violation,
+            "convergence_history": [float(v) for v in getattr(fitted, "convergence_history", ())],
         },
         "runtime": {
             "seed": fitted.seed,

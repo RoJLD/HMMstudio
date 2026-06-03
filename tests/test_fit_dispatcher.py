@@ -123,6 +123,7 @@ def test_fitted_model_to_summary_dict_basic_gaussian(synthetic_gaussian_left_rig
         "n_params",
         "seed",
         "duration_seconds",
+        "convergence_history",
     }
     assert set(d.keys()) == expected_keys
 
@@ -345,3 +346,30 @@ def test_to_summary_json_factorial_nhmm_round_trips(synthetic_gaussian_left_righ
     assert parsed["chain_names"] == ["c1"]
     assert parsed["K_per_chain"] == [2]
     assert parsed["K_joint"] == 2
+
+
+def test_fitted_model_carries_and_serializes_convergence_history():
+    import json
+    import numpy as np
+    from hmm_core.fit import fit
+    from hmm_core.topology import EmissionSpec, FitSpec, InitSpec, Topology
+
+    rng = np.random.default_rng(1)
+    X = np.concatenate([rng.normal(-3, 0.5, (80, 1)), rng.normal(3, 0.5, (80, 1))])
+    topo = Topology(
+        name="conv",
+        n_states=2,
+        state_names=["a", "b"],
+        emission=EmissionSpec(type="gaussian", covariance_type="diag", n_features=1),
+        allowed_transitions=None,
+        startprob="uniform",
+        init=InitSpec(strategy="kmeans", seed=1),
+        fit=FitSpec(algorithm="baum_welch", n_iter=50, tol=1e-4),
+    )
+    fitted = fit(topo, X, seed=1)
+    assert isinstance(fitted.convergence_history, tuple)
+    assert len(fitted.convergence_history) >= 2
+    # Serialized into the summary dict / JSON as a plain list of floats.
+    summ = fitted.to_summary_dict()
+    assert summ["convergence_history"] == [float(v) for v in fitted.convergence_history]
+    assert json.loads(fitted.to_summary_json())["convergence_history"][0] == summ["convergence_history"][0]

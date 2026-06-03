@@ -32,6 +32,7 @@ class FittedModel:
     converged: bool
     seed: int
     duration_seconds: float
+    convergence_history: tuple[float, ...] = ()
 
     def to_summary_dict(self) -> dict:
         """Return all regression-test / changelog relevant fit metadata as a flat dict.
@@ -66,6 +67,7 @@ class FittedModel:
             "n_params": int(_n_params(self.topology.n_states, e)),
             "seed": int(self.seed) if self.seed is not None else None,
             "duration_seconds": float(self.duration_seconds),
+            "convergence_history": [float(v) for v in getattr(self, "convergence_history", ())],
         }
 
     def to_summary_json(self, *, indent: int = 2) -> str:
@@ -306,4 +308,5 @@ def fit(
         converged=result.converged,
         seed=actual_seed,
         duration_seconds=duration,
+        convergence_history=getattr(result, "convergence_history", ()),
     )
