@@ -10,6 +10,7 @@ import { topologyToYAML } from "../../lib/yaml";
 import { topologyFingerprint } from "../../lib/topologyFingerprint";
 import { useFitLink } from "../../store/fitLinkStore";
 import { autoLayout, type LayoutMode } from "../../lib/autoLayout";
+import { confirmClobber } from "../../lib/guardClobber";
 
 interface ToolbarProps {
   onValidate: () => void;
@@ -92,6 +93,10 @@ export function Toolbar({ onValidate, onExport, onImport, onShare }: ToolbarProp
   function handleLoadSaved(name: string) {
     const entry = saved[name];
     if (!entry) return;
+    // Loading a saved model replaces the active one — guard the unsaved work
+    // (handleSaveCurrent prompts for a name to stash it first).
+    const cur = useTopologyStore.getState();
+    if (!confirmClobber(cur.states.length, handleSaveCurrent)) return;
     useTopologyStore.getState().loadTopology(entry.data);
   }
 

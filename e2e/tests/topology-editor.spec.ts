@@ -96,8 +96,9 @@ test.describe("Topology editor — drag + prior preview", () => {
       await page.waitForTimeout(200);
     }
 
-    // Turn on the preview and assert a probability label appears.
-    await page.getByText("prior preview").click();
+    // Turn on the prior overlay (tri-state control: — / prior / learned) and
+    // assert a probability label appears.
+    await page.getByRole("button", { name: /^prior$/ }).click();
     await page.waitForTimeout(200);
     await expect(page.locator(".react-flow__edge-textbg")).toHaveCount(1);
   });
