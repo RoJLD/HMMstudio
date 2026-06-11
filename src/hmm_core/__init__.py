@@ -2,6 +2,11 @@
 
 __version__ = "1.1.0"
 
+from hmm_core.export_graph import (
+    export_activations,
+    export_model_graph,
+    save_model_graph,
+)
 from hmm_core.features import FeatureSelectionResult, unsupervised_feature_selection
 from hmm_core.fit import FittedModel, fit
 from hmm_core.gmm_nhmm import GMMNHMMFittedModel, fit_gmm_nhmm
@@ -44,6 +49,9 @@ __all__ = [
     "TopologyError",
     "auto_grid",
     "compare_models",
+    "export_activations",
+    "export_model_graph",
+    "save_model_graph",
     "fit",
     "fit_gmm_nhmm",
     "fit_nhmm",
